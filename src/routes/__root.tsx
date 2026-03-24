@@ -1,15 +1,26 @@
 import {
 	Anchor,
 	AppShell,
+	Avatar,
 	Burger,
+	Button,
 	Container,
 	Group,
+	Menu,
 	Stack,
 	Text,
 	Title,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import {
+	createRootRoute,
+	Link,
+	Outlet,
+	useNavigate,
+} from "@tanstack/react-router";
+import { LogIn, LogOut, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import pb from "#/lib/pb";
 
 import "../styles.css";
 
@@ -19,6 +30,21 @@ export const Route = createRootRoute({
 
 function RootComponent() {
 	const [opened, { toggle }] = useDisclosure();
+	const [isLoggedIn, setIsLoggedIn] = useState(pb.authStore.isValid);
+	const navigate = useNavigate();
+
+	useEffect(() => {
+		const unsubscribe = pb.authStore.onChange(() => {
+			setIsLoggedIn(pb.authStore.isValid);
+		});
+		return unsubscribe;
+	}, []);
+
+	const handleLogout = () => {
+		pb.authStore.clear();
+		setIsLoggedIn(false);
+		navigate({ to: "/" });
+	};
 
 	return (
 		<AppShell header={{ height: 64 }} padding="md">
@@ -57,6 +83,41 @@ function RootComponent() {
 							>
 								Agendar Cita
 							</Anchor>
+							{isLoggedIn ? (
+								<Menu shadow="md" width={200}>
+									<Menu.Target>
+										<Avatar
+											color="teal"
+											radius="xl"
+											style={{ cursor: "pointer" }}
+										>
+											<User size={16} />
+										</Avatar>
+									</Menu.Target>
+									<Menu.Dropdown>
+										<Menu.Label>{pb.authStore.record?.email}</Menu.Label>
+										<Menu.Divider />
+										<Menu.Item
+											leftSection={<LogOut size={14} />}
+											onClick={handleLogout}
+											color="red"
+										>
+											Cerrar Sesión
+										</Menu.Item>
+									</Menu.Dropdown>
+								</Menu>
+							) : (
+								<Button
+									component={Link}
+									to="/login"
+									leftSection={<LogIn size={16} />}
+									size="sm"
+									variant="light"
+									color="teal"
+								>
+									Iniciar Sesión
+								</Button>
+							)}
 						</Group>
 					</Group>
 				</Container>
@@ -84,6 +145,31 @@ function RootComponent() {
 					>
 						Agendar Cita
 					</Anchor>
+					{isLoggedIn ? (
+						<Anchor
+							underline="never"
+							c="red.7"
+							fw={500}
+							onClick={() => {
+								handleLogout();
+								toggle();
+							}}
+							style={{ cursor: "pointer" }}
+						>
+							Cerrar Sesión
+						</Anchor>
+					) : (
+						<Anchor
+							component={Link}
+							to="/login"
+							underline="never"
+							c="teal.7"
+							fw={500}
+							onClick={toggle}
+						>
+							Iniciar Sesión
+						</Anchor>
+					)}
 				</Stack>
 			</AppShell.Navbar>
 
