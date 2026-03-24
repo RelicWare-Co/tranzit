@@ -11,4 +11,8 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
-pocketbase
+pocketbase/pb_data
+pocketbase/pocketbase
+pocketbase/pocketbase.exe
+pocketbase/CHANGELOG.md
+pocketbase/LICENSE.md
