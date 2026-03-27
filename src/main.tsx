@@ -6,7 +6,7 @@ import { routeTree } from "./routeTree.gen";
 import "@mantine/core/styles.css";
 
 const theme = createTheme({
-	primaryColor: "teal",
+	primaryColor: "red",
 	fontFamily: "Inter, system-ui, sans-serif",
 	headings: {
 		fontFamily: "Inter, system-ui, sans-serif",
@@ -30,7 +30,7 @@ const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
-		<MantineProvider theme={theme} defaultColorScheme="auto">
+		<MantineProvider theme={theme} forceColorScheme="light">
 			<RouterProvider router={router} />
 		</MantineProvider>,
 	);
