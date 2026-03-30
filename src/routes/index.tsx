@@ -73,9 +73,7 @@ function AnimatedSection({
 			className={className}
 			style={{
 				opacity: isVisible ? 1 : 0,
-				transform: isVisible
-					? "translateY(0) translateZ(0)"
-					: "translateY(40px) translateZ(0)",
+				transform: isVisible ? "translateY(0)" : "translateY(40px)",
 				filter: isVisible ? "blur(0)" : "blur(4px)",
 				transition: `all 800ms cubic-bezier(0.32, 0.72, 0, 1) ${delay}ms`,
 				willChange: "transform, opacity",
@@ -139,78 +137,57 @@ function PremiumButton({
 	variant?: "primary" | "secondary" | "outline";
 	icon?: React.ComponentType<{ size?: number; className?: string }>;
 }) {
+	const baseStyles: React.CSSProperties = {
+		display: "inline-flex",
+		alignItems: "center",
+		gap: "12px",
+		padding: "16px 28px",
+		borderRadius: "9999px",
+		fontWeight: 600,
+		fontSize: "15px",
+		letterSpacing: "-0.2px",
+		cursor: "pointer",
+		transition: "all 500ms cubic-bezier(0.32, 0.72, 0, 1)",
+		backgroundColor:
+			variant === "primary"
+				? "#e03131"
+				: variant === "secondary"
+					? "#111827"
+					: "transparent",
+		color: variant === "outline" ? "#111827" : "#ffffff",
+		border:
+			variant === "outline" ? "1.5px solid #e5e7eb" : "1.5px solid transparent",
+		textDecoration: "none",
+	};
+
+	const iconStyles: React.CSSProperties = {
+		width: "32px",
+		height: "32px",
+		borderRadius: "50%",
+		backgroundColor:
+			variant === "outline"
+				? "rgba(0, 0, 0, 0.05)"
+				: "rgba(255, 255, 255, 0.15)",
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
+	};
+
 	const buttonContent = (
-		<Box
-			component="span"
-			className="group"
-			style={{
-				display: "inline-flex",
-				alignItems: "center",
-				gap: "12px",
-				padding: "16px 28px",
-				borderRadius: "9999px",
-				fontWeight: 600,
-				fontSize: "15px",
-				letterSpacing: "-0.2px",
-				cursor: "pointer",
-				transition: "all 500ms cubic-bezier(0.32, 0.72, 0, 1)",
-				backgroundColor:
-					variant === "primary"
-						? "#e03131"
-						: variant === "secondary"
-							? "#111827"
-							: "transparent",
-				color: variant === "outline" ? "#111827" : "#ffffff",
-				border:
-					variant === "outline"
-						? "1.5px solid #e5e7eb"
-						: "1.5px solid transparent",
-			}}
-			sx={{
-				"&:hover": {
-					transform: "translateY(-2px)",
-					boxShadow:
-						variant === "primary"
-							? "0 12px 24px -8px rgba(224, 49, 49, 0.4)"
-							: "0 12px 24px -8px rgba(0, 0, 0, 0.15)",
-				},
-				"&:active": {
-					transform: "scale(0.98) translateY(0)",
-				},
-			}}
-		>
+		<span className="premium-btn" style={baseStyles}>
 			<span>{children}</span>
 			{Icon && (
-				<Box
-					component="span"
-					style={{
-						width: "32px",
-						height: "32px",
-						borderRadius: "50%",
-						backgroundColor:
-							variant === "outline"
-								? "rgba(0, 0, 0, 0.05)"
-								: "rgba(255, 255, 255, 0.15)",
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-					}}
-					sx={{
-						".group:hover &": {
-							transform: "translateX(3px) translateY(-1px)",
-						},
-					}}
-				>
+				<span className="premium-btn-icon" style={iconStyles}>
 					<Icon size={16} />
-				</Box>
+				</span>
 			)}
-		</Box>
+		</span>
 	);
 
 	if (to) {
 		return (
-			<Link to={to} style={{ textDecoration: "none" }}>
+			<Link to={to} style={{ textDecoration: "none", display: "inline-block" }}>
 				{buttonContent}
 			</Link>
 		);
@@ -218,12 +195,14 @@ function PremiumButton({
 
 	return (
 		<button
+			type="button"
 			onClick={onClick}
 			style={{
 				background: "none",
 				border: "none",
 				padding: 0,
 				font: "inherit",
+				display: "inline-block",
 			}}
 		>
 			{buttonContent}
@@ -236,15 +215,21 @@ function LandingPage() {
 
 	// Stats data
 	const stats = [
-		{ value: "15K+", label: "Trámites completados", suffix: "" },
-		{ value: "4.9", label: "Satisfacción del usuario", suffix: "/5" },
-		{ value: "24h", label: "Disponibilidad", suffix: "" },
-		{ value: "98%", label: "Tasa de resolución", suffix: "" },
+		{ id: "stat-1", value: "15K+", label: "Trámites completados", suffix: "" },
+		{
+			id: "stat-2",
+			value: "4.9",
+			label: "Satisfacción del usuario",
+			suffix: "/5",
+		},
+		{ id: "stat-3", value: "24h", label: "Disponibilidad", suffix: "" },
+		{ id: "stat-4", value: "98%", label: "Tasa de resolución", suffix: "" },
 	];
 
 	// Services data
 	const services = [
 		{
+			id: "svc-1",
 			icon: Calendar,
 			title: "Agendar Cita",
 			description: "Programa tu visita en minutos. Sin filas, sin esperas.",
@@ -252,6 +237,7 @@ function LandingPage() {
 			iconColor: "#e03131",
 		},
 		{
+			id: "svc-2",
 			icon: FileText,
 			title: "Renovación de Licencia",
 			description: "Renueva tu licencia de conducir de forma rápida y segura.",
@@ -259,6 +245,7 @@ function LandingPage() {
 			iconColor: "#16a34a",
 		},
 		{
+			id: "svc-3",
 			icon: Shield,
 			title: "Trámites de Tránsito",
 			description: "Gestiona comparendos, matrículas y más documentación.",
@@ -266,6 +253,7 @@ function LandingPage() {
 			iconColor: "#2563eb",
 		},
 		{
+			id: "svc-4",
 			icon: MapPin,
 			title: "Puntos de Atención",
 			description: "Encuentra la sede más cercana con toda la información.",
@@ -277,6 +265,7 @@ function LandingPage() {
 	// Testimonials data
 	const testimonials = [
 		{
+			id: "test-1",
 			name: "María González",
 			role: "Comerciante",
 			content:
@@ -284,6 +273,7 @@ function LandingPage() {
 			initials: "MG",
 		},
 		{
+			id: "test-2",
 			name: "Carlos Rodríguez",
 			role: "Transportista",
 			content:
@@ -291,6 +281,7 @@ function LandingPage() {
 			initials: "CR",
 		},
 		{
+			id: "test-3",
 			name: "Ana Patricia",
 			role: "Profesora",
 			content:
@@ -301,7 +292,7 @@ function LandingPage() {
 
 	return (
 		<Box style={{ backgroundColor: "#fafafa" }}>
-			{/* Hero Section - Soft Structuralism with Asymmetric Layout */}
+			{/* Hero Section */}
 			<Box
 				style={{
 					minHeight: "100dvh",
@@ -358,17 +349,24 @@ function LandingPage() {
 									color="red"
 									size="lg"
 									radius="xl"
-									leftSection={<Sparkles size={14} />}
+									leftSection={
+										<Box style={{ display: "flex", alignItems: "center" }}>
+											<Sparkles size={14} />
+										</Box>
+									}
 									style={{
 										textTransform: "none",
 										fontWeight: 600,
 										fontSize: "13px",
 										letterSpacing: "-0.2px",
-										padding: "10px 18px",
+										padding: "10px 16px 10px 12px",
 										marginBottom: "24px",
 										backgroundColor: "#fef2f2",
 										color: "#e03131",
 										border: "1px solid rgba(224, 49, 49, 0.15)",
+										display: "inline-flex",
+										alignItems: "center",
+										gap: "6px",
 									}}
 								>
 									Nuevo sistema digital 2025
@@ -380,28 +378,25 @@ function LandingPage() {
 										fontSize: "clamp(40px, 6vw, 72px)",
 										fontWeight: 800,
 										letterSpacing: "-2.5px",
-										lineHeight: 1.05,
+										lineHeight: 1.1,
 										color: "#111827",
 										marginBottom: "24px",
 									}}
 								>
-									Tu trámite de
-									<br />
-									<Text
-										component="span"
+									Tu trámite de{" "}
+									<span
 										style={{
 											background:
 												"linear-gradient(135deg, #e03131 0%, #c92a2a 100%)",
 											WebkitBackgroundClip: "text",
 											WebkitTextFillColor: "transparent",
 											backgroundClip: "text",
+											display: "inline-block",
 										}}
 									>
 										movilidad
-									</Text>
-									,
-									<br />
-									simplificado.
+									</span>
+									, simplificado.
 								</Title>
 
 								<Text
@@ -444,7 +439,8 @@ function LandingPage() {
 									}}
 								>
 									{/* Floating cards composition */}
-									<Box
+									<div
+										className="floating-card-main"
 										style={{
 											backgroundColor: "rgba(255, 255, 255, 0.7)",
 											borderRadius: "32px",
@@ -455,11 +451,6 @@ function LandingPage() {
 											transform: "rotate(-2deg)",
 											transition:
 												"transform 0.6s cubic-bezier(0.32, 0.72, 0, 1)",
-										}}
-										sx={{
-											"&:hover": {
-												transform: "rotate(0deg) translateY(-8px)",
-											},
 										}}
 									>
 										<Box
@@ -511,7 +502,7 @@ function LandingPage() {
 												</Text>
 											</Group>
 										</Box>
-									</Box>
+									</div>
 
 									{/* Second floating element */}
 									<Box
@@ -558,6 +549,12 @@ function LandingPage() {
 						</Grid.Col>
 					</Grid>
 				</Container>
+
+				<style>{`
+					.floating-card-main:hover {
+						transform: rotate(0deg) translateY(-8px) !important;
+					}
+				`}</style>
 			</Box>
 
 			{/* Stats Section */}
@@ -565,8 +562,8 @@ function LandingPage() {
 				<Container size="xl">
 					<AnimatedSection>
 						<Grid gutter={40}>
-							{stats.map((stat, index) => (
-								<Grid.Col key={index} span={{ base: 6, sm: 3 }}>
+							{stats.map((stat) => (
+								<Grid.Col key={stat.id} span={{ base: 6, sm: 3 }}>
 									<Box
 										style={{
 											textAlign: "center",
@@ -655,28 +652,24 @@ function LandingPage() {
 					<Grid gutter={24}>
 						{services.map((service, index) => (
 							<Grid.Col
-								key={index}
+								key={service.id}
 								span={
 									index === 0 ? { base: 12, md: 6 } : { base: 12, md: 6, lg: 3 }
 								}
 							>
 								<AnimatedSection delay={index * 100}>
 									<Box
-										className="group"
+										className="service-card-wrapper"
 										style={{
 											cursor: "pointer",
 											transition:
 												"transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
 										}}
-										sx={{
-											"&:hover": {
-												transform: "translateY(-4px)",
-											},
-										}}
 									>
 										<BezelCard style={{ height: "100%" }}>
 											<Stack gap="md" style={{ height: "100%" }}>
 												<Box
+													className="service-icon"
 													style={{
 														width: "56px",
 														height: "56px",
@@ -687,11 +680,6 @@ function LandingPage() {
 														justifyContent: "center",
 														transition:
 															"all 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
-													}}
-													sx={{
-														".group:hover &": {
-															transform: "scale(1.1) rotate(-3deg)",
-														},
 													}}
 												>
 													<service.icon
@@ -729,6 +717,15 @@ function LandingPage() {
 						))}
 					</Grid>
 				</Container>
+
+				<style>{`
+					.service-card-wrapper:hover {
+						transform: translateY(-4px);
+					}
+					.service-card-wrapper:hover .service-icon {
+						transform: scale(1.1) rotate(-3deg);
+					}
+				`}</style>
 			</Box>
 
 			{/* Upcoming Appointment Section (if authenticated) */}
@@ -849,18 +846,13 @@ function LandingPage() {
 
 					<Grid gutter={24}>
 						{testimonials.map((testimonial, index) => (
-							<Grid.Col key={index} span={{ base: 12, md: 4 }}>
+							<Grid.Col key={testimonial.id} span={{ base: 12, md: 4 }}>
 								<AnimatedSection delay={index * 150}>
 									<Box
-										className="group"
+										className="testimonial-card-wrapper"
 										style={{
 											transition:
 												"transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
-										}}
-										sx={{
-											"&:hover": {
-												transform: "translateY(-4px)",
-											},
 										}}
 									>
 										<BezelCard style={{ height: "100%" }}>
@@ -881,6 +873,7 @@ function LandingPage() {
 														height="24"
 														viewBox="0 0 24 24"
 														fill="none"
+														aria-label="Quote icon"
 													>
 														<path
 															d="M4 14c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2v6c0 1.1-.9 2-2 2M4 14v4c0 1.1.9 2 2 2h16M4 14l2.5 2.5M20 14l-2.5 2.5"
@@ -931,6 +924,12 @@ function LandingPage() {
 						))}
 					</Grid>
 				</Container>
+
+				<style>{`
+					.testimonial-card-wrapper:hover {
+						transform: translateY(-4px);
+					}
+				`}</style>
 			</Box>
 
 			{/* CTA Section */}
@@ -1049,6 +1048,7 @@ function LandingPage() {
 											viewBox="0 0 40 40"
 											fill="none"
 											xmlns="http://www.w3.org/2000/svg"
+											aria-label="SIMUT Logo"
 										>
 											<path
 												d="M22 10C22 10 17 8 13 12C9 16 12 21 17 21C22 21 24 26 21 30C18 34 11 31 11 31"
@@ -1144,6 +1144,23 @@ function LandingPage() {
 					</AnimatedSection>
 				</Container>
 			</Box>
+
+			<style>{`
+				.premium-btn:hover {
+					transform: translateY(-2px);
+					box-shadow: 0 12px 24px -8px rgba(224, 49, 49, 0.4);
+				}
+				.premium-btn-outline:hover {
+					transform: translateY(-2px);
+					box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+				}
+				.premium-btn:active, .premium-btn-outline:active {
+					transform: scale(0.98) translateY(0) !important;
+				}
+				.premium-btn:hover .premium-btn-icon, .premium-btn-outline:hover .premium-btn-icon {
+					transform: translateX(3px) translateY(-1px);
+				}
+			`}</style>
 		</Box>
 	);
 }
