@@ -583,9 +583,9 @@ function LandingPage() {
 											<Text
 												component="span"
 												style={{
-													fontSize: "24px",
-													color: "#e03131",
-													fontWeight: 600,
+													fontSize: "20px",
+													color: "#9ca3af",
+													fontWeight: 500,
 												}}
 											>
 												{stat.suffix}
@@ -651,12 +651,7 @@ function LandingPage() {
 
 					<Grid gutter={24}>
 						{services.map((service, index) => (
-							<Grid.Col
-								key={service.id}
-								span={
-									index === 0 ? { base: 12, md: 6 } : { base: 12, md: 6, lg: 3 }
-								}
-							>
+							<Grid.Col key={service.id} span={{ base: 12, sm: 6, lg: 3 }}>
 								<AnimatedSection delay={index * 100}>
 									<Box
 										className="service-card-wrapper"
