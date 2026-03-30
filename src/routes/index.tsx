@@ -10,7 +10,6 @@ import {
 	SimpleGrid,
 	Stack,
 	Text,
-	ThemeIcon,
 	Title,
 } from "@mantine/core";
 import { createFileRoute } from "@tanstack/react-router";
@@ -29,22 +28,33 @@ function LandingPage() {
 	return (
 		<Box
 			style={{
-				backgroundColor: "#f4f6f8",
+				backgroundColor: "#f8f9fa",
 				minHeight: "100vh",
 				paddingBottom: "100px",
 			}}
 		>
-			{/* Hero Section (Red Banner) */}
+			{/* Hero Section (Premium Red Banner) */}
 			<Box
 				style={{
-					backgroundColor: "#ef4444",
+					background: "linear-gradient(135deg, #e03131 0%, #c92a2a 100%)",
 					position: "relative",
 					overflow: "hidden",
 					paddingTop: "5rem",
 					paddingBottom: "8rem",
 				}}
 			>
-				{/* Background decorative spotlight */}
+				{/* Noise overlay */}
+				<Box
+					style={{
+						position: "absolute",
+						inset: 0,
+						backgroundImage:
+							"url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22 opacity=%220.05%22/%3E%3C/svg%3E')",
+						pointerEvents: "none",
+						zIndex: 0,
+					}}
+				/>
+				{/* Subtle glow */}
 				<Box
 					style={{
 						position: "absolute",
@@ -54,24 +64,33 @@ function LandingPage() {
 						height: "800px",
 						borderRadius: "50%",
 						background:
-							"radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%)",
+							"radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%)",
 						zIndex: 0,
 					}}
 				/>
 				<Container size="lg" style={{ position: "relative", zIndex: 1 }}>
 					<Group justify="space-between" align="center">
-						<Stack gap={8} maw={600}>
+						<Stack gap={12} maw={650}>
 							<Title
 								order={1}
 								c="white"
-								size="h1"
-								fw={700}
-								style={{ letterSpacing: "-0.5px", fontSize: "2.5rem" }}
+								style={{
+									letterSpacing: "-1px",
+									fontSize: "3rem",
+									lineHeight: 1.1,
+									fontWeight: 800,
+									textWrap: "balance",
+								}}
 							>
 								Agenda tu Trámite de Movilidad
 							</Title>
-							<Text c="white" size="lg" fw={400} style={{ fontSize: "1.1rem" }}>
-								Gestión ágil y segura para tus trámites de tránsito.
+							<Text
+								c="rgba(255,255,255,0.9)"
+								size="lg"
+								fw={500}
+								style={{ fontSize: "1.2rem", letterSpacing: "-0.2px" }}
+							>
+								Gestión ágil y segura para tus trámites de tránsito en Tuluá.
 							</Text>
 						</Stack>
 						<Box
@@ -88,7 +107,7 @@ function LandingPage() {
 									bottom: 0,
 									left: 0,
 									zIndex: 0,
-									opacity: 0.6,
+									opacity: 0.8,
 								}}
 							>
 								<title>Dashed path</title>
@@ -96,15 +115,21 @@ function LandingPage() {
 									d="M 0 80 Q 150 50 250 10"
 									fill="none"
 									stroke="white"
-									strokeWidth="3"
+									strokeWidth="2"
 									strokeDasharray="6 8"
 								/>
 							</svg>
 							{/* Bus Icon */}
 							<Box
-								style={{ position: "absolute", top: -10, right: 0, zIndex: 2 }}
+								style={{
+									position: "absolute",
+									top: -10,
+									right: 0,
+									zIndex: 2,
+									opacity: 0.9,
+								}}
 							>
-								<Bus size={56} color="white" strokeWidth={1.5} />
+								<Bus size={56} color="white" strokeWidth={2} />
 							</Box>
 							{/* Car Icon */}
 							<Box
@@ -113,9 +138,10 @@ function LandingPage() {
 									bottom: -10,
 									right: 60,
 									zIndex: 2,
+									opacity: 0.9,
 								}}
 							>
-								<CarFront size={32} color="white" strokeWidth={1.5} />
+								<CarFront size={32} color="white" strokeWidth={2} />
 							</Box>
 						</Box>
 					</Group>
@@ -126,141 +152,214 @@ function LandingPage() {
 				size="lg"
 				style={{ marginTop: "-4.5rem", position: "relative", zIndex: 10 }}
 			>
-				{/* Quick Actions Card */}
+				{/* Quick Actions Card Grid */}
 				<Paper
-					shadow="xs"
-					radius="md"
-					p="lg"
-					withBorder
-					style={{ backgroundColor: "white", borderColor: "#e5e7eb" }}
+					radius="lg"
+					p={0}
+					style={{
+						backgroundColor: "white",
+						border: "1px solid #e5e7eb",
+						boxShadow:
+							"0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.025)",
+						overflow: "hidden",
+					}}
 				>
-					<SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xl">
+					<SimpleGrid cols={{ base: 1, sm: 3 }} spacing={0}>
 						{/* Action 1 */}
-						<Group wrap="nowrap" align="center" gap="md">
-							<ThemeIcon
-								size={54}
-								radius="md"
-								color="red.6"
-								variant="light"
-								style={{ backgroundColor: "#fee2e2" }}
-							>
-								<CalendarDays size={28} color="#ef4444" strokeWidth={1.5} />
-							</ThemeIcon>
-							<div>
-								<Text fw={700} size="md" c="dark.9" mb={2}>
-									Solicitar Cita
-								</Text>
-								<Text size="sm" c="gray.6">
-									Agenda tu turno en linea.
-								</Text>
-							</div>
-						</Group>
+						<Box
+							p="xl"
+							style={{
+								cursor: "pointer",
+								transition: "all 0.2s ease",
+								borderBottom: "1px solid #e5e7eb",
+							}}
+							className="action-card"
+						>
+							<Group wrap="nowrap" align="flex-start" gap="md">
+								<Box
+									style={{
+										width: 48,
+										height: 48,
+										borderRadius: 12,
+										backgroundColor: "#fee2e2",
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
+										flexShrink: 0,
+									}}
+								>
+									<CalendarDays size={24} color="#e03131" strokeWidth={2} />
+								</Box>
+								<div>
+									<Text
+										fw={700}
+										size="md"
+										c="#111827"
+										mb={4}
+										style={{ letterSpacing: "-0.3px" }}
+									>
+										Solicitar Cita
+									</Text>
+									<Text size="sm" c="#6b7280" style={{ lineHeight: 1.4 }}>
+										Agenda tu turno en línea para atención presencial.
+									</Text>
+								</div>
+							</Group>
+						</Box>
 
 						{/* Action 2 */}
-						<Group
-							wrap="nowrap"
-							align="center"
-							gap="md"
+						<Box
+							p="xl"
 							style={{
-								borderLeft: "1px solid #e5e7eb",
-								paddingLeft: "1.5rem",
+								cursor: "pointer",
+								transition: "all 0.2s ease",
 							}}
-							className="action-col-2"
+							className="action-card action-border-left"
 						>
-							<ThemeIcon size={54} radius="xl" color="green.6" variant="filled">
-								<Check size={32} color="white" strokeWidth={2.5} />
-							</ThemeIcon>
-							<div>
-								<Text fw={700} size="md" c="dark.9" mb={2}>
-									Consultar Estado
-								</Text>
-								<Text size="sm" c="gray.6">
-									Revisa el estado de tu solicitud.
-								</Text>
-							</div>
-						</Group>
+							<Group wrap="nowrap" align="flex-start" gap="md">
+								<Box
+									style={{
+										width: 48,
+										height: 48,
+										borderRadius: 12,
+										backgroundColor: "#dcfce7",
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
+										flexShrink: 0,
+									}}
+								>
+									<Check size={24} color="#16a34a" strokeWidth={2} />
+								</Box>
+								<div>
+									<Text
+										fw={700}
+										size="md"
+										c="#111827"
+										mb={4}
+										style={{ letterSpacing: "-0.3px" }}
+									>
+										Consultar Estado
+									</Text>
+									<Text size="sm" c="#6b7280" style={{ lineHeight: 1.4 }}>
+										Revisa el estado actual de tu solicitud.
+									</Text>
+								</div>
+							</Group>
+						</Box>
 
 						{/* Action 3 */}
-						<Group
-							wrap="nowrap"
-							align="center"
-							gap="md"
+						<Box
+							p="xl"
 							style={{
-								borderLeft: "1px solid #e5e7eb",
-								paddingLeft: "1.5rem",
+								cursor: "pointer",
+								transition: "all 0.2s ease",
 							}}
-							className="action-col-3"
+							className="action-card action-border-left"
 						>
-							<ThemeIcon
-								size={54}
-								radius="md"
-								color="dark.8"
-								variant="outline"
-								style={{ borderWidth: 2, backgroundColor: "transparent" }}
-							>
-								<FileText size={28} color="#343a40" strokeWidth={1.5} />
-							</ThemeIcon>
-							<div>
-								<Text fw={700} size="md" c="dark.9" mb={2}>
-									Requisitos y Guías
-								</Text>
-								<Text size="sm" c="gray.6">
-									Información para tus trámites.
-								</Text>
-							</div>
-						</Group>
+							<Group wrap="nowrap" align="flex-start" gap="md">
+								<Box
+									style={{
+										width: 48,
+										height: 48,
+										borderRadius: 12,
+										backgroundColor: "#f3f4f6",
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
+										flexShrink: 0,
+									}}
+								>
+									<FileText size={24} color="#4b5563" strokeWidth={2} />
+								</Box>
+								<div>
+									<Text
+										fw={700}
+										size="md"
+										c="#111827"
+										mb={4}
+										style={{ letterSpacing: "-0.3px" }}
+									>
+										Requisitos y Guías
+									</Text>
+									<Text size="sm" c="#6b7280" style={{ lineHeight: 1.4 }}>
+										Información necesaria para tus trámites.
+									</Text>
+								</div>
+							</Group>
+						</Box>
 					</SimpleGrid>
 				</Paper>
 
 				{/* Mis Citas Agendadas */}
-				<Box mt={50}>
-					<Title order={2} size="h3" c="dark.9" mb="xl" fw={700}>
+				<Box mt={60}>
+					<Title
+						order={2}
+						size="h3"
+						c="#111827"
+						mb="xl"
+						fw={800}
+						style={{ letterSpacing: "-0.5px" }}
+					>
 						Mis Citas Agendadas
 					</Title>
 
 					<Card
-						shadow="xs"
-						radius="md"
+						radius="lg"
 						p={0}
-						withBorder
 						bg="white"
-						style={{ borderColor: "#e5e7eb" }}
+						style={{
+							border: "1px solid #e5e7eb",
+							boxShadow:
+								"0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1)",
+						}}
 					>
 						{/* Card Header */}
 						<Group
 							px="xl"
 							py="md"
-							style={{ borderBottom: "1px solid #e5e7eb" }}
-							gap="xs"
+							style={{
+								borderBottom: "1px solid #f3f4f6",
+								backgroundColor: "#fafafa",
+							}}
+							gap="sm"
 						>
-							<ThemeIcon size={24} radius="xl" color="green.6" variant="filled">
-								<Check size={16} strokeWidth={3} />
-							</ThemeIcon>
-							<Text fw={600} size="md" c="dark.9">
-								Próxima Cita{" "}
-								<span
-									style={{
-										color: "#16a34a",
-										borderBottom: "2px solid #16a34a",
-										marginLeft: "4px",
-									}}
-								>
-									Confirmada
-								</span>
+							<Box
+								style={{
+									width: 24,
+									height: 24,
+									borderRadius: 999,
+									backgroundColor: "#16a34a",
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+								}}
+							>
+								<Check size={14} color="white" strokeWidth={3} />
+							</Box>
+							<Text fw={600} size="sm" c="#4b5563">
+								Próxima Cita
 							</Text>
 						</Group>
 
 						{/* Card Body */}
 						<Box px="xl" py="lg" bg="white">
 							<Group justify="space-between" align="center" wrap="nowrap">
-								<Stack gap="md" style={{ flexGrow: 1 }}>
-									<Text fw={700} size="lg" c="dark.9">
+								<Stack gap="sm" style={{ flexGrow: 1 }}>
+									<Text
+										fw={700}
+										size="xl"
+										c="#111827"
+										style={{ letterSpacing: "-0.5px" }}
+									>
 										Martes, 15 Febrero 2022 • 10:30 AM
 									</Text>
-									<Divider color="#e5e7eb" w="100%" />
-									<Text size="md" c="dark.9">
-										<span style={{ fontWeight: 600 }}>Trámite:</span> Renovación
-										de Licencia.
+									<Divider color="#f3f4f6" w="100%" />
+									<Text size="md" c="#4b5563">
+										<span style={{ fontWeight: 600, color: "#111827" }}>
+											Trámite:
+										</span>{" "}
+										Renovación de Licencia.
 									</Text>
 								</Stack>
 								<Stack
@@ -268,32 +367,33 @@ function LandingPage() {
 									justify="space-between"
 									gap="xl"
 									pl="xl"
-									style={{
-										borderLeft:
-											"1px solid transparent" /* Keep layout stable */,
-									}}
 								>
 									<Badge
-										color="green.6"
-										variant="filled"
-										size="lg"
-										radius="xl"
-										px="md"
 										style={{
-											textTransform: "none",
+											backgroundColor: "#dcfce7",
+											color: "#166534",
 											fontWeight: 600,
-											fontSize: "14px",
-											height: "30px",
+											textTransform: "none",
+											borderRadius: "9999px",
+											padding: "8px 12px",
+											height: "auto",
+											letterSpacing: "-0.2px",
 										}}
 									>
 										Confirmada
 									</Badge>
 									<Button
-										color="red.5"
+										variant="subtle"
+										color="gray"
 										radius="md"
 										size="sm"
 										rightSection={<ChevronRight size={16} />}
-										style={{ fontWeight: 500, backgroundColor: "#ef4444" }}
+										style={{
+											fontWeight: 600,
+											color: "#111827",
+											paddingRight: 0,
+										}}
+										className="hover-arrow-btn"
 									>
 										Ver Detalles
 									</Button>
@@ -304,62 +404,28 @@ function LandingPage() {
 				</Box>
 			</Container>
 
-			{/* Bottom Waves SVG (Pale green matching the image) */}
-			<Box
-				style={{
-					position: "fixed",
-					bottom: 0,
-					left: 0,
-					right: 0,
-					zIndex: 0,
-					pointerEvents: "none",
-				}}
-			>
-				<svg
-					viewBox="0 0 1440 320"
-					style={{
-						width: "100%",
-						height: "auto",
-						display: "block",
-						marginBottom: "-10px",
-					}}
-				>
-					<title>Background waves</title>
-					<path
-						fill="#dcfce7"
-						fillOpacity="0.5"
-						d="M0,224L60,213.3C120,203,240,181,360,186.7C480,192,600,224,720,229.3C840,235,960,213,1080,186.7C1200,160,1320,128,1380,112L1440,96L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"
-					></path>
-				</svg>
-				<svg
-					viewBox="0 0 1440 320"
-					style={{
-						width: "100%",
-						height: "auto",
-						display: "block",
-						position: "absolute",
-						bottom: 0,
-						left: 0,
-						zIndex: -1,
-					}}
-				>
-					<title>Background waves</title>
-					<path
-						fill="#bbf7d0"
-						fillOpacity="0.3"
-						d="M0,128L60,149.3C120,171,240,213,360,202.7C480,192,600,128,720,106.7C840,85,960,107,1080,133.3C1200,160,1320,192,1380,208L1440,224L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"
-					></path>
-				</svg>
-			</Box>
-
-			{/* Custom CSS to handle responsive borders */}
+			{/* Custom CSS */}
 			<style>{`
-				@media (max-width: 768px) {
-					.action-col-2, .action-col-3 {
-						border-left: none !important;
-						padding-left: 0 !important;
-						border-top: 1px solid #e5e7eb;
-						padding-top: 1.5rem;
+				.action-card:hover {
+					background-color: #f9fafb;
+				}
+				.hover-arrow-btn:hover {
+					background-color: transparent;
+					color: #e03131 !important;
+				}
+				.hover-arrow-btn:hover .lucide-chevron-right {
+					transform: translateX(4px);
+					transition: transform 0.2s ease;
+				}
+				.lucide-chevron-right {
+					transition: transform 0.2s ease;
+				}
+				@media (min-width: 768px) {
+					.action-border-left {
+						border-left: 1px solid #e5e7eb;
+					}
+					.action-card {
+						border-bottom: none !important;
 					}
 				}
 			`}</style>

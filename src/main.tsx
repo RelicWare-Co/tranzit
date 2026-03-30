@@ -1,3 +1,4 @@
+import "@fontsource/geist-sans";
 import { createTheme, MantineProvider } from "@mantine/core";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
@@ -7,9 +8,9 @@ import "@mantine/core/styles.css";
 
 const theme = createTheme({
 	primaryColor: "red",
-	fontFamily: "Inter, system-ui, sans-serif",
+	fontFamily: "Geist, system-ui, sans-serif",
 	headings: {
-		fontFamily: "Inter, system-ui, sans-serif",
+		fontFamily: "Geist, system-ui, sans-serif",
 	},
 });
 

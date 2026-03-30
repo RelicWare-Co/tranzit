@@ -1,13 +1,10 @@
 import {
-	ActionIcon,
 	Alert,
-	Badge,
 	Box,
 	Button,
 	Card,
 	Container,
 	Divider,
-	Flex,
 	Grid,
 	Group,
 	Paper,
@@ -19,20 +16,7 @@ import {
 	Title,
 } from "@mantine/core";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	AlertTriangle,
-	Calendar as CalendarIcon,
-	Car,
-	CheckCircle2,
-	ChevronRight,
-	Clock,
-	FileText,
-	Mail,
-	Phone,
-	Search,
-	ShieldCheck,
-	User,
-} from "lucide-react";
+import { AlertTriangle, Car, Check, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/agendar")({
@@ -81,8 +65,7 @@ function AgendarCita() {
 			return () => clearInterval(timer);
 		}
 		if (timeLeft === 0 && !isConfirmed) {
-			// Time expired, reset or show error
-			setActive(2); // Go back to selection
+			setActive(2);
 			setSelectedTime(null);
 			setTimeLeft(300);
 		}
@@ -103,7 +86,6 @@ function AgendarCita() {
 		setIsValidating(true);
 		setTimeout(() => {
 			setIsValidating(false);
-			// Mock validation: if placa starts with 'XXX' simulate error
 			if (placa.toUpperCase().startsWith("XXX")) {
 				setPlacaError(
 					"El vehículo no se encuentra registrado en la ciudad de Tuluá.",
@@ -116,7 +98,6 @@ function AgendarCita() {
 
 	const handleSendCode = () => {
 		setCodeSent(true);
-		// Simulate sending code
 	};
 
 	const handleConfirm = () => {
@@ -125,213 +106,191 @@ function AgendarCita() {
 		}
 	};
 
+	// Premium Input Styles
+	const inputStyles = {
+		input: {
+			backgroundColor: "#f9fafb",
+			border: "1px solid #e5e7eb",
+			borderRadius: "8px",
+			color: "#111827",
+			fontWeight: 500,
+			transition: "all 0.2s ease",
+			"&:focus": {
+				borderColor: "#e03131",
+				boxShadow: "0 0 0 2px rgba(224, 49, 49, 0.1)",
+			},
+		},
+		label: {
+			fontWeight: 600,
+			color: "#374151",
+			marginBottom: "6px",
+			letterSpacing: "-0.2px",
+		},
+	};
+
 	return (
-		<Box pb={80} bg="#f4f6f8" minH="100vh">
-			{/* Decorative Header Area */}
+		<Box pb={80} bg="#f8f9fa" minH="100vh">
+			{/* Minimalist Header Area */}
 			<Box
 				style={{
-					background: "#2c3136",
-					position: "relative",
-					overflow: "hidden",
-					padding: "40px 0 60px 0",
+					background: "#111827",
+					padding: "60px 0 80px 0",
 				}}
 			>
-				{/* Background SVG Waves strictly matching image style */}
-				<svg
-					viewBox="0 0 1440 320"
-					preserveAspectRatio="none"
-					style={{
-						position: "absolute",
-						bottom: 0,
-						left: 0,
-						width: "100%",
-						height: "100px",
-						zIndex: 0,
-						transform: "rotate(180deg)",
-					}}
-				>
-					<title>Decorative background waves</title>
-					<path
-						fill="#2b8a3e"
-						fillOpacity="1"
-						d="M0,64L80,90.7C160,117,320,171,480,186.7C640,203,800,181,960,149.3C1120,117,1280,75,1360,53.3L1440,32L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z"
-					></path>
-					<path
-						fill="#343a40"
-						fillOpacity="1"
-						d="M0,192L80,181.3C160,171,320,149,480,165.3C640,181,800,235,960,240C1120,245,1280,203,1360,181.3L1440,160L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z"
-					></path>
-				</svg>
-
-				<Container size="lg" style={{ position: "relative", zIndex: 1 }}>
+				<Container size="md">
 					<Title
 						c="white"
 						order={1}
 						style={{
-							letterSpacing: "-0.5px",
-							fontSize: "32px",
-							fontWeight: 700,
+							letterSpacing: "-1px",
+							fontSize: "2.5rem",
+							fontWeight: 800,
+							lineHeight: 1.1,
 						}}
 					>
-						Agendamiento de Citas
+						Agendar Cita
 					</Title>
-					<Text c="gray.4" mt="sm" size="lg">
-						Programe su cita para trámites de tránsito en Tuluá
+					<Text
+						c="gray.4"
+						mt="sm"
+						size="lg"
+						style={{ letterSpacing: "-0.2px" }}
+					>
+						Complete los pasos a continuación para programar su atención
+						presencial.
 					</Text>
 				</Container>
 			</Box>
 
-			<Container size="lg" mt="-30" style={{ position: "relative", zIndex: 2 }}>
-				<Paper shadow="sm" radius="md" p={0} bg="white" withBorder>
-					<Box p="xl">
-						<Title
-							order={3}
-							c="#2c3136"
-							size="h4"
-							style={{ fontWeight: 700 }}
-							mb="md"
-						>
-							Gestión de Trámites
-						</Title>
-
-						<Divider mb="xl" color="gray.2" />
-
-						{/* Step Indicator (>>> Paso X de 4: Nombre) */}
-						<Group gap={6} mb="xl" align="center">
-							<Group gap={0} c="gray.4" style={{ display: "flex" }}>
-								<ChevronRight size={22} style={{ marginRight: -14 }} />
-								<ChevronRight size={22} style={{ marginRight: -14 }} />
-								<ChevronRight size={22} />
-							</Group>
-							<Text fw={800} size="lg" c="#2c3136" ml="sm">
-								Paso {active + 1} de {STEPS.length}: {STEPS[active].label}
-							</Text>
-						</Group>
-
-						{/* Single Bar Stepper matching original image design */}
+			<Container size="md" mt="-40" style={{ position: "relative", zIndex: 2 }}>
+				<Paper
+					radius="xl"
+					p={0}
+					bg="white"
+					style={{
+						border: "1px solid #e5e7eb",
+						boxShadow:
+							"0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025)",
+						overflow: "hidden",
+					}}
+				>
+					<Box p={{ base: "xl", sm: 40 }}>
+						{/* Custom Premium Stepper Container */}
 						<Box
+							mb={40}
 							style={{
+								backgroundColor: "#f3f4f6",
+								borderRadius: "9999px",
+								padding: "4px",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "space-between",
 								position: "relative",
-								width: "100%",
-								marginBottom: 40,
-								borderRadius: 50,
-								backgroundColor: "#868e96",
 							}}
 						>
-							{/* Active Background Bar */}
-							<Box
-								style={{
-									position: "absolute",
-									top: 0,
-									left: 0,
-									height: "100%",
-									width: `${((active + 1) / STEPS.length) * 100}%`,
-									backgroundColor: "#2c3136",
-									borderRadius: 50,
-									zIndex: 0,
-									transition: "width 0.3s ease",
-								}}
-							/>
+							{STEPS.map((step, index) => {
+								const isActive = index === active;
+								const isCompleted = index < active;
 
-							{/* Steps */}
-							<Flex style={{ position: "relative", zIndex: 1, width: "100%" }}>
-								{STEPS.map((step, index) => {
-									const isActive = index === active;
-									const isCompleted = index < active;
-
-									let circleBg = "#adb5bd"; // Future gray circle
-
-									if (isCompleted) {
-										circleBg = "#495057"; // Completed dark circle
-									} else if (isActive) {
-										circleBg = "#e03131"; // Active red circle
-									}
-
-									return (
-										<Box
-											key={step.id}
-											style={{
-												flex: 1,
-												padding: "12px 10px",
-												display: "flex",
-												alignItems: "center",
-												justifyContent: "center",
-											}}
-										>
-											<Group gap="sm" wrap="nowrap">
-												{isActive || isCompleted ? (
-													<Box
-														style={{
-															width: 32,
-															height: 32,
-															borderRadius: "50%",
-															backgroundColor: circleBg,
-															display: "flex",
-															alignItems: "center",
-															justifyContent: "center",
-															color: "white",
-															fontWeight: 700,
-															fontSize: 15,
-															flexShrink: 0,
-														}}
-													>
-														{step.id}
-													</Box>
-												) : (
-													<Text
-														fw={700}
-														size="md"
-														c="white"
-														style={{
-															width: 32,
-															display: "flex",
-															justifyContent: "center",
-														}}
-													>
-														{step.id}
-													</Text>
-												)}
-												<Text
-													fw={isActive ? 700 : 500}
-													c="white"
-													size="sm"
+								return (
+									<Box
+										key={step.id}
+										style={{
+											flex: 1,
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											padding: "10px 16px",
+											borderRadius: "9999px",
+											backgroundColor: isActive ? "#111827" : "transparent",
+											color: isActive
+												? "white"
+												: isCompleted
+													? "#111827"
+													: "#6b7280",
+											transition: "all 0.3s ease",
+											position: "relative",
+											zIndex: 1,
+										}}
+									>
+										<Group gap={8} wrap="nowrap">
+											{isCompleted ? (
+												<Box
 													style={{
-														whiteSpace: "nowrap",
-														overflow: "hidden",
-														textOverflow: "ellipsis",
+														width: 20,
+														height: 20,
+														borderRadius: "50%",
+														backgroundColor: "#e03131",
+														display: "flex",
+														alignItems: "center",
+														justifyContent: "center",
 													}}
 												>
-													{step.label}
+													<Check size={12} color="white" strokeWidth={3} />
+												</Box>
+											) : (
+												<Text
+													fw={isActive ? 700 : 600}
+													size="sm"
+													style={{
+														opacity: isActive ? 1 : 0.7,
+														display: "flex",
+														alignItems: "center",
+														justifyContent: "center",
+													}}
+												>
+													{step.id}
 												</Text>
-											</Group>
-										</Box>
-									);
-								})}
-							</Flex>
+											)}
+											<Text
+												fw={isActive ? 600 : 500}
+												size="sm"
+												style={{
+													letterSpacing: "-0.2px",
+													whiteSpace: "nowrap",
+													display: "none", // We'll show this on larger screens using CSS or inline logic
+												}}
+												className="step-label"
+											>
+												{step.label}
+											</Text>
+										</Group>
+									</Box>
+								);
+							})}
 						</Box>
 
 						{/* Content Area */}
-						<Box p="md">
+						<Box>
 							{active === 0 && (
-								<Stack align="center" py="xl" maxW={450} mx="auto">
-									<ActionIcon
-										size={80}
-										radius="100%"
-										color="dark.8"
-										variant="light"
-										mb="sm"
+								<Stack align="center" py="xl" maxW={400} mx="auto">
+									<Box
+										style={{
+											width: 80,
+											height: 80,
+											borderRadius: "24px",
+											backgroundColor: "#f3f4f6",
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											marginBottom: "16px",
+										}}
 									>
-										<Car size={40} />
-									</ActionIcon>
-									<Title order={3} c="#2c3136">
-										Consulta de Vehículo
+										<Car size={40} color="#111827" />
+									</Box>
+									<Title
+										order={3}
+										c="#111827"
+										style={{ letterSpacing: "-0.5px" }}
+									>
+										Placa del Vehículo
 									</Title>
-									<Text c="dimmed" ta="center" mb="lg">
-										Ingrese la placa de su vehículo para validar si se encuentra
-										registrado en la base de datos de Tuluá.
+									<Text c="#6b7280" ta="center" mb="lg" size="sm">
+										Ingrese la placa para validar que se encuentra en nuestra
+										base de datos.
 									</Text>
 									<TextInput
-										placeholder="Ej: ABC123"
+										placeholder="ABC123"
 										size="xl"
 										radius="md"
 										w="100%"
@@ -342,35 +301,48 @@ function AgendarCita() {
 										error={placaError}
 										styles={{
 											input: {
+												backgroundColor: "#f9fafb",
 												textAlign: "center",
-												fontSize: "28px",
+												fontSize: "24px",
 												letterSpacing: "4px",
-												fontWeight: 800,
+												fontWeight: 700,
 												textTransform: "uppercase",
-												border: "2px solid #e9ecef",
+												border: "1px solid #e5e7eb",
+												borderRadius: "12px",
+												color: "#111827",
+												"&:focus": {
+													borderColor: "#e03131",
+													boxShadow: "0 0 0 2px rgba(224, 49, 49, 0.1)",
+												},
 											},
 										}}
 									/>
 									<Button
 										fullWidth
 										size="lg"
-										mt="lg"
-										color="#2c3136"
+										mt="md"
 										onClick={handleValidatePlaca}
 										loading={isValidating}
-										rightSection={<Search size={20} />}
-										style={{ fontWeight: 600 }}
+										style={{
+											backgroundColor: "#111827",
+											borderRadius: "12px",
+											fontWeight: 600,
+											transition: "transform 0.1s ease",
+										}}
+										className="sleek-btn"
 									>
-										Validar Placa
+										Continuar
 									</Button>
 									{placaError && (
 										<Alert
-											icon={<AlertTriangle size={20} />}
-											title="Aviso Importante"
+											icon={<AlertTriangle size={16} />}
+											title="Atención"
 											color="red"
 											variant="light"
 											mt="lg"
 											w="100%"
+											radius="md"
+											style={{ border: "1px solid #fca5a5" }}
 										>
 											{placaError}
 										</Alert>
@@ -379,30 +351,32 @@ function AgendarCita() {
 							)}
 
 							{active === 1 && (
-								<Stack maxW={700} mx="auto" gap="xl">
-									<Alert
-										icon={<CheckCircle2 size={20} />}
-										color="green.8"
-										variant="light"
-										style={{ border: "1px solid #b2f2bb" }}
-									>
-										Vehículo con placa <b>{placa}</b> validado correctamente.
-										Puede continuar con el registro.
-									</Alert>
-
+								<Stack maxW={650} mx="auto" gap="xl">
 									<Box>
-										<Title order={5} c="#2c3136" mb="md">
-											Información del Solicitante
+										<Title
+											order={4}
+											c="#111827"
+											mb="xl"
+											style={{ letterSpacing: "-0.5px" }}
+										>
+											Detalles de la Solicitud
 										</Title>
-										<Grid gutter="lg">
+										<Grid gutter="xl">
 											<Grid.Col span={12}>
 												<TextInput
-													label="Placa del Vehículo"
+													label="Placa a gestionar"
 													value={placa}
 													readOnly
-													variant="filled"
-													leftSection={<Car size={16} />}
-													styles={{ input: { fontWeight: 600 } }}
+													styles={{
+														input: {
+															...inputStyles.input,
+															backgroundColor: "#f3f4f6",
+															color: "#4b5563",
+															fontWeight: 700,
+															cursor: "not-allowed",
+														},
+														label: inputStyles.label,
+													}}
 												/>
 											</Grid.Col>
 											<Grid.Col span={{ base: 12, sm: 6 }}>
@@ -417,7 +391,7 @@ function AgendarCita() {
 															nombre: e.currentTarget.value,
 														})
 													}
-													leftSection={<User size={16} />}
+													styles={inputStyles}
 												/>
 											</Grid.Col>
 											<Grid.Col span={{ base: 12, sm: 6 }}>
@@ -432,7 +406,7 @@ function AgendarCita() {
 															identificacion: e.currentTarget.value,
 														})
 													}
-													leftSection={<FileText size={16} />}
+													styles={inputStyles}
 												/>
 											</Grid.Col>
 											<Grid.Col span={12}>
@@ -459,6 +433,7 @@ function AgendarCita() {
 															label: "Certificado de Tradición",
 														},
 													]}
+													styles={inputStyles}
 												/>
 											</Grid.Col>
 											<Grid.Col span={{ base: 12, sm: 6 }}>
@@ -473,7 +448,7 @@ function AgendarCita() {
 															telefono: e.currentTarget.value,
 														})
 													}
-													leftSection={<Phone size={16} />}
+													styles={inputStyles}
 												/>
 											</Grid.Col>
 											<Grid.Col span={{ base: 12, sm: 6 }}>
@@ -488,24 +463,25 @@ function AgendarCita() {
 															correo: e.currentTarget.value,
 														})
 													}
-													leftSection={<Mail size={16} />}
+													styles={inputStyles}
 												/>
 											</Grid.Col>
 										</Grid>
 									</Box>
 
-									<Divider />
+									<Divider color="#f3f4f6" />
 
 									<Group justify="space-between">
 										<Button
-											variant="default"
+											variant="subtle"
+											color="gray"
 											onClick={() => setActive(0)}
 											size="md"
+											style={{ fontWeight: 600, color: "#6b7280" }}
 										>
-											Volver
+											Atrás
 										</Button>
 										<Button
-											color="#e03131"
 											size="md"
 											onClick={() => setActive(2)}
 											disabled={
@@ -515,7 +491,12 @@ function AgendarCita() {
 												!formData.telefono ||
 												!formData.correo
 											}
-											rightSection={<ChevronRight size={18} />}
+											style={{
+												backgroundColor: "#111827",
+												borderRadius: "8px",
+												fontWeight: 600,
+											}}
+											className="sleek-btn"
 										>
 											Siguiente Paso
 										</Button>
@@ -524,20 +505,25 @@ function AgendarCita() {
 							)}
 
 							{active === 2 && (
-								<Stack maxW={700} mx="auto" gap="xl">
+								<Stack maxW={650} mx="auto" gap="xl">
 									<Box>
-										<Title order={5} c="#2c3136" mb="xs">
-											Seleccione Fecha y Hora
+										<Title
+											order={4}
+											c="#111827"
+											mb="xs"
+											style={{ letterSpacing: "-0.5px" }}
+										>
+											Disponibilidad
 										</Title>
-										<Text c="dimmed" size="sm">
-											Escoja un día disponible para su cita presencial en
-											nuestras oficinas.
+										<Text c="#6b7280" size="sm">
+											Seleccione un día y un horario disponible para su atención
+											presencial.
 										</Text>
 									</Box>
 
 									<Grid gutter="xl">
 										<Grid.Col span={{ base: 12, md: 6 }}>
-											<Text fw={600} size="sm" mb="md" c="#2c3136">
+											<Text fw={600} size="sm" mb="md" c="#374151">
 												1. Días Disponibles
 											</Text>
 											<Stack gap="sm">
@@ -545,28 +531,30 @@ function AgendarCita() {
 													(date) => (
 														<Button
 															key={date}
-															variant={
-																selectedDate === date ? "filled" : "default"
-															}
-															color={selectedDate === date ? "#2c3136" : "gray"}
+															variant="outline"
 															onClick={() => {
 																setSelectedDate(date);
 																setSelectedTime(null);
 															}}
 															fullWidth
 															justify="flex-start"
-															leftSection={<CalendarIcon size={18} />}
 															size="md"
 															style={{
 																border:
 																	selectedDate === date
-																		? "1px solid #2c3136"
-																		: "1px solid #dee2e6",
+																		? "2px solid #e03131"
+																		: "1px solid #e5e7eb",
+																backgroundColor:
+																	selectedDate === date ? "#fff5f5" : "#f9fafb",
+																color:
+																	selectedDate === date ? "#e03131" : "#111827",
+																borderRadius: "8px",
+																fontWeight: 600,
+																transition: "all 0.2s ease",
 															}}
 														>
 															{new Date(date).toLocaleDateString("es-ES", {
 																weekday: "long",
-																year: "numeric",
 																month: "long",
 																day: "numeric",
 															})}
@@ -576,8 +564,8 @@ function AgendarCita() {
 											</Stack>
 										</Grid.Col>
 										<Grid.Col span={{ base: 12, md: 6 }}>
-											<Text fw={600} size="sm" mb="md" c="#2c3136">
-												2. Horarios Disponibles
+											<Text fw={600} size="sm" mb="md" c="#374151">
+												2. Horarios
 											</Text>
 											{selectedDate ? (
 												<Group gap="sm">
@@ -590,18 +578,23 @@ function AgendarCita() {
 													].map((time) => (
 														<Button
 															key={time}
-															variant={
-																selectedTime === time ? "filled" : "outline"
-															}
-															color={
-																selectedTime === time ? "green.7" : "gray.5"
-															}
+															variant="outline"
 															onClick={() => setSelectedTime(time)}
-															leftSection={<Clock size={16} />}
 															size="sm"
 															style={{
+																border:
+																	selectedTime === time
+																		? "2px solid #111827"
+																		: "1px solid #e5e7eb",
+																backgroundColor:
+																	selectedTime === time
+																		? "#111827"
+																		: "transparent",
 																color:
-																	selectedTime === time ? "white" : "#495057",
+																	selectedTime === time ? "white" : "#4b5563",
+																borderRadius: "8px",
+																fontWeight: 600,
+																transition: "all 0.2s ease",
 															}}
 														>
 															{time}
@@ -609,33 +602,47 @@ function AgendarCita() {
 													))}
 												</Group>
 											) : (
-												<Alert color="gray" variant="light">
-													Seleccione una fecha primero para ver las horas
-													disponibles.
-												</Alert>
+												<Box
+													p="md"
+													bg="#f9fafb"
+													style={{
+														borderRadius: "8px",
+														border: "1px dashed #e5e7eb",
+													}}
+												>
+													<Text size="sm" c="#6b7280" ta="center">
+														Seleccione una fecha primero.
+													</Text>
+												</Box>
 											)}
 										</Grid.Col>
 									</Grid>
 
-									<Divider />
+									<Divider color="#f3f4f6" />
 
 									<Group justify="space-between">
 										<Button
-											variant="default"
+											variant="subtle"
+											color="gray"
 											onClick={() => setActive(1)}
 											size="md"
+											style={{ fontWeight: 600, color: "#6b7280" }}
 										>
-											Volver
+											Atrás
 										</Button>
 										<Button
-											color="#e03131"
 											size="md"
 											onClick={() => {
 												setActive(3);
 												setTimeLeft(300);
 											}}
 											disabled={!selectedDate || !selectedTime}
-											rightSection={<ChevronRight size={18} />}
+											style={{
+												backgroundColor: "#e03131",
+												borderRadius: "8px",
+												fontWeight: 600,
+											}}
+											className="sleek-btn"
 										>
 											Confirmar Horario
 										</Button>
@@ -644,72 +651,109 @@ function AgendarCita() {
 							)}
 
 							{active === 3 && (
-								<Stack maxW={700} mx="auto" gap="xl">
+								<Stack maxW={650} mx="auto" gap="xl">
 									{!isConfirmed ? (
 										<>
 											<Alert
-												icon={<Clock size={24} />}
+												icon={<Clock size={20} />}
 												color="yellow.8"
 												variant="light"
-												style={{ border: "1px solid #ffe066" }}
+												style={{
+													border: "1px solid #fde047",
+													backgroundColor: "#fefce8",
+													borderRadius: "12px",
+												}}
 											>
-												<Text fw={700} size="md" c="yellow.9">
-													Horario Reservado Temporalmente
-												</Text>
-												<Text size="sm" c="yellow.9">
-													Hemos bloqueado este espacio para usted. Tiene{" "}
-													<b>{formatTime(timeLeft)}</b> para completar la
-													confirmación. Si el tiempo expira, el espacio será
-													liberado.
-												</Text>
+												<Group
+													justify="space-between"
+													align="center"
+													wrap="nowrap"
+												>
+													<Box>
+														<Text fw={700} size="sm" c="#854d0e">
+															Reserva Temporal
+														</Text>
+														<Text size="sm" c="#a16207" mt={4}>
+															Complete la confirmación en los próximos{" "}
+															<b>{formatTime(timeLeft)}</b>.
+														</Text>
+													</Box>
+												</Group>
 											</Alert>
 
 											<Card
-												withBorder
-												shadow="none"
-												radius="md"
-												bg="#f8f9fa"
-												style={{ borderColor: "#e9ecef" }}
+												radius="xl"
+												p="xl"
+												bg="#f9fafb"
+												style={{ border: "1px solid #e5e7eb" }}
 											>
-												<Group justify="space-between" mb="md">
-													<Title order={5} c="#2c3136">
+												<Group justify="space-between" mb="lg">
+													<Title order={5} c="#111827">
 														Resumen de Cita
 													</Title>
-													<Badge color="yellow.7" variant="filled">
-														Pendiente Confirmación
-													</Badge>
 												</Group>
-												<Divider mb="md" />
-												<Grid>
+												<Grid gutter="lg">
 													<Grid.Col span={6}>
-														<Text size="sm" c="dimmed">
+														<Text
+															size="xs"
+															c="#6b7280"
+															fw={600}
+															style={{
+																textTransform: "uppercase",
+																letterSpacing: "0.5px",
+															}}
+														>
 															Trámite
 														</Text>
-														<Text fw={600} c="#2c3136">
+														<Text fw={600} c="#111827" mt={4}>
 															{formData.tramite.toUpperCase()}
 														</Text>
 													</Grid.Col>
 													<Grid.Col span={6}>
-														<Text size="sm" c="dimmed">
+														<Text
+															size="xs"
+															c="#6b7280"
+															fw={600}
+															style={{
+																textTransform: "uppercase",
+																letterSpacing: "0.5px",
+															}}
+														>
 															Placa
 														</Text>
-														<Text fw={600} c="#2c3136">
+														<Text fw={600} c="#111827" mt={4}>
 															{placa}
 														</Text>
 													</Grid.Col>
 													<Grid.Col span={6}>
-														<Text size="sm" c="dimmed">
+														<Text
+															size="xs"
+															c="#6b7280"
+															fw={600}
+															style={{
+																textTransform: "uppercase",
+																letterSpacing: "0.5px",
+															}}
+														>
 															Fecha
 														</Text>
-														<Text fw={600} c="#2c3136">
+														<Text fw={600} c="#111827" mt={4}>
 															{selectedDate}
 														</Text>
 													</Grid.Col>
 													<Grid.Col span={6}>
-														<Text size="sm" c="dimmed">
+														<Text
+															size="xs"
+															c="#6b7280"
+															fw={600}
+															style={{
+																textTransform: "uppercase",
+																letterSpacing: "0.5px",
+															}}
+														>
 															Hora
 														</Text>
-														<Text fw={600} c="#2c3136">
+														<Text fw={600} c="#111827" mt={4}>
 															{selectedTime}
 														</Text>
 													</Grid.Col>
@@ -719,37 +763,46 @@ function AgendarCita() {
 											<Box
 												p="xl"
 												style={{
-													borderRadius: "8px",
-													border: "2px dashed #ced4da",
+													borderRadius: "16px",
+													border: "1px solid #e5e7eb",
 													backgroundColor: "white",
 												}}
 											>
-												<Title order={5} mb="md" c="#2c3136" ta="center">
+												<Title order={5} mb="md" c="#111827" ta="center">
 													Verificación de Identidad
 												</Title>
 												{!codeSent ? (
-													<Stack gap="md" align="center">
-														<Text size="sm" c="dimmed" ta="center">
-															Para evitar abusos y confirmar su identidad, le
-															enviaremos un código de verificación al correo{" "}
-															<b>{formData.correo}</b> o al celular terminado en{" "}
-															<b>{formData.telefono.slice(-4)}</b>.
+													<Stack gap="lg" align="center">
+														<Text
+															size="sm"
+															c="#4b5563"
+															ta="center"
+															style={{ lineHeight: 1.5 }}
+														>
+															Para confirmar su identidad, le enviaremos un
+															código al correo{" "}
+															<b style={{ color: "#111827" }}>
+																{formData.correo}
+															</b>
+															.
 														</Text>
 														<Button
-															variant="outline"
-															color="#2c3136"
 															onClick={handleSendCode}
-															leftSection={<ShieldCheck size={18} />}
 															size="md"
+															style={{
+																backgroundColor: "#111827",
+																borderRadius: "8px",
+																fontWeight: 600,
+															}}
+															className="sleek-btn"
 														>
-															Enviar Código de Verificación
+															Enviar Código
 														</Button>
 													</Stack>
 												) : (
-													<Stack align="center" gap="md">
-														<Text size="sm" c="dimmed" ta="center">
-															Ingrese el código de 4 dígitos enviado a sus
-															medios de contacto.
+													<Stack align="center" gap="lg">
+														<Text size="sm" c="#4b5563" ta="center">
+															Ingrese el código de 4 dígitos enviado.
 														</Text>
 														<PinInput
 															length={4}
@@ -759,99 +812,141 @@ function AgendarCita() {
 															type="number"
 															styles={{
 																input: {
-																	borderColor: "#2c3136",
-																	fontWeight: 700,
+																	borderColor: "#e5e7eb",
+																	backgroundColor: "#f9fafb",
+																	color: "#111827",
+																	fontWeight: 800,
+																	fontSize: "24px",
+																	borderRadius: "8px",
+																	"&:focus": {
+																		borderColor: "#e03131",
+																	},
 																},
 															}}
 														/>
 														<Button
 															size="md"
-															mt="md"
-															color="green.7"
+															mt="sm"
 															onClick={handleConfirm}
 															disabled={verificationCode.length < 4}
-															leftSection={<CheckCircle2 size={18} />}
-															w={200}
+															style={{
+																backgroundColor:
+																	verificationCode.length < 4
+																		? "#e5e7eb"
+																		: "#16a34a",
+																color:
+																	verificationCode.length < 4
+																		? "#9ca3af"
+																		: "white",
+																borderRadius: "8px",
+																fontWeight: 600,
+																width: "200px",
+															}}
+															className={
+																verificationCode.length === 4 ? "sleek-btn" : ""
+															}
 														>
-															Confirmar Cita
+															Verificar
 														</Button>
 													</Stack>
 												)}
 											</Box>
 
-											<Divider />
-											<Group justify="space-between">
+											<Group justify="center" mt="md">
 												<Button
 													variant="subtle"
 													color="gray"
 													onClick={() => setActive(2)}
+													size="sm"
 												>
-													Cancelar y Volver
+													Cancelar
 												</Button>
 											</Group>
 										</>
 									) : (
-										<Stack align="center" py="xl" gap="md">
-											<ActionIcon
-												size={100}
-												radius="100%"
-												color="green.7"
-												variant="filled"
+										<Stack align="center" py={40} gap="xl">
+											<Box
+												style={{
+													width: 80,
+													height: 80,
+													borderRadius: "50%",
+													backgroundColor: "#dcfce7",
+													display: "flex",
+													alignItems: "center",
+													justifyContent: "center",
+												}}
 											>
-												<CheckCircle2 size={60} color="white" />
-											</ActionIcon>
-											<Title order={2} c="#2c3136" mt="md">
+												<Check size={40} color="#16a34a" strokeWidth={3} />
+											</Box>
+											<Title
+												order={2}
+												c="#111827"
+												style={{ letterSpacing: "-1px" }}
+											>
 												¡Cita Confirmada!
 											</Title>
-											<Text ta="center" c="dimmed" maxW={500} size="lg">
-												Su cita para <b>{formData.tramite.toUpperCase()}</b> ha
-												sido agendada exitosamente para el día{" "}
-												<Text span fw={700} c="#2c3136">
+											<Text
+												ta="center"
+												c="#4b5563"
+												maxW={450}
+												size="md"
+												style={{ lineHeight: 1.5 }}
+											>
+												Su cita ha sido agendada exitosamente. Le esperamos el
+												día{" "}
+												<Text span fw={700} c="#111827">
 													{selectedDate}
 												</Text>{" "}
 												a las{" "}
-												<Text span fw={700} c="#2c3136">
+												<Text span fw={700} c="#111827">
 													{selectedTime}
 												</Text>
 												.
 											</Text>
+
 											<Card
 												withBorder
-												bg="#f8f9fa"
+												bg="#f9fafb"
 												w="100%"
-												mt="lg"
+												maxW={400}
+												mt="md"
 												p="xl"
-												radius="md"
+												radius="xl"
+												style={{ border: "1px dashed #d1d5db" }}
 											>
-												<Stack align="center" gap={4}>
+												<Stack align="center" gap={8}>
 													<Text
-														size="sm"
+														size="xs"
 														fw={600}
-														c="dimmed"
-														textTransform="uppercase"
+														c="#6b7280"
+														style={{
+															textTransform: "uppercase",
+															letterSpacing: "1px",
+														}}
 													>
 														Código de Agendamiento
 													</Text>
 													<Text
 														size="xl"
 														fw={800}
-														c="#e03131"
+														c="#111827"
 														style={{ letterSpacing: "2px" }}
 													>
 														TRZ-88392
 													</Text>
 												</Stack>
 											</Card>
-											<Text size="sm" c="dimmed" ta="center" mt="md">
-												Se ha enviado un correo electrónico a{" "}
-												<b>{formData.correo}</b> con los detalles e
-												instrucciones de su cita.
-											</Text>
+
 											<Button
 												size="lg"
 												mt="xl"
-												color="#2c3136"
 												onClick={() => (window.location.href = "/")}
+												style={{
+													backgroundColor: "#111827",
+													borderRadius: "12px",
+													fontWeight: 600,
+												}}
+												className="sleek-btn"
 											>
 												Volver al Inicio
 											</Button>
@@ -863,6 +958,21 @@ function AgendarCita() {
 					</Box>
 				</Paper>
 			</Container>
+
+			<style>{`
+				.sleek-btn:hover {
+					transform: translateY(-1px);
+					box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+				}
+				.sleek-btn:active {
+					transform: translateY(0);
+				}
+				@media (min-width: 640px) {
+					.step-label {
+						display: block !important;
+					}
+				}
+			`}</style>
 		</Box>
 	);
 }
