@@ -2,6 +2,7 @@ import "@fontsource/geist-sans";
 import { createTheme, MantineProvider } from "@mantine/core";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
+import { AuthProvider } from "./lib/AuthContext";
 import { routeTree } from "./routeTree.gen";
 
 import "@mantine/core/styles.css";
@@ -32,7 +33,9 @@ if (rootElement && !rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
 		<MantineProvider theme={theme} forceColorScheme="light">
-			<RouterProvider router={router} />
+			<AuthProvider>
+				<RouterProvider router={router} />
+			</AuthProvider>
 		</MantineProvider>,
 	);
 }

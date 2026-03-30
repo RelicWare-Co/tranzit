@@ -14,8 +14,8 @@ import {
 import { useForm } from "@mantine/form";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, LogIn } from "lucide-react";
-import { useState } from "react";
-import pb from "#/lib/pb";
+import { useEffect, useState } from "react";
+import { useAuth } from "../lib/AuthContext";
 
 export const Route = createFileRoute("/login")({
 	component: LoginPage,
@@ -23,8 +23,16 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
 	const navigate = useNavigate();
+	const { login, isAuthenticated, isLoading: authLoading } = useAuth();
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
+
+	// Redirect to profile if already authenticated
+	useEffect(() => {
+		if (!authLoading && isAuthenticated) {
+			navigate({ to: "/mi-perfil" });
+		}
+	}, [isAuthenticated, authLoading, navigate]);
 
 	const form = useForm({
 		initialValues: {
@@ -44,10 +52,8 @@ function LoginPage() {
 		setLoading(true);
 
 		try {
-			await pb
-				.collection("users")
-				.authWithPassword(values.email, values.password);
-			navigate({ to: "/" });
+			await login(values.email, values.password);
+			navigate({ to: "/mi-perfil" });
 		} catch (_err) {
 			setError("Credenciales inválidas. Por favor intenta de nuevo.");
 		} finally {
@@ -76,7 +82,7 @@ function LoginPage() {
 	};
 
 	return (
-		<Box bg="#f8f9fa" minH="100vh" py={80}>
+		<Box bg="#f8f9fa" mih="100vh" py={80}>
 			<Container size="xs">
 				<Card
 					p={40}
@@ -178,15 +184,6 @@ function LoginPage() {
 					</Stack>
 				</Card>
 			</Container>
-			<style>{`
-				.login-btn:hover {
-					transform: translateY(-1px);
-					box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-				}
-				.login-btn:active {
-					transform: translateY(0);
-				}
-			`}</style>
 		</Box>
 	);
 }
