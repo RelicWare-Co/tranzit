@@ -197,103 +197,118 @@ function AgendarCita() {
 						<Divider mb="xl" color="gray.2" />
 
 						{/* Step Indicator (>>> Paso X de 4: Nombre) */}
-						<Group gap={4} mb="md" align="center">
-							<Text
-								c="gray.4"
-								style={{ display: "flex", alignItems: "center" }}
-							>
-								<ChevronRight size={18} style={{ marginRight: -10 }} />
-								<ChevronRight size={18} style={{ marginRight: -10 }} />
-								<ChevronRight size={18} />
-							</Text>
-							<Text fw={700} size="md" c="#2c3136" ml="xs">
-								Paso {active + 1} de {STEPS.length}:
-							</Text>
-							<Text span fw={700} size="md" c="#2c3136">
-								{STEPS[active].label}
+						<Group gap={6} mb="xl" align="center">
+							<Group gap={0} c="gray.4" style={{ display: "flex" }}>
+								<ChevronRight size={22} style={{ marginRight: -14 }} />
+								<ChevronRight size={22} style={{ marginRight: -14 }} />
+								<ChevronRight size={22} />
+							</Group>
+							<Text fw={800} size="lg" c="#2c3136" ml="sm">
+								Paso {active + 1} de {STEPS.length}: {STEPS[active].label}
 							</Text>
 						</Group>
 
-						{/* Custom Overlapping Pill Stepper strictly matching Image 1 */}
-						<Flex style={{ width: "100%", marginBottom: 40 }}>
-							{STEPS.map((step, index) => {
-								const isActive = index === active;
-								const isCompleted = index < active;
+						{/* Single Bar Stepper matching original image design */}
+						<Box
+							style={{
+								position: "relative",
+								width: "100%",
+								marginBottom: 40,
+								borderRadius: 50,
+								backgroundColor: "#868e96",
+							}}
+						>
+							{/* Active Background Bar */}
+							<Box
+								style={{
+									position: "absolute",
+									top: 0,
+									left: 0,
+									height: "100%",
+									width: `${((active + 1) / STEPS.length) * 100}%`,
+									backgroundColor: "#2c3136",
+									borderRadius: 50,
+									zIndex: 0,
+									transition: "width 0.3s ease",
+								}}
+							/>
 
-								let bg = "#868e96"; // Future gray
-								let circleBg = "transparent";
-								let circleTextColor = "#e9ecef";
-								let textColor = "white";
-								const zIndex = STEPS.length - index;
+							{/* Steps */}
+							<Flex style={{ position: "relative", zIndex: 1, width: "100%" }}>
+								{STEPS.map((step, index) => {
+									const isActive = index === active;
+									const isCompleted = index < active;
 
-								if (isCompleted) {
-									bg = "#212529"; // Very dark completed background
-									circleBg = "#343a40";
-									circleTextColor = "#adb5bd";
-									textColor = "#ced4da";
-								} else if (isActive) {
-									bg = "#343a40"; // Active dark background
-									circleBg = "#e03131"; // Red active circle
-									circleTextColor = "white";
-									textColor = "white";
-								}
+									let circleBg = "#adb5bd"; // Future gray circle
 
-								return (
-									<Box
-										key={step.id}
-										style={{
-											backgroundColor: bg,
-											borderRadius: 50,
-											padding: "10px 24px",
-											marginLeft: index === 0 ? 0 : -25, // Overlap
-											zIndex: zIndex,
-											position: "relative",
-											flex: 1,
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "center",
-											boxShadow:
-												index < STEPS.length - 1
-													? "3px 0 10px rgba(0,0,0,0.15)"
-													: "none",
-											minWidth: 0,
-										}}
-									>
-										<Group gap="sm" wrap="nowrap">
-											<Box
-												style={{
-													width: 34,
-													height: 34,
-													borderRadius: "50%",
-													backgroundColor: circleBg,
-													display: "flex",
-													alignItems: "center",
-													justifyContent: "center",
-													color: circleTextColor,
-													fontWeight: 700,
-													fontSize: 16,
-													flexShrink: 0,
-												}}
-											>
-												{step.id}
-											</Box>
-											<Text
-												fw={isActive ? 700 : 500}
-												c={textColor}
-												size="sm"
-												style={{
-													whiteSpace: "nowrap",
-													overflow: "hidden",
-													textOverflow: "ellipsis",
-												}}
-											>
-												{step.label}
-											</Text>
-										</Group>
-									</Box>
-								);
-							})}
-						</Flex>
+									if (isCompleted) {
+										circleBg = "#495057"; // Completed dark circle
+									} else if (isActive) {
+										circleBg = "#e03131"; // Active red circle
+									}
+
+									return (
+										<Box
+											key={step.id}
+											style={{
+												flex: 1,
+												padding: "12px 10px",
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "center",
+											}}
+										>
+											<Group gap="sm" wrap="nowrap">
+												{isActive || isCompleted ? (
+													<Box
+														style={{
+															width: 32,
+															height: 32,
+															borderRadius: "50%",
+															backgroundColor: circleBg,
+															display: "flex",
+															alignItems: "center",
+															justifyContent: "center",
+															color: "white",
+															fontWeight: 700,
+															fontSize: 15,
+															flexShrink: 0,
+														}}
+													>
+														{step.id}
+													</Box>
+												) : (
+													<Text
+														fw={700}
+														size="md"
+														c="white"
+														style={{
+															width: 32,
+															display: "flex",
+															justifyContent: "center",
+														}}
+													>
+														{step.id}
+													</Text>
+												)}
+												<Text
+													fw={isActive ? 700 : 500}
+													c="white"
+													size="sm"
+													style={{
+														whiteSpace: "nowrap",
+														overflow: "hidden",
+														textOverflow: "ellipsis",
+													}}
+												>
+													{step.label}
+												</Text>
+											</Group>
+										</Box>
+									);
+								})}
+							</Flex>
+						</Box>
 
 						{/* Content Area */}
 						<Box p="md">
