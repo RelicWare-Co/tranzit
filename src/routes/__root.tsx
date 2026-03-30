@@ -324,58 +324,12 @@ function RootComponent() {
 							<Link
 								to="/"
 								style={{
-									textDecoration: "none",
 									display: "flex",
 									alignItems: "center",
 									gap: "12px",
+									textDecoration: "none",
 								}}
 							>
-								{/* Double Bezel Logo Container */}
-								<div
-									style={{
-										backgroundColor: "rgba(254, 242, 242, 0.6)",
-										borderRadius: "14px",
-										padding: "3px",
-										border: "1px solid rgba(224, 49, 49, 0.12)",
-										boxShadow: "0 2px 8px rgba(224, 49, 49, 0.08)",
-									}}
-								>
-									<div
-										style={{
-											backgroundColor: "rgba(255, 255, 255, 0.9)",
-											borderRadius: "11px",
-											padding: "8px",
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "center",
-										}}
-									>
-										<svg
-											width="28"
-											height="28"
-											viewBox="0 0 40 40"
-											fill="none"
-											xmlns="http://www.w3.org/2000/svg"
-											aria-label="SIMUT Logo"
-										>
-											<path
-												d="M22 10C22 10 17 8 13 12C9 16 12 21 17 21C22 21 24 26 21 30C18 34 11 31 11 31"
-												stroke="#16a34a"
-												strokeWidth="5"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-											/>
-											<path
-												d="M29 9C29 9 24 6 19 10C14 14 17 20 23 20C29 20 31 26 27 31C23 36 15 33 15 33"
-												stroke="#e03131"
-												strokeWidth="5"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-											/>
-										</svg>
-									</div>
-								</div>
-
 								<Box>
 									<Title
 										order={3}
