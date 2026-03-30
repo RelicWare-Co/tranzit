@@ -5,13 +5,13 @@
     "": {
       "name": "tranzit-aux",
       "dependencies": {
-        "hono": "^4.12.9",
-        "pocketbase": "^0.26.8",
-        "zod": "^4.1.11",
+        "hono": "latest",
+        "pocketbase": "latest",
+        "zod": "latest",
       },
       "devDependencies": {
         "@types/bun": "latest",
-        "typescript": "^6.0.2",
+        "typescript": "latest",
       },
     },
   },

@@ -4,6 +4,9 @@
     "skipLibCheck": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
-    "types": ["bun"]
+    "types": ["bun"],
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler"
   }
 }

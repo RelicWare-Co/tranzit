@@ -7,6 +7,13 @@ import {
   ensureAdminClient,
 } from "../../lib/pocketbase"
 import type {
+  AvailabilityQueryInput,
+  ConfirmAppointmentInput,
+  HoldAppointmentInput,
+  RequestOtpInput,
+  VerifyOtpInput,
+} from "./schemas"
+import type {
   AppointmentRecord,
   AuthUserRecord,
   BookingSettingsRecord,
@@ -19,13 +26,6 @@ import type {
   StaffCapacityOverrideRecord,
   StaffMemberRecord,
 } from "./types"
-import type {
-  AvailabilityQueryInput,
-  ConfirmAppointmentInput,
-  HoldAppointmentInput,
-  RequestOtpInput,
-  VerifyOtpInput,
-} from "./schemas"
 
 const USERS_COLLECTION = "users"
 const BOOKING_SETTINGS_COLLECTION = "booking_settings"

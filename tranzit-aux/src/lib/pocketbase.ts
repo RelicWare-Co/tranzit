@@ -1,7 +1,7 @@
 import PocketBase, { ClientResponseError } from "pocketbase"
 import { config, hasSuperuserCredentials } from "../config"
-import { ApiError } from "./errors"
 import type { AuthUserRecord } from "../modules/tranzit/types"
+import { ApiError } from "./errors"
 
 const USERS_COLLECTION = "users"
 const SUPERUSERS_COLLECTION = "_superusers"
