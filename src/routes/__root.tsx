@@ -9,6 +9,7 @@ import {
 	Title,
 	UnstyledButton,
 } from "@mantine/core";
+import { useWindowScroll } from "@mantine/hooks";
 import {
 	createRootRoute,
 	Link,
@@ -281,6 +282,8 @@ function UserMenu() {
 
 function RootComponent() {
 	const router = useRouterState();
+	const [scroll] = useWindowScroll();
+	const isScrolled = scroll.y > 20;
 
 	const links = [
 		{ label: "Inicio", link: "/" },
@@ -293,94 +296,104 @@ function RootComponent() {
 			<Box
 				style={{
 					position: "fixed",
-					top: "20px",
-					left: "50%",
-					transform: "translateX(-50%)",
+					top: 0,
+					left: 0,
+					right: 0,
 					zIndex: 1000,
-					width: "calc(100% - 40px)",
-					maxWidth: "1200px",
+					transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
 				}}
 			>
 				<Box
-					className="header-glass-container"
 					style={{
-						backgroundColor: "rgba(255, 255, 255, 0.92)",
-						backdropFilter: "blur(20px) saturate(180%)",
-						borderRadius: "24px",
-						padding: "12px",
-						border: "1px solid rgba(0, 0, 0, 0.06)",
-						boxShadow: "0 4px 24px -8px rgba(0,0,0,0.08)",
+						maxWidth: isScrolled ? "100%" : "1200px",
+						margin: isScrolled ? "0" : "12px auto 0",
+						padding: isScrolled ? "0" : "0 20px",
 						transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
 					}}
 				>
-					<style>{`
+					<Box
+						className="header-glass-container"
+						style={{
+							backgroundColor: "rgba(255, 255, 255, 0.95)",
+							backdropFilter: "blur(20px) saturate(180%)",
+							borderRadius: isScrolled ? "0" : "20px",
+							padding: isScrolled ? "14px 24px" : "10px 24px",
+							border: "1px solid rgba(0, 0, 0, 0.08)",
+							boxShadow: isScrolled
+								? "0 2px 16px rgba(0,0,0,0.08)"
+								: "0 4px 24px -8px rgba(0,0,0,0.12)",
+							transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
+						}}
+					>
+						<style>{`
 						.header-glass-container:hover {
 							box-shadow: 0 8px 32px -12px rgba(0,0,0,0.12);
 						}
 					`}</style>
-					<Container size="xl" style={{ maxWidth: "100%" }}>
-						<Group justify="space-between" align="center" wrap="nowrap">
-							{/* Logo with Double Bezel Style */}
-							<Link
-								to="/"
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: "12px",
-									textDecoration: "none",
-								}}
-							>
-								<Box>
-									<Title
-										order={3}
-										c="#111827"
-										style={{
-											lineHeight: 1,
-											letterSpacing: "-0.8px",
-											fontWeight: 800,
-											fontSize: "22px",
-										}}
-									>
-										SIMUT
-									</Title>
-									<Text
-										style={{
-											fontSize: "10px",
-											fontWeight: 700,
-											color: "#9ca3af",
-											lineHeight: 1,
-											marginTop: "2px",
-											letterSpacing: "1.5px",
-											textTransform: "uppercase",
-										}}
-									>
-										Tuluá
-									</Text>
-								</Box>
-							</Link>
+						<Container size="xl" style={{ maxWidth: "100%" }}>
+							<Group justify="space-between" align="center" wrap="nowrap">
+								{/* Logo with Double Bezel Style */}
+								<Link
+									to="/"
+									style={{
+										display: "flex",
+										alignItems: "center",
+										gap: "12px",
+										textDecoration: "none",
+									}}
+								>
+									<Box>
+										<Title
+											order={3}
+											c="#111827"
+											style={{
+												lineHeight: 1,
+												letterSpacing: "-0.8px",
+												fontWeight: 800,
+												fontSize: "22px",
+											}}
+										>
+											SIMUT
+										</Title>
+										<Text
+											style={{
+												fontSize: "10px",
+												fontWeight: 700,
+												color: "#9ca3af",
+												lineHeight: 1,
+												marginTop: "2px",
+												letterSpacing: "1.5px",
+												textTransform: "uppercase",
+											}}
+										>
+											Tuluá
+										</Text>
+									</Box>
+								</Link>
 
-							{/* Navigation Pills */}
-							<Group visibleFrom="sm" gap={8} wrap="nowrap">
-								{links.map((link) => {
-									const isActive =
-										router.location.pathname === link.link ||
-										(link.link !== "/" &&
-											router.location.pathname.startsWith(link.link));
-									return (
-										<NavPill
-											key={link.label}
-											label={link.label}
-											to={link.link}
-											isActive={isActive}
-										/>
-									);
-								})}
-								<Box ml="md">
-									<UserMenu />
-								</Box>
+								{/* Navigation Pills */}
+								<Group visibleFrom="sm" gap={8} wrap="nowrap">
+									{links.map((link) => {
+										const isActive =
+											router.location.pathname === link.link ||
+											(link.link !== "/" &&
+												router.location.pathname.startsWith(link.link));
+										return (
+											<NavPill
+												key={link.label}
+												label={link.label}
+												to={link.link}
+												isActive={isActive}
+											/>
+										);
+									})}
+									<Box ml="md">
+										<UserMenu />
+									</Box>
+								</Group>
 							</Group>
-						</Group>
-					</Container>
+						</Container>
+					</Box>
 				</Box>
 			</Box>
 

@@ -16,10 +16,14 @@ import {
 	Calendar,
 	CheckCircle2,
 	Clock,
+	Clock3,
 	FileText,
 	MapPin,
 	Shield,
 	Sparkles,
+	Star,
+	TrendingUp,
+	Users,
 	Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -53,6 +57,165 @@ function useScrollAnimation(threshold = 0.1) {
 	}, [threshold]);
 
 	return { ref, isVisible };
+}
+
+// Count-up animation hook
+function useCountUp(target: string, duration = 2000, isVisible = false) {
+	const [displayValue, setDisplayValue] = useState("0");
+	const hasAnimated = useRef(false);
+
+	useEffect(() => {
+		if (!isVisible || hasAnimated.current) return;
+		hasAnimated.current = true;
+
+		const numericMatch = target.match(/[0-9.]+/);
+		if (!numericMatch) {
+			setDisplayValue(target);
+			return;
+		}
+
+		const targetNum = Number.parseFloat(numericMatch[0]);
+		const isDecimal = target.includes(".");
+		const startTime = performance.now();
+
+		const animate = (currentTime: number) => {
+			const elapsed = currentTime - startTime;
+			const progress = Math.min(elapsed / duration, 1);
+			const easeProgress = 1 - (1 - progress) ** 3;
+			const current = targetNum * easeProgress;
+
+			if (isDecimal) {
+				setDisplayValue(current.toFixed(1));
+			} else {
+				setDisplayValue(Math.floor(current).toString());
+			}
+
+			if (progress < 1) {
+				requestAnimationFrame(animate);
+			} else {
+				setDisplayValue(
+					target.replace(
+						/[0-9.]+/,
+						isDecimal ? targetNum.toFixed(1) : targetNum.toString(),
+					),
+				);
+			}
+		};
+
+		requestAnimationFrame(animate);
+	}, [target, duration, isVisible]);
+
+	return displayValue;
+}
+
+// Stat Card Component
+function StatCard({
+	stat,
+	index,
+}: {
+	stat: {
+		id: string;
+		value: string;
+		suffix: string;
+		label: string;
+		icon: React.ComponentType<{
+			size?: number;
+			className?: string;
+			strokeWidth?: number;
+			color?: string;
+		}>;
+		color: string;
+		iconColor: string;
+	};
+	index: number;
+}) {
+	const { ref, isVisible } = useScrollAnimation(0.2);
+	const countValue = useCountUp(stat.value, 2000, isVisible);
+
+	return (
+		<Grid.Col span={{ base: 6, sm: 3 }}>
+			<div ref={ref}>
+				<AnimatedSection delay={index * 100}>
+					<Box
+						className="stat-card-wrapper"
+						style={{
+							position: "relative",
+							padding: "4px",
+							borderRadius: "24px",
+							background:
+								"linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(248,250,252,0.6) 100%)",
+							border: "1px solid rgba(0,0,0,0.04)",
+							boxShadow:
+								"0 20px 40px -20px rgba(0,0,0,0.06), 0 8px 16px -8px rgba(0,0,0,0.03)",
+							transition: "all 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
+						}}
+					>
+						<Box
+							style={{
+								background: "#ffffff",
+								borderRadius: "20px",
+								padding: "32px 24px",
+								textAlign: "center",
+								border: "1px solid rgba(0,0,0,0.02)",
+							}}
+						>
+							<Box
+								style={{
+									width: "56px",
+									height: "56px",
+									borderRadius: "16px",
+									backgroundColor: stat.color,
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+									margin: "0 auto 20px",
+									transition: "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
+								}}
+								className="stat-icon"
+							>
+								<stat.icon size={28} color={stat.iconColor} strokeWidth={1.5} />
+							</Box>
+
+							<Text
+								style={{
+									fontSize: "clamp(36px, 3.5vw, 52px)",
+									fontWeight: 800,
+									color: "#111827",
+									letterSpacing: "-2px",
+									lineHeight: 1,
+									fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+									fontVariantNumeric: "tabular-nums",
+								}}
+							>
+								{countValue}
+								<Text
+									component="span"
+									style={{
+										fontSize: "18px",
+										color: stat.iconColor,
+										fontWeight: 600,
+										opacity: 0.8,
+									}}
+								>
+									{stat.suffix}
+								</Text>
+							</Text>
+
+							<Text
+								size="sm"
+								c="#6b7280"
+								fw={500}
+								mt="sm"
+								style={{ letterSpacing: "-0.2px" }}
+							>
+								{stat.label}
+							</Text>
+						</Box>
+					</Box>
+				</AnimatedSection>
+			</div>
+		</Grid.Col>
+	);
 }
 
 // Animated section wrapper
@@ -210,23 +373,165 @@ function PremiumButton({
 	);
 }
 
+// Alternative Background Component with different color scheme (blue/cyan tones)
+function AlternativeBackground() {
+	return (
+		<>
+			<Box
+				style={{
+					position: "absolute",
+					inset: 0,
+					backgroundImage: `
+						linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+						linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px)
+					`,
+					backgroundSize: "60px 60px",
+					maskImage:
+						"radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 70%)",
+					WebkitMaskImage:
+						"radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 70%)",
+					pointerEvents: "none",
+				}}
+			/>
+			<Box
+				className="bg-orb-alt-1"
+				style={{
+					position: "absolute",
+					top: "-20%",
+					left: "-15%",
+					width: "70vw",
+					height: "70vw",
+					maxWidth: "1000px",
+					maxHeight: "1000px",
+					borderRadius: "50%",
+					background:
+						"radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.03) 40%, transparent 70%)",
+					filter: "blur(90px)",
+					pointerEvents: "none",
+					animation: "orbFloatAlt1 22s ease-in-out infinite",
+				}}
+			/>
+			<Box
+				className="bg-orb-alt-2"
+				style={{
+					position: "absolute",
+					bottom: "-30%",
+					right: "-20%",
+					width: "60vw",
+					height: "60vw",
+					maxWidth: "900px",
+					maxHeight: "900px",
+					borderRadius: "50%",
+					background:
+						"radial-gradient(circle, rgba(6, 182, 212, 0.07) 0%, rgba(6, 182, 212, 0.02) 40%, transparent 70%)",
+					filter: "blur(110px)",
+					pointerEvents: "none",
+					animation: "orbFloatAlt2 28s ease-in-out infinite",
+				}}
+			/>
+			<Box
+				className="bg-orb-alt-3"
+				style={{
+					position: "absolute",
+					top: "45%",
+					right: "10%",
+					width: "45vw",
+					height: "45vw",
+					maxWidth: "700px",
+					maxHeight: "700px",
+					borderRadius: "50%",
+					background:
+						"radial-gradient(circle, rgba(99, 102, 241, 0.05) 0%, transparent 60%)",
+					filter: "blur(70px)",
+					pointerEvents: "none",
+					animation: "orbFloatAlt3 20s ease-in-out infinite",
+				}}
+			/>
+			<Box
+				className="bg-orb-alt-4"
+				style={{
+					position: "absolute",
+					top: "10%",
+					right: "35%",
+					width: "30vw",
+					height: "30vw",
+					maxWidth: "500px",
+					maxHeight: "500px",
+					borderRadius: "50%",
+					background:
+						"radial-gradient(circle, rgba(20, 184, 166, 0.06) 0%, rgba(20, 184, 166, 0.02) 50%, transparent 70%)",
+					filter: "blur(60px)",
+					pointerEvents: "none",
+					animation: "orbFloatAlt4 24s ease-in-out infinite",
+				}}
+			/>
+			<style>{`
+				@keyframes orbFloatAlt1 {
+					0%, 100% { transform: translate(0, 0) scale(1); }
+					33% { transform: translate(6vw, 10vh) scale(1.08); }
+					66% { transform: translate(-4vw, 6vh) scale(0.95); }
+				}
+				@keyframes orbFloatAlt2 {
+					0%, 100% { transform: translate(0, 0) scale(1); }
+					33% { transform: translate(-6vw, -8vh) scale(1.05); }
+					66% { transform: translate(8vw, -4vh) scale(0.92); }
+				}
+				@keyframes orbFloatAlt3 {
+					0%, 100% { transform: translate(0, 0) scale(1); }
+					50% { transform: translate(-10vw, 12vh) scale(1.12); }
+				}
+				@keyframes orbFloatAlt4 {
+					0%, 100% { transform: translate(0, 0) scale(1); }
+					25% { transform: translate(8vw, -6vh) scale(1.06); }
+					75% { transform: translate(-6vw, 8vh) scale(0.94); }
+				}
+			`}</style>
+		</>
+	);
+}
+
 function LandingPage() {
 	const { isAuthenticated, user } = useAuth();
 
-	// Stats data
 	const stats = [
-		{ id: "stat-1", value: "15K+", label: "Trámites completados", suffix: "" },
+		{
+			id: "stat-1",
+			value: "15",
+			suffix: "K+",
+			label: "Trámites completados",
+			icon: Users,
+			color: "#fef2f2",
+			iconColor: "#e03131",
+		},
 		{
 			id: "stat-2",
 			value: "4.9",
-			label: "Satisfacción del usuario",
 			suffix: "/5",
+			label: "Satisfacción del usuario",
+			icon: Star,
+			color: "#dcfce7",
+			iconColor: "#16a34a",
 		},
-		{ id: "stat-3", value: "24h", label: "Disponibilidad", suffix: "" },
-		{ id: "stat-4", value: "98%", label: "Tasa de resolución", suffix: "" },
+		{
+			id: "stat-3",
+			value: "24",
+			suffix: "h",
+			label: "Disponibilidad",
+			icon: Clock3,
+			color: "#eff6ff",
+			iconColor: "#2563eb",
+		},
+		{
+			id: "stat-4",
+			value: "98",
+			suffix: "%",
+			label: "Tasa de resolución",
+			icon: TrendingUp,
+			color: "#f5f3ff",
+			iconColor: "#7c3aed",
+		},
 	];
 
-	// Services data
 	const services = [
 		{
 			id: "svc-1",
@@ -262,7 +567,6 @@ function LandingPage() {
 		},
 	];
 
-	// Testimonials data
 	const testimonials = [
 		{
 			id: "test-1",
@@ -301,33 +605,74 @@ function LandingPage() {
 					background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)",
 				}}
 			>
-				{/* Subtle gradient orbs */}
 				<Box
 					style={{
 						position: "absolute",
-						top: "-20%",
-						left: "-10%",
-						width: "60vw",
-						height: "60vw",
-						borderRadius: "50%",
-						background:
-							"radial-gradient(circle, rgba(224, 49, 49, 0.08) 0%, transparent 60%)",
-						filter: "blur(80px)",
+						inset: 0,
+						backgroundImage: `
+							linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+							linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px)
+						`,
+						backgroundSize: "60px 60px",
+						maskImage:
+							"radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 70%)",
+						WebkitMaskImage:
+							"radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 70%)",
 						pointerEvents: "none",
 					}}
 				/>
 				<Box
+					className="bg-orb-1"
 					style={{
 						position: "absolute",
-						bottom: "-30%",
-						right: "-20%",
-						width: "50vw",
-						height: "50vw",
+						top: "-15%",
+						left: "-10%",
+						width: "65vw",
+						height: "65vw",
+						maxWidth: "900px",
+						maxHeight: "900px",
 						borderRadius: "50%",
 						background:
-							"radial-gradient(circle, rgba(22, 163, 74, 0.06) 0%, transparent 60%)",
+							"radial-gradient(circle, rgba(224, 49, 49, 0.07) 0%, rgba(224, 49, 49, 0.02) 40%, transparent 70%)",
+						filter: "blur(80px)",
+						pointerEvents: "none",
+						animation: "orbFloat1 20s ease-in-out infinite",
+					}}
+				/>
+				<Box
+					className="bg-orb-2"
+					style={{
+						position: "absolute",
+						bottom: "-25%",
+						right: "-15%",
+						width: "55vw",
+						height: "55vw",
+						maxWidth: "800px",
+						maxHeight: "800px",
+						borderRadius: "50%",
+						background:
+							"radial-gradient(circle, rgba(22, 163, 74, 0.05) 0%, rgba(22, 163, 74, 0.01) 40%, transparent 70%)",
 						filter: "blur(100px)",
 						pointerEvents: "none",
+						animation: "orbFloat2 25s ease-in-out infinite",
+					}}
+				/>
+				<Box
+					className="bg-orb-3"
+					style={{
+						position: "absolute",
+						top: "40%",
+						right: "20%",
+						width: "40vw",
+						height: "40vw",
+						maxWidth: "600px",
+						maxHeight: "600px",
+						borderRadius: "50%",
+						background:
+							"radial-gradient(circle, rgba(224, 49, 49, 0.04) 0%, transparent 60%)",
+						filter: "blur(60px)",
+						pointerEvents: "none",
+						animation: "orbFloat3 18s ease-in-out infinite",
 					}}
 				/>
 
@@ -438,7 +783,6 @@ function LandingPage() {
 										padding: "20px",
 									}}
 								>
-									{/* Floating cards composition */}
 									<div
 										className="floating-card-main"
 										style={{
@@ -504,7 +848,6 @@ function LandingPage() {
 										</Box>
 									</div>
 
-									{/* Second floating element */}
 									<Box
 										style={{
 											position: "absolute",
@@ -554,63 +897,117 @@ function LandingPage() {
 					.floating-card-main:hover {
 						transform: rotate(0deg) translateY(-8px) !important;
 					}
+					@keyframes orbFloat1 {
+						0%, 100% { transform: translate(0, 0) scale(1); }
+						33% { transform: translate(5vw, 8vh) scale(1.05); }
+						66% { transform: translate(-3vw, 5vh) scale(0.95); }
+					}
+					@keyframes orbFloat2 {
+						0%, 100% { transform: translate(0, 0) scale(1); }
+						33% { transform: translate(-4vw, -6vh) scale(1.08); }
+						66% { transform: translate(6vw, -3vh) scale(0.92); }
+					}
+					@keyframes orbFloat3 {
+						0%, 100% { transform: translate(0, 0) scale(1); }
+						50% { transform: translate(-8vw, 10vh) scale(1.1); }
+					}
 				`}</style>
 			</Box>
 
 			{/* Stats Section */}
-			<Box style={{ padding: "80px 0", backgroundColor: "#ffffff" }}>
-				<Container size="xl">
+			<Box
+				style={{
+					padding: "100px 0",
+					background:
+						"linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%)",
+					position: "relative",
+					overflow: "hidden",
+				}}
+			>
+				<Box
+					style={{
+						position: "absolute",
+						inset: 0,
+						backgroundImage: `
+							linear-gradient(rgba(0, 0, 0, 0.015) 1px, transparent 1px),
+							linear-gradient(90deg, rgba(0, 0, 0, 0.015) 1px, transparent 1px)
+						`,
+						backgroundSize: "80px 80px",
+						maskImage:
+							"radial-gradient(ellipse 90% 80% at 50% 50%, black 40%, transparent 80%)",
+						WebkitMaskImage:
+							"radial-gradient(ellipse 90% 80% at 50% 50%, black 40%, transparent 80%)",
+						pointerEvents: "none",
+					}}
+				/>
+
+				<Container size="xl" style={{ position: "relative", zIndex: 1 }}>
 					<AnimatedSection>
-						<Grid gutter={40}>
-							{stats.map((stat) => (
-								<Grid.Col key={stat.id} span={{ base: 6, sm: 3 }}>
-									<Box
-										style={{
-											textAlign: "center",
-											padding: "24px",
-										}}
-									>
-										<Text
-											style={{
-												fontSize: "clamp(32px, 4vw, 48px)",
-												fontWeight: 800,
-												color: "#111827",
-												letterSpacing: "-2px",
-												lineHeight: 1,
-											}}
-										>
-											{stat.value}
-											<Text
-												component="span"
-												style={{
-													fontSize: "20px",
-													color: "#9ca3af",
-													fontWeight: 500,
-												}}
-											>
-												{stat.suffix}
-											</Text>
-										</Text>
-										<Text
-											size="sm"
-											c="#6b7280"
-											fw={500}
-											mt="sm"
-											style={{ letterSpacing: "-0.2px" }}
-										>
-											{stat.label}
-										</Text>
-									</Box>
-								</Grid.Col>
-							))}
-						</Grid>
+						<Box style={{ textAlign: "center", marginBottom: "60px" }}>
+							<Text
+								size="sm"
+								fw={700}
+								c="#e03131"
+								style={{
+									textTransform: "uppercase",
+									letterSpacing: "2px",
+									marginBottom: "12px",
+								}}
+							>
+								Resultados Reales
+							</Text>
+							<Title
+								order={2}
+								style={{
+									fontSize: "clamp(28px, 3vw, 36px)",
+									fontWeight: 800,
+									letterSpacing: "-1px",
+									color: "#111827",
+								}}
+							>
+								Impacto medible en Tuluá
+							</Title>
+						</Box>
 					</AnimatedSection>
+
+					<Grid gutter={24}>
+						{stats.map((stat, index) => (
+							<StatCard key={stat.id} stat={stat} index={index} />
+						))}
+					</Grid>
 				</Container>
+
+				<style>{`
+					.stat-card-wrapper:hover {
+						transform: translateY(-6px);
+						box-shadow: 0 32px 64px -20px rgba(0,0,0,0.08), 0 12px 24px -8px rgba(0,0,0,0.04);
+					}
+					.stat-card-wrapper:hover .stat-icon {
+						transform: scale(1.1) rotate(-5deg);
+					}
+				`}</style>
 			</Box>
 
-			{/* Services Section - Bento Grid Layout */}
-			<Box style={{ padding: "120px 0", backgroundColor: "#fafafa" }}>
-				<Container size="xl">
+			{/* Services Section */}
+			<Box
+				style={{
+					padding: "120px 0",
+					position: "relative",
+					overflow: "hidden",
+				}}
+			>
+				<Box
+					style={{
+						position: "absolute",
+						inset: 0,
+						background:
+							"linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%)",
+						zIndex: 0,
+					}}
+				>
+					<AlternativeBackground />
+				</Box>
+				<Container size="xl" style={{ position: "relative", zIndex: 1 }}>
 					<AnimatedSection>
 						<Box style={{ textAlign: "center", marginBottom: "60px" }}>
 							<Text
@@ -628,14 +1025,31 @@ function LandingPage() {
 							<Title
 								order={2}
 								style={{
-									fontSize: "clamp(32px, 4vw, 48px)",
+									fontSize: "clamp(36px, 5vw, 64px)",
 									fontWeight: 800,
-									letterSpacing: "-1.5px",
+									letterSpacing: "-2px",
 									color: "#111827",
-									marginBottom: "16px",
+									marginBottom: "24px",
+									lineHeight: 1.1,
 								}}
 							>
 								Todo lo que necesitas
+								<br />
+								<span
+									style={{
+										background:
+											"linear-gradient(135deg, #e03131 0%, #c92a2a 100%)",
+										WebkitBackgroundClip: "text",
+										WebkitTextFillColor: "transparent",
+										backgroundClip: "text",
+										fontSize: "inherit",
+										fontWeight: "inherit",
+										letterSpacing: "inherit",
+										lineHeight: "inherit",
+									}}
+								>
+									en un solo lugar
+								</span>
 							</Title>
 							<Text
 								size="lg"
@@ -723,7 +1137,7 @@ function LandingPage() {
 				`}</style>
 			</Box>
 
-			{/* Upcoming Appointment Section (if authenticated) */}
+			{/* Upcoming Appointment Section */}
 			{isAuthenticated && (
 				<Box style={{ padding: "80px 0", backgroundColor: "#ffffff" }}>
 					<Container size="lg">
@@ -936,35 +1350,117 @@ function LandingPage() {
 					overflow: "hidden",
 				}}
 			>
-				{/* Background gradient orbs */}
 				<Box
 					style={{
 						position: "absolute",
-						top: "-50%",
-						left: "-20%",
-						width: "80vw",
-						height: "80vw",
-						borderRadius: "50%",
-						background:
-							"radial-gradient(circle, rgba(224, 49, 49, 0.15) 0%, transparent 60%)",
-						filter: "blur(120px)",
+						inset: 0,
+						backgroundImage: `
+							linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+							linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+						`,
+						backgroundSize: "60px 60px",
+						maskImage:
+							"radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 80%)",
+						WebkitMaskImage:
+							"radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 80%)",
 						pointerEvents: "none",
 					}}
 				/>
+
 				<Box
+					className="cta-orb-1"
 					style={{
 						position: "absolute",
-						bottom: "-30%",
-						right: "-10%",
-						width: "60vw",
-						height: "60vw",
+						top: "-40%",
+						left: "-15%",
+						width: "75vw",
+						height: "75vw",
+						maxWidth: "900px",
+						maxHeight: "900px",
 						borderRadius: "50%",
 						background:
-							"radial-gradient(circle, rgba(22, 163, 74, 0.1) 0%, transparent 60%)",
+							"radial-gradient(circle, rgba(224, 49, 49, 0.18) 0%, rgba(224, 49, 49, 0.08) 40%, transparent 70%)",
 						filter: "blur(100px)",
 						pointerEvents: "none",
+						animation: "ctaOrbFloat1 20s ease-in-out infinite",
 					}}
 				/>
+				<Box
+					className="cta-orb-2"
+					style={{
+						position: "absolute",
+						bottom: "-35%",
+						right: "-15%",
+						width: "65vw",
+						height: "65vw",
+						maxWidth: "800px",
+						maxHeight: "800px",
+						borderRadius: "50%",
+						background:
+							"radial-gradient(circle, rgba(22, 163, 74, 0.12) 0%, rgba(22, 163, 74, 0.04) 40%, transparent 70%)",
+						filter: "blur(120px)",
+						pointerEvents: "none",
+						animation: "ctaOrbFloat2 25s ease-in-out infinite",
+					}}
+				/>
+				<Box
+					className="cta-orb-3"
+					style={{
+						position: "absolute",
+						top: "30%",
+						right: "25%",
+						width: "35vw",
+						height: "35vw",
+						maxWidth: "500px",
+						maxHeight: "500px",
+						borderRadius: "50%",
+						background:
+							"radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.03) 50%, transparent 70%)",
+						filter: "blur(80px)",
+						pointerEvents: "none",
+						animation: "ctaOrbFloat3 18s ease-in-out infinite",
+					}}
+				/>
+				<Box
+					className="cta-orb-4"
+					style={{
+						position: "absolute",
+						top: "60%",
+						left: "15%",
+						width: "25vw",
+						height: "25vw",
+						maxWidth: "350px",
+						maxHeight: "350px",
+						borderRadius: "50%",
+						background:
+							"radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 60%)",
+						filter: "blur(60px)",
+						pointerEvents: "none",
+						animation: "ctaOrbFloat4 22s ease-in-out infinite",
+					}}
+				/>
+
+				<style>{`
+					@keyframes ctaOrbFloat1 {
+						0%, 100% { transform: translate(0, 0) scale(1); }
+						33% { transform: translate(5vw, 8vh) scale(1.05); }
+						66% { transform: translate(-3vw, 5vh) scale(0.95); }
+					}
+					@keyframes ctaOrbFloat2 {
+						0%, 100% { transform: translate(0, 0) scale(1); }
+						33% { transform: translate(-4vw, -6vh) scale(1.08); }
+						66% { transform: translate(6vw, -3vh) scale(0.92); }
+					}
+					@keyframes ctaOrbFloat3 {
+						0%, 100% { transform: translate(0, 0) scale(1); }
+						50% { transform: translate(-8vw, 10vh) scale(1.1); }
+					}
+					@keyframes ctaOrbFloat4 {
+						0%, 100% { transform: translate(0, 0) scale(1); }
+						25% { transform: translate(6vw, -4vh) scale(1.06); }
+						75% { transform: translate(-4vw, 6vh) scale(0.94); }
+					}
+				`}</style>
 
 				<Container size="lg" style={{ position: "relative", zIndex: 1 }}>
 					<AnimatedSection>
@@ -982,18 +1478,17 @@ function LandingPage() {
 							>
 								Listo para agendar tu
 								<br />
-								<Text
-									component="span"
+								<span
 									style={{
-										background:
-											"linear-gradient(135deg, #e03131 0%, #ff6b6b 100%)",
-										WebkitBackgroundClip: "text",
-										WebkitTextFillColor: "transparent",
-										backgroundClip: "text",
+										color: "#ff6b6b",
+										fontSize: "inherit",
+										fontWeight: "inherit",
+										letterSpacing: "inherit",
+										lineHeight: "inherit",
 									}}
 								>
 									primera cita?
-								</Text>
+								</span>
 							</Title>
 							<Text
 								size="xl"

@@ -18,6 +18,10 @@ import {
 
 const tranzitRoutes = new Hono()
 
+function normalizeFormValue(value: FormDataEntryValue | null) {
+  return value === null ? undefined : value
+}
+
 function parseJsonString(value: FormDataEntryValue | null) {
   if (typeof value !== "string") {
     return undefined
@@ -76,14 +80,14 @@ tranzitRoutes.post("/appointments/confirm", async (c) => {
     const formData = await c.req.formData()
 
     rawInput = {
-      appointmentId: formData.get("appointmentId"),
-      applicantName: formData.get("applicantName"),
-      applicantPhone: formData.get("applicantPhone"),
-      documentType: formData.get("documentType"),
-      documentNumber: formData.get("documentNumber"),
-      vehiclePlate: formData.get("vehiclePlate"),
-      vehicleRegisteredLocally: formData.get("vehicleRegisteredLocally"),
-      deliveryMode: formData.get("deliveryMode"),
+      appointmentId: normalizeFormValue(formData.get("appointmentId")),
+      applicantName: normalizeFormValue(formData.get("applicantName")),
+      applicantPhone: normalizeFormValue(formData.get("applicantPhone")),
+      documentType: normalizeFormValue(formData.get("documentType")),
+      documentNumber: normalizeFormValue(formData.get("documentNumber")),
+      vehiclePlate: normalizeFormValue(formData.get("vehiclePlate")),
+      vehicleRegisteredLocally: normalizeFormValue(formData.get("vehicleRegisteredLocally")),
+      deliveryMode: normalizeFormValue(formData.get("deliveryMode")),
       initialChecks: parseJsonString(formData.get("initialChecks")),
       intakePayload: parseJsonString(formData.get("intakePayload")),
     }

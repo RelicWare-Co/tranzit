@@ -187,6 +187,20 @@ function addMinutesToIso(isoString: string, minutes: number) {
   return new Date(new Date(isoString).getTime() + minutes * 60 * 1000).toISOString()
 }
 
+function parseDateTimeValue(value: string) {
+  const trimmedValue = toTrimmedString(value)
+  if (!trimmedValue) {
+    return null
+  }
+
+  const normalizedValue = trimmedValue.includes("T")
+    ? trimmedValue
+    : trimmedValue.replace(" ", "T")
+  const parsedDate = new Date(normalizedValue)
+
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate
+}
+
 function minutesToLabel(minutes: number) {
   const hours = `${Math.floor(minutes / 60)}`.padStart(2, "0")
   const mins = `${minutes % 60}`.padStart(2, "0")
@@ -468,8 +482,14 @@ function isHoldExpiredRecord(record: AppointmentRecord, nowIso: string) {
     return false
   }
 
-  const holdExpiresAt = record.hold_expires_at || ""
-  return holdExpiresAt !== "" && holdExpiresAt < nowIso
+  const holdExpiresAt = parseDateTimeValue(record.hold_expires_at || "")
+  const now = parseDateTimeValue(nowIso)
+
+  if (!holdExpiresAt || !now) {
+    return false
+  }
+
+  return holdExpiresAt.getTime() < now.getTime()
 }
 
 function isActiveAppointment(record: AppointmentRecord, nowIso: string) {
