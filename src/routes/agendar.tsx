@@ -129,7 +129,7 @@ function AgendarCita() {
 	};
 
 	return (
-		<Box pb={80} bg="#f8f9fa" minH="100vh">
+		<Box pb={80} bg="#f8f9fa" mih="100vh">
 			{/* Minimalist Header Area */}
 			<Box
 				style={{
@@ -263,7 +263,7 @@ function AgendarCita() {
 						{/* Content Area */}
 						<Box>
 							{active === 0 && (
-								<Stack align="center" py="xl" maxW={400} mx="auto">
+								<Stack align="center" py="xl" maw={400} mx="auto">
 									<Box
 										style={{
 											width: 80,
@@ -351,7 +351,7 @@ function AgendarCita() {
 							)}
 
 							{active === 1 && (
-								<Stack maxW={650} mx="auto" gap="xl">
+								<Stack maw={650} mx="auto" gap="xl">
 									<Box>
 										<Title
 											order={4}
@@ -505,7 +505,7 @@ function AgendarCita() {
 							)}
 
 							{active === 2 && (
-								<Stack maxW={650} mx="auto" gap="xl">
+								<Stack maw={650} mx="auto" gap="xl">
 									<Box>
 										<Title
 											order={4}
@@ -651,7 +651,7 @@ function AgendarCita() {
 							)}
 
 							{active === 3 && (
-								<Stack maxW={650} mx="auto" gap="xl">
+								<Stack maw={650} mx="auto" gap="xl">
 									{!isConfirmed ? (
 										<>
 											<Alert
@@ -885,13 +885,13 @@ function AgendarCita() {
 											>
 												¡Cita Confirmada!
 											</Title>
-											<Text
-												ta="center"
-												c="#4b5563"
-												maxW={450}
-												size="md"
-												style={{ lineHeight: 1.5 }}
-											>
+										<Text
+											ta="center"
+											c="#4b5563"
+											maw={450}
+											size="md"
+											style={{ lineHeight: 1.5 }}
+										>
 												Su cita ha sido agendada exitosamente. Le esperamos el
 												día{" "}
 												<Text span fw={700} c="#111827">
@@ -904,16 +904,16 @@ function AgendarCita() {
 												.
 											</Text>
 
-											<Card
-												withBorder
-												bg="#f9fafb"
-												w="100%"
-												maxW={400}
-												mt="md"
-												p="xl"
-												radius="xl"
-												style={{ border: "1px dashed #d1d5db" }}
-											>
+										<Card
+											withBorder
+											bg="#f9fafb"
+											w="100%"
+											maw={400}
+											mt="md"
+											p="xl"
+											radius="xl"
+											style={{ border: "1px dashed #d1d5db" }}
+										>
 												<Stack align="center" gap={8}>
 													<Text
 														size="xs"
