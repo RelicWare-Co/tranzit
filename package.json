@@ -7,7 +7,6 @@
   },
   "scripts": {
     "dev": "vite dev --port 3000",
-    "aux:dev": "bun --cwd tranzit-aux run dev",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
