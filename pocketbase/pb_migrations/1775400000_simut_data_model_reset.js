@@ -79,7 +79,22 @@ function removeIndexIfExists(collection, indexName) {
   } catch {}
 }
 
-function createCollection(app, collection) {
+function createCollection(app, config) {
+  const fields = config.fields || []
+  const collectionConfig = { ...config }
+  delete collectionConfig.fields
+
+  const collection = new Collection(collectionConfig)
+
+  for (const field of fields) {
+    collection.fields.add(field)
+  }
+
+  app.save(collection)
+  return app.findCollectionByNameOrId(collection.name)
+}
+
+function saveCollection(app, collection) {
   app.save(collection)
   return app.findCollectionByNameOrId(collection.name)
 }
@@ -92,10 +107,7 @@ function deleteCollectionIfExists(app, name) {
 }
 
 function saveRecord(app, collection, data) {
-  const record = new Record(collection)
-  for (const key in data) {
-    record.set(key, data[key])
-  }
+  const record = new Record(collection, data)
   app.save(record)
   return record
 }
@@ -294,7 +306,7 @@ migrate((app) => {
   removeFieldIfExists(users, "last_vehicle_plate")
   configureCitizenUsers(app, users)
 
-  const operators = createCollection(app, new Collection({
+  const operators = createCollection(app, {
     type: "base",
     name: OPERATORS_COLLECTION,
     listRule: null,
@@ -350,12 +362,13 @@ migrate((app) => {
         max: 2000,
       }),
     ],
-  }))
+  })
   operators.addIndex("idx_operators_code", true, "code", "")
   operators.addIndex("idx_operators_email", true, "email", "email != ''")
   operators.addIndex("idx_operators_role_active", false, "role, is_active", "")
+  saveCollection(app, operators)
 
-  const systemSettings = createCollection(app, new Collection({
+  const systemSettings = createCollection(app, {
     type: "base",
     name: SYSTEM_SETTINGS_COLLECTION,
     listRule: "",
@@ -456,7 +469,6 @@ migrate((app) => {
       }),
       new NumberField({
         name: "default_buffer_minutes",
-        required: true,
         onlyInt: true,
         min: 0,
         max: 120,
@@ -484,10 +496,11 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   systemSettings.addIndex("idx_system_settings_key", true, "key", "")
+  saveCollection(app, systemSettings)
 
-  const procedureTypes = createCollection(app, new Collection({
+  const procedureTypes = createCollection(app, {
     type: "base",
     name: PROCEDURE_TYPES_COLLECTION,
     listRule: "is_active = true",
@@ -560,12 +573,13 @@ migrate((app) => {
         maxSize: 128 * 1024,
       }),
     ],
-  }))
+  })
   procedureTypes.addIndex("idx_procedure_types_code", true, "code", "")
   procedureTypes.addIndex("idx_procedure_types_slug", true, "slug", "")
   procedureTypes.addIndex("idx_procedure_types_sort", false, "is_active, sort_order", "")
+  saveCollection(app, procedureTypes)
 
-  const procedureFormFields = createCollection(app, new Collection({
+  const procedureFormFields = createCollection(app, {
     type: "base",
     name: PROCEDURE_FORM_FIELDS_COLLECTION,
     listRule: "is_active = true",
@@ -655,11 +669,12 @@ migrate((app) => {
         name: "is_active",
       }),
     ],
-  }))
+  })
   procedureFormFields.addIndex("idx_procedure_form_fields_unique", true, "procedure_type, field_key", "")
   procedureFormFields.addIndex("idx_procedure_form_fields_sort", false, "procedure_type, sort_order", "")
+  saveCollection(app, procedureFormFields)
 
-  const procedureRequiredDocuments = createCollection(app, new Collection({
+  const procedureRequiredDocuments = createCollection(app, {
     type: "base",
     name: PROCEDURE_REQUIRED_DOCUMENTS_COLLECTION,
     listRule: "is_active = true",
@@ -742,11 +757,12 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   procedureRequiredDocuments.addIndex("idx_required_documents_unique", true, "procedure_type, code", "")
   procedureRequiredDocuments.addIndex("idx_required_documents_sort", false, "procedure_type, sort_order", "")
+  saveCollection(app, procedureRequiredDocuments)
 
-  const scheduleTemplates = createCollection(app, new Collection({
+  const scheduleTemplates = createCollection(app, {
     type: "base",
     name: SCHEDULE_TEMPLATES_COLLECTION,
     listRule: null,
@@ -794,7 +810,6 @@ migrate((app) => {
       }),
       new NumberField({
         name: "buffer_minutes",
-        required: true,
         onlyInt: true,
         min: 0,
         max: 120,
@@ -825,7 +840,7 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   scheduleTemplates.addIndex(
     "idx_schedule_templates_unique",
     true,
@@ -833,8 +848,9 @@ migrate((app) => {
     "",
   )
   scheduleTemplates.addIndex("idx_schedule_templates_lookup", false, "weekday, is_active, sort_order", "")
+  saveCollection(app, scheduleTemplates)
 
-  const scheduleExceptions = createCollection(app, new Collection({
+  const scheduleExceptions = createCollection(app, {
     type: "base",
     name: SCHEDULE_EXCEPTIONS_COLLECTION,
     listRule: null,
@@ -902,10 +918,11 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   scheduleExceptions.addIndex("idx_schedule_exceptions_active_date", true, "office_date", "is_active = true")
+  saveCollection(app, scheduleExceptions)
 
-  const agendaSlots = createCollection(app, new Collection({
+  const agendaSlots = createCollection(app, {
     type: "base",
     name: AGENDA_SLOTS_COLLECTION,
     listRule: "is_active = true",
@@ -990,7 +1007,7 @@ migrate((app) => {
         name: "last_recomputed_at",
       }),
     ],
-  }))
+  })
   agendaSlots.addIndex(
     "idx_agenda_slots_unique",
     true,
@@ -998,13 +1015,14 @@ migrate((app) => {
     "",
   )
   agendaSlots.addIndex("idx_agenda_slots_lookup", false, "office_date, status, is_active", "")
+  saveCollection(app, agendaSlots)
 
-  const procedureRequests = createCollection(app, new Collection({
+  const procedureRequests = createCollection(app, {
     type: "base",
     name: PROCEDURE_REQUESTS_COLLECTION,
     listRule: "citizen = @request.auth.id",
     viewRule: "citizen = @request.auth.id",
-    createRule: "@request.auth.id != ''",
+    createRule: "@request.auth.id != '' && citizen = @request.auth.id",
     updateRule: "citizen = @request.auth.id",
     deleteRule: null,
     fields: [
@@ -1099,11 +1117,12 @@ migrate((app) => {
         hidden: true,
       }),
     ],
-  }))
-  procedureRequests.addIndex("idx_procedure_requests_citizen_status", false, "citizen, status, created", "")
-  procedureRequests.addIndex("idx_procedure_requests_procedure_status", false, "procedure_type, status, created", "")
+  })
+  procedureRequests.addIndex("idx_procedure_requests_citizen_status", false, "citizen, status", "")
+  procedureRequests.addIndex("idx_procedure_requests_procedure_status", false, "procedure_type, status", "")
+  saveCollection(app, procedureRequests)
 
-  const requestDocuments = createCollection(app, new Collection({
+  const requestDocuments = createCollection(app, {
     type: "base",
     name: REQUEST_DOCUMENTS_COLLECTION,
     listRule: null,
@@ -1177,11 +1196,12 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   requestDocuments.addIndex("idx_request_documents_unique", true, "request, required_document", "required_document != ''")
   requestDocuments.addIndex("idx_request_documents_status", false, "request, status", "")
+  saveCollection(app, requestDocuments)
 
-  const slotHolds = createCollection(app, new Collection({
+  const slotHolds = createCollection(app, {
     type: "base",
     name: SLOT_HOLDS_COLLECTION,
     listRule: "citizen = @request.auth.id",
@@ -1245,12 +1265,13 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   slotHolds.addIndex("idx_slot_holds_token", true, "hold_token", "")
   slotHolds.addIndex("idx_slot_holds_slot_status", false, "slot, status", "")
   slotHolds.addIndex("idx_slot_holds_request_active", true, "request", "status = 'active'")
+  saveCollection(app, slotHolds)
 
-  const appointments = createCollection(app, new Collection({
+  const appointments = createCollection(app, {
     type: "base",
     name: APPOINTMENTS_COLLECTION,
     listRule: "citizen = @request.auth.id",
@@ -1339,7 +1360,7 @@ migrate((app) => {
         maxSize: 128 * 1024,
       }),
     ],
-  }))
+  })
   appointments.addIndex("idx_appointments_confirmation_code", true, "confirmation_code", "confirmation_code != ''")
   appointments.addIndex("idx_appointments_request_status", false, "request, status", "")
   appointments.addIndex("idx_appointments_slot_status", false, "slot, status", "")
@@ -1349,8 +1370,9 @@ migrate((app) => {
     "request",
     "status = 'confirmed' OR status = 'pending_review' OR status = 'rescheduled'",
   )
+  saveCollection(app, appointments)
 
-  const adminReservations = createCollection(app, new Collection({
+  const adminReservations = createCollection(app, {
     type: "base",
     name: ADMIN_RESERVATIONS_COLLECTION,
     listRule: null,
@@ -1452,7 +1474,7 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   adminReservations.addIndex("idx_admin_reservations_code", true, "reservation_code", "reservation_code != ''")
   adminReservations.addIndex("idx_admin_reservations_lookup", false, "office_date, status", "")
   adminReservations.addIndex(
@@ -1461,8 +1483,9 @@ migrate((app) => {
     "assistant, office_date, start_minutes",
     "status = 'active'",
   )
+  saveCollection(app, adminReservations)
 
-  const appointmentAssignments = createCollection(app, new Collection({
+  const appointmentAssignments = createCollection(app, {
     type: "base",
     name: APPOINTMENT_ASSIGNMENTS_COLLECTION,
     listRule: null,
@@ -1520,11 +1543,12 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   appointmentAssignments.addIndex("idx_appointment_assignments_active", true, "appointment", "is_active = true")
   appointmentAssignments.addIndex("idx_appointment_assignments_assistant", false, "assistant, is_active", "")
+  saveCollection(app, appointmentAssignments)
 
-  const otpChallenges = createCollection(app, new Collection({
+  const otpChallenges = createCollection(app, {
     type: "base",
     name: OTP_CHALLENGES_COLLECTION,
     listRule: null,
@@ -1611,11 +1635,12 @@ migrate((app) => {
         maxSize: 64 * 1024,
       }),
     ],
-  }))
+  })
   otpChallenges.addIndex("idx_otp_challenges_email_status", false, "email, status", "")
   otpChallenges.addIndex("idx_otp_challenges_expiration", false, "expires_at, status", "")
+  saveCollection(app, otpChallenges)
 
-  const auditEvents = createCollection(app, new Collection({
+  const auditEvents = createCollection(app, {
     type: "base",
     name: AUDIT_EVENTS_COLLECTION,
     listRule: null,
@@ -1686,10 +1711,11 @@ migrate((app) => {
         required: true,
       }),
     ],
-  }))
+  })
   auditEvents.addIndex("idx_audit_events_entity", false, "entity, entity_id, happened_at", "")
   auditEvents.addIndex("idx_audit_events_actor", false, "actor_type, happened_at", "")
   auditEvents.addIndex("idx_audit_events_action", false, "action, happened_at", "")
+  saveCollection(app, auditEvents)
 
   seedSystemSettings(app, systemSettings)
   seedScheduleTemplates(app, scheduleTemplates)
