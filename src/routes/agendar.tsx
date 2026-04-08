@@ -361,7 +361,7 @@ function AgendarCita() {
 										>
 											Detalles de la Solicitud
 										</Title>
-										<Grid gutter="xl">
+										<Grid gap="xl">
 											<Grid.Col span={12}>
 												<TextInput
 													label="Placa a gestionar"
@@ -521,7 +521,7 @@ function AgendarCita() {
 										</Text>
 									</Box>
 
-									<Grid gutter="xl">
+									<Grid gap="xl">
 										<Grid.Col span={{ base: 12, md: 6 }}>
 											<Text fw={600} size="sm" mb="md" c="#374151">
 												1. Días Disponibles
@@ -692,7 +692,7 @@ function AgendarCita() {
 														Resumen de Cita
 													</Title>
 												</Group>
-												<Grid gutter="lg">
+												<Grid gap="lg">
 													<Grid.Col span={6}>
 														<Text
 															size="xs"

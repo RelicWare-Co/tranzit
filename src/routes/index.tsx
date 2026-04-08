@@ -686,7 +686,7 @@ function LandingPage() {
 						paddingBottom: "120px",
 					}}
 				>
-					<Grid gutter={80} align="center">
+					<Grid gap={80} align="center">
 						<Grid.Col span={{ base: 12, md: 7 }}>
 							<AnimatedSection>
 								<Badge
@@ -970,7 +970,7 @@ function LandingPage() {
 						</Box>
 					</AnimatedSection>
 
-					<Grid gutter={24}>
+					<Grid gap={24}>
 						{stats.map((stat, index) => (
 							<StatCard key={stat.id} stat={stat} index={index} />
 						))}
@@ -1063,7 +1063,7 @@ function LandingPage() {
 						</Box>
 					</AnimatedSection>
 
-					<Grid gutter={24}>
+					<Grid gap={24}>
 						{services.map((service, index) => (
 							<Grid.Col key={service.id} span={{ base: 12, sm: 6, lg: 3 }}>
 								<AnimatedSection delay={index * 100}>
@@ -1253,7 +1253,7 @@ function LandingPage() {
 						</Box>
 					</AnimatedSection>
 
-					<Grid gutter={24}>
+					<Grid gap={24}>
 						{testimonials.map((testimonial, index) => (
 							<Grid.Col key={testimonial.id} span={{ base: 12, md: 4 }}>
 								<AnimatedSection delay={index * 150}>
@@ -1519,7 +1519,7 @@ function LandingPage() {
 			<Box style={{ padding: "60px 0", backgroundColor: "#fafafa" }}>
 				<Container size="lg">
 					<AnimatedSection>
-						<Grid gutter={40}>
+						<Grid gap={40}>
 							<Grid.Col span={{ base: 12, md: 4 }}>
 								<Group gap="sm" mb="md">
 									<Box

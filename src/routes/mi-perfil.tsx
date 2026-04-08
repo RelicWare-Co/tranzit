@@ -137,7 +137,7 @@ function ProfilePage() {
 								"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
 						}}
 					>
-						<Grid gutter="xl">
+						<Grid gap="xl">
 							<Grid.Col span={{ base: 12, md: 4 }}>
 								<Stack align="center" gap="md">
 									<Avatar
@@ -227,7 +227,7 @@ function ProfilePage() {
 
 									<Divider my="md" />
 
-									<Grid gutter="md">
+									<Grid gap="md">
 										<Grid.Col span={{ base: 12, sm: 6 }}>
 											<Group gap="sm">
 												<Box
