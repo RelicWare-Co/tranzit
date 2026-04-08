@@ -123,7 +123,7 @@ function ProfilePage() {
 	];
 
 	return (
-		<Box bg="#f8f9fa" mih="100vh" py={60}>
+		<Box bg="#f8f9fa" mih="100vh" pt={160} pb={60}>
 			<Container size="lg">
 				<Stack gap="xl">
 					{/* Profile Header */}

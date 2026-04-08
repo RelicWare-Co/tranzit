@@ -134,7 +134,7 @@ function AgendarCita() {
 			<Box
 				style={{
 					background: "#111827",
-					padding: "60px 0 80px 0",
+					padding: "140px 0 80px 0",
 				}}
 			>
 				<Container size="md">

@@ -603,6 +603,7 @@ function LandingPage() {
 					position: "relative",
 					overflow: "hidden",
 					background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)",
+					paddingTop: "100px",
 				}}
 			>
 				<Box

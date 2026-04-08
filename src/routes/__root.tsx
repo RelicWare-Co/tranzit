@@ -291,7 +291,7 @@ function RootComponent() {
 	];
 
 	return (
-		<AppShell bg="#ffffff">
+		<AppShell>
 			{/* Floating Glass Header */}
 			<Box
 				style={{
@@ -396,9 +396,6 @@ function RootComponent() {
 					</Box>
 				</Box>
 			</Box>
-
-			{/* Spacer for fixed header */}
-			<Box style={{ height: "100px" }} />
 
 			<AppShell.Main>
 				<Outlet />

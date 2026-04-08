@@ -82,7 +82,7 @@ function LoginPage() {
 	};
 
 	return (
-		<Box bg="#f8f9fa" mih="100vh" py={80}>
+		<Box bg="#f8f9fa" mih="100vh" pt={160} pb={80}>
 			<Container size="xs">
 				<Card
 					p={40}
