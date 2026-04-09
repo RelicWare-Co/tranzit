@@ -1,11 +1,11 @@
-import { adminClient } from "better-auth/client/plugins";
+import { adminClient, emailOTPClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 const baseURL = import.meta.env.VITE_BETTER_AUTH_URL;
 
 export const authClient = createAuthClient({
 	...(baseURL ? { baseURL } : {}),
-	plugins: [adminClient()],
+	plugins: [adminClient(), emailOTPClient()],
 });
 
 export type AuthUser = {
