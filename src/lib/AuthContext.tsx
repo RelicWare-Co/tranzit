@@ -10,6 +10,8 @@ interface AuthContextValue {
 	register: (name: string, email: string, password: string) => Promise<void>;
 	logout: () => Promise<void>;
 	refreshUser: () => Promise<void>;
+	sendVerificationOtp: (email: string, type?: "sign-in" | "email-verification" | "forget-password") => Promise<void>;
+	signInEmailOtp: (email: string, otp: string, name?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -69,6 +71,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		await refetch();
 	}, [refetch]);
 
+	const sendVerificationOtp = useCallback(
+		async (email: string, type: "sign-in" | "email-verification" | "forget-password" = "sign-in") => {
+			if (!email) {
+				throw new Error("Correo electrónico requerido.");
+			}
+
+			const { error } = await authClient.emailOtp.sendVerificationOtp({
+				email,
+				type,
+			});
+
+			if (error) {
+				throw new Error(error.message);
+			}
+		},
+		[],
+	);
+
+	const signInEmailOtp = useCallback(
+		async (email: string, otp: string, name?: string) => {
+			if (!email || !otp) {
+				throw new Error("Correo y código OTP requeridos.");
+			}
+
+			const { error } = await authClient.signIn.emailOtp({
+				email,
+				otp,
+				name,
+			});
+
+			if (error) {
+				throw new Error(error.message);
+			}
+
+			await refetch();
+		},
+		[refetch],
+	);
+
 	const value = useMemo(
 		() => ({
 			user: session?.user ? (session.user as AuthUser) : null,
@@ -78,8 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			register,
 			logout,
 			refreshUser,
+			sendVerificationOtp,
+			signInEmailOtp,
 		}),
-		[session, isPending, login, register, logout, refreshUser],
+		[session, isPending, login, register, logout, refreshUser, sendVerificationOtp, signInEmailOtp],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
