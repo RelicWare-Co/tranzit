@@ -12,8 +12,7 @@
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check",
-    "pb": "bun run pocketbase/pb.ts"
+    "check": "biome check"
   },
   "dependencies": {
     "@fontsource/geist-sans": "^5.2.5",
@@ -42,7 +41,6 @@
     "embla-carousel": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^1.7.0",
-    "pocketbase": "^0.26.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^3.8.1",

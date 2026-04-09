@@ -1,4 +1,3 @@
-import type { RecordModel } from "pocketbase";
 import {
 	createContext,
 	useCallback,
@@ -7,10 +6,16 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import pb from "./pb";
+
+interface MockUser {
+	id: string;
+	email: string;
+	name: string;
+	phone?: string;
+}
 
 interface AuthContextValue {
-	user: RecordModel | null;
+	user: MockUser | null;
 	isAuthenticated: boolean;
 	isLoading: boolean;
 	login: (email: string, password: string) => Promise<void>;
@@ -20,23 +25,41 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const STORAGE_KEY = "mock_auth_user";
+
+// Mock user data
+const MOCK_USERS: MockUser[] = [
+	{
+		id: "1",
+		email: "usuario@test.com",
+		name: "Juan Carlos Pérez",
+		phone: "+57 321 456 7890",
+	},
+	{
+		id: "2",
+		email: "admin@test.com",
+		name: "Admin Usuario",
+		phone: "+57 300 123 4567",
+	},
+];
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	const [user, setUser] = useState<RecordModel | null>(null);
+	const [user, setUser] = useState<MockUser | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	const checkAuth = useCallback(async () => {
+	const checkAuth = useCallback(() => {
 		setIsLoading(true);
 		try {
-			if (pb.authStore.isValid) {
-				// Refresh the auth to ensure it's still valid
-				await pb.collection("users").authRefresh();
-				setUser(pb.authStore.record as RecordModel);
+			const storedUser = localStorage.getItem(STORAGE_KEY);
+			if (storedUser) {
+				const parsedUser = JSON.parse(storedUser) as MockUser;
+				setUser(parsedUser);
 			} else {
 				setUser(null);
 			}
 		} catch {
 			setUser(null);
-			pb.authStore.clear();
+			localStorage.removeItem(STORAGE_KEY);
 		} finally {
 			setIsLoading(false);
 		}
@@ -44,40 +67,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 	useEffect(() => {
 		checkAuth();
-
-		// Subscribe to auth state changes
-		const unsubscribe = pb.authStore.onChange((token, model) => {
-			// Use token to satisfy the callback signature
-			if (token && model && "collectionId" in model) {
-				setUser(model as RecordModel);
-			} else {
-				setUser(null);
-			}
-		});
-
-		return () => {
-			unsubscribe();
-		};
 	}, [checkAuth]);
 
 	const login = useCallback(async (email: string, password: string) => {
-		const authData = await pb
-			.collection("users")
-			.authWithPassword(email, password);
-		setUser(authData.record);
+		// Simulate API delay
+		await new Promise((resolve) => setTimeout(resolve, 500));
+
+		// Accept any non-empty email/password, or find a mock user
+		if (!email || !password) {
+			throw new Error("Credenciales requeridas");
+		}
+
+		// Try to find existing mock user by email, or create a new one
+		let foundUser = MOCK_USERS.find(
+			(u) => u.email.toLowerCase() === email.toLowerCase(),
+		);
+
+		if (!foundUser) {
+			// Create a generic user for any email
+			foundUser = {
+				id: Date.now().toString(),
+				email: email,
+				name: email.split("@")[0],
+				phone: undefined,
+			};
+		}
+
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(foundUser));
+		setUser(foundUser);
 	}, []);
 
 	const logout = useCallback(() => {
-		pb.authStore.clear();
+		localStorage.removeItem(STORAGE_KEY);
 		setUser(null);
 	}, []);
 
 	const refreshUser = useCallback(async () => {
-		if (pb.authStore.isValid && user) {
-			const freshUser = await pb.collection("users").getOne(user.id);
-			setUser(freshUser);
-		}
-	}, [user]);
+		// No-op for mock auth
+	}, []);
 
 	const value = useMemo(
 		() => ({

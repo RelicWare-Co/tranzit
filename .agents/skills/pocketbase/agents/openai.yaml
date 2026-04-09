@@ -1,4 +1,0 @@
-interface:
-  display_name: "PocketBase"
-  short_description: "PocketBase docs, APIs, JSVM and extension guides"
-  default_prompt: "Use $pocketbase to answer or implement something with PocketBase, including core docs, Web APIs, Go extensions, or JSVM hooks."
