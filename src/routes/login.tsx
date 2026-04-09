@@ -23,7 +23,9 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
 	const navigate = useNavigate();
-	const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+	const { login, register, isAuthenticated, isLoading: authLoading } =
+		useAuth();
+	const [mode, setMode] = useState<"login" | "signup">("login");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
 
@@ -36,10 +38,15 @@ function LoginPage() {
 
 	const form = useForm({
 		initialValues: {
+			name: "",
 			email: "",
 			password: "",
 		},
 		validate: {
+			name: (value) =>
+				mode === "signup" && value.trim().length < 2
+					? "El nombre es requerido"
+					: null,
 			email: (value) =>
 				/^\S+@\S+$/.test(value) ? null : "Correo electrónico inválido",
 			password: (value) =>
@@ -52,10 +59,20 @@ function LoginPage() {
 		setLoading(true);
 
 		try {
-			await login(values.email, values.password);
+			if (mode === "signup") {
+				await register(values.name, values.email, values.password);
+			} else {
+				await login(values.email, values.password);
+			}
 			navigate({ to: "/mi-perfil" });
-		} catch (_err) {
-			setError("Credenciales inválidas. Por favor intenta de nuevo.");
+		} catch (err) {
+			setError(
+				err instanceof Error && err.message
+					? err.message
+					: mode === "signup"
+						? "No pudimos crear tu cuenta. Verifica los datos e intenta de nuevo."
+						: "Credenciales inválidas. Por favor intenta de nuevo.",
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -118,7 +135,9 @@ function LoginPage() {
 								Bienvenido de nuevo
 							</Title>
 							<Text size="sm" c="#6b7280">
-								Ingresa tus credenciales para acceder a tu cuenta
+								{mode === "signup"
+									? "Crea tu cuenta para empezar a usar el sistema"
+									: "Ingresa tus credenciales para acceder a tu cuenta"}
 							</Text>
 						</Stack>
 
@@ -138,6 +157,17 @@ function LoginPage() {
 
 						<form onSubmit={handleSubmit}>
 							<Stack gap="lg">
+								{mode === "signup" && (
+									<TextInput
+										label="Nombre completo"
+										placeholder="Juan Pérez"
+										required
+										{...form.getInputProps("name")}
+										styles={inputStyles}
+										size="md"
+									/>
+								)}
+
 								<TextInput
 									label="Correo electrónico"
 									placeholder="tu@email.com"
@@ -170,13 +200,35 @@ function LoginPage() {
 									}}
 									className="login-btn"
 								>
-									Iniciar Sesión
+									{mode === "signup" ? "Crear cuenta" : "Iniciar sesión"}
 								</Button>
 							</Stack>
 						</form>
 
 						<Text size="sm" ta="center" c="#6b7280" mt="md">
-							¿No tienes cuenta?{" "}
+							{mode === "signup" ? "¿Ya tienes cuenta? " : "¿No tienes cuenta? "}
+							<Anchor
+								component="button"
+								type="button"
+								fw={600}
+								c="#111827"
+								onClick={() => {
+									setError("");
+									setMode(mode === "signup" ? "login" : "signup");
+									form.reset();
+								}}
+								style={{
+									background: "none",
+									border: "none",
+									padding: 0,
+									cursor: "pointer",
+								}}
+							>
+								{mode === "signup" ? "Volver a iniciar sesión" : "Crear una cuenta"}
+							</Anchor>
+						</Text>
+
+						<Text size="sm" ta="center" c="#6b7280">
 							<Anchor component={Link} to="/" fw={600} c="#111827">
 								Volver al inicio
 							</Anchor>

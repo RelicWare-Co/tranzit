@@ -1,121 +1,85 @@
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 
-interface MockUser {
-	id: string;
-	email: string;
-	name: string;
-	phone?: string;
-}
+import { authClient, type AuthUser } from "./auth-client";
 
 interface AuthContextValue {
-	user: MockUser | null;
+	user: AuthUser | null;
 	isAuthenticated: boolean;
 	isLoading: boolean;
 	login: (email: string, password: string) => Promise<void>;
-	logout: () => void;
+	register: (name: string, email: string, password: string) => Promise<void>;
+	logout: () => Promise<void>;
 	refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const STORAGE_KEY = "mock_auth_user";
-
-// Mock user data
-const MOCK_USERS: MockUser[] = [
-	{
-		id: "1",
-		email: "usuario@test.com",
-		name: "Juan Carlos Pérez",
-		phone: "+57 321 456 7890",
-	},
-	{
-		id: "2",
-		email: "admin@test.com",
-		name: "Admin Usuario",
-		phone: "+57 300 123 4567",
-	},
-];
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	const [user, setUser] = useState<MockUser | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
+	const { data: session, isPending, refetch } = authClient.useSession();
 
-	const checkAuth = useCallback(() => {
-		setIsLoading(true);
-		try {
-			const storedUser = localStorage.getItem(STORAGE_KEY);
-			if (storedUser) {
-				const parsedUser = JSON.parse(storedUser) as MockUser;
-				setUser(parsedUser);
-			} else {
-				setUser(null);
+	const login = useCallback(
+		async (email: string, password: string) => {
+			if (!email || !password) {
+				throw new Error("Credenciales requeridas.");
 			}
-		} catch {
-			setUser(null);
-			localStorage.removeItem(STORAGE_KEY);
-		} finally {
-			setIsLoading(false);
+
+			const { error } = await authClient.signIn.email({ email, password });
+
+			if (error) {
+				throw new Error(error.message);
+			}
+
+			await refetch();
+		},
+		[refetch],
+	);
+
+	const register = useCallback(
+		async (name: string, email: string, password: string) => {
+			if (!name || !email || !password) {
+				throw new Error("Completa nombre, correo y contraseña.");
+			}
+
+			const { error } = await authClient.signUp.email({
+				name,
+				email,
+				password,
+			});
+
+			if (error) {
+				throw new Error(error.message);
+			}
+
+			await refetch();
+		},
+		[refetch],
+	);
+
+	const logout = useCallback(async () => {
+		const { error } = await authClient.signOut();
+
+		if (error) {
+			throw new Error(error.message);
 		}
-	}, []);
 
-	useEffect(() => {
-		checkAuth();
-	}, [checkAuth]);
-
-	const login = useCallback(async (email: string, password: string) => {
-		// Simulate API delay
-		await new Promise((resolve) => setTimeout(resolve, 500));
-
-		// Accept any non-empty email/password, or find a mock user
-		if (!email || !password) {
-			throw new Error("Credenciales requeridas");
-		}
-
-		// Try to find existing mock user by email, or create a new one
-		let foundUser = MOCK_USERS.find(
-			(u) => u.email.toLowerCase() === email.toLowerCase(),
-		);
-
-		if (!foundUser) {
-			// Create a generic user for any email
-			foundUser = {
-				id: Date.now().toString(),
-				email: email,
-				name: email.split("@")[0],
-				phone: undefined,
-			};
-		}
-
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(foundUser));
-		setUser(foundUser);
-	}, []);
-
-	const logout = useCallback(() => {
-		localStorage.removeItem(STORAGE_KEY);
-		setUser(null);
-	}, []);
+		await refetch();
+	}, [refetch]);
 
 	const refreshUser = useCallback(async () => {
-		// No-op for mock auth
-	}, []);
+		await refetch();
+	}, [refetch]);
 
 	const value = useMemo(
 		() => ({
-			user,
-			isAuthenticated: !!user,
-			isLoading,
+			user: session?.user ? (session.user as AuthUser) : null,
+			isAuthenticated: !!session?.user,
+			isLoading: isPending,
 			login,
+			register,
 			logout,
 			refreshUser,
 		}),
-		[user, isLoading, login, logout, refreshUser],
+		[session, isPending, login, register, logout, refreshUser],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

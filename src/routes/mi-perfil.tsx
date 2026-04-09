@@ -106,8 +106,11 @@ function ProfilePage() {
 		: user.email?.[0].toUpperCase() || "U";
 
 	const handleLogout = () => {
-		logout();
-		navigate({ to: "/" });
+		void logout()
+			.then(() => {
+				navigate({ to: "/" });
+			})
+			.catch(() => {});
 	};
 
 	// Mock appointments data - in a real app, this would come from an API

@@ -6,6 +6,15 @@ import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 const config = defineConfig({
+	server: {
+		proxy: {
+			"/api/auth": {
+				target: "http://localhost:3001",
+				changeOrigin: true,
+				secure: false,
+			},
+		},
+	},
 	plugins: [
 		devtools(),
 		tsconfigPaths({ projects: ["./tsconfig.json"] }),
