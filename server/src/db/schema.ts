@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+	AnySQLiteColumn,
 	index,
 	integer,
 	sqliteTable,
@@ -141,6 +142,7 @@ export const procedureType = sqliteTable(
 		name: text("name").notNull(),
 		description: text("description"),
 		isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+		configVersion: integer("config_version").default(1).notNull(),
 		requiresVehicle: integer("requires_vehicle", { mode: "boolean" })
 			.default(false)
 			.notNull(),
@@ -225,6 +227,8 @@ export const staffDateOverride = sqliteTable(
 			.default(true)
 			.notNull(),
 		capacityOverride: integer("capacity_override"),
+		availableStartTime: text("available_start_time"),
+		availableEndTime: text("available_end_time"),
 		notes: text("notes"),
 		createdByUserId: text("created_by_user_id").references(() => user.id, {
 			onDelete: "set null",
@@ -327,8 +331,14 @@ export const serviceRequest = sqliteTable(
 		documentType: text("document_type"),
 		documentNumber: text("document_number"),
 		status: text("status").default("draft").notNull(),
+		procedureConfigVersion: integer("procedure_config_version")
+			.default(1)
+			.notNull(),
 		documentMode: text("document_mode"),
 		draftData: text("draft_data", { mode: "json" })
+			.$type<JsonValue>()
+			.default({}),
+		procedureSnapshot: text("procedure_snapshot", { mode: "json" })
 			.$type<JsonValue>()
 			.default({}),
 		eligibilityResult: text("eligibility_result", { mode: "json" })
@@ -340,6 +350,12 @@ export const serviceRequest = sqliteTable(
 		submittedSnapshot: text("submitted_snapshot", { mode: "json" })
 			.$type<JsonValue>()
 			.default({}),
+		activeBookingId: text("active_booking_id").references(
+			(): AnySQLiteColumn => booking.id,
+			{
+				onDelete: "set null",
+			},
+		),
 		verifiedAt: integer("verified_at", { mode: "timestamp_ms" }),
 		confirmedAt: integer("confirmed_at", { mode: "timestamp_ms" }),
 		cancelledAt: integer("cancelled_at", { mode: "timestamp_ms" }),
@@ -356,6 +372,7 @@ export const serviceRequest = sqliteTable(
 		index("service_request_citizen_idx").on(table.citizenUserId),
 		index("service_request_email_idx").on(table.email),
 		index("service_request_procedure_idx").on(table.procedureTypeId),
+		index("service_request_active_booking_idx").on(table.activeBookingId),
 	],
 );
 
@@ -369,6 +386,15 @@ export const requestDocument = sqliteTable(
 		requirementKey: text("requirement_key").notNull(),
 		label: text("label").notNull(),
 		deliveryMode: text("delivery_mode").notNull(),
+		isCurrent: integer("is_current", { mode: "boolean" })
+			.default(true)
+			.notNull(),
+		replacesDocumentId: text("replaces_document_id").references(
+			(): AnySQLiteColumn => requestDocument.id,
+			{
+				onDelete: "set null",
+			},
+		),
 		storageKey: text("storage_key"),
 		fileName: text("file_name"),
 		mimeType: text("mime_type"),
@@ -388,9 +414,14 @@ export const requestDocument = sqliteTable(
 			.notNull(),
 	},
 	(table) => [
-		uniqueIndex("request_document_requirement_unique_idx").on(
+		index("request_document_requirement_idx").on(
 			table.requestId,
 			table.requirementKey,
+		),
+		index("request_document_current_idx").on(
+			table.requestId,
+			table.requirementKey,
+			table.isCurrent,
 		),
 		index("request_document_status_idx").on(table.status),
 	],
@@ -425,6 +456,32 @@ export const appointmentSlot = sqliteTable(
 	],
 );
 
+export const bookingSeries = sqliteTable(
+	"booking_series",
+	{
+		id: text("id").primaryKey(),
+		kind: text("kind").default("administrative").notNull(),
+		recurrenceRule: text("recurrence_rule", { mode: "json" })
+			.$type<JsonValue>()
+			.default({}),
+		timezone: text("timezone"),
+		isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+		metadata: text("metadata", { mode: "json" }).$type<JsonValue>().default({}),
+		notes: text("notes"),
+		createdByUserId: text("created_by_user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.default(now)
+			.notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+			.default(now)
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [index("booking_series_active_idx").on(table.isActive)],
+);
+
 export const booking = sqliteTable(
 	"booking",
 	{
@@ -432,9 +489,12 @@ export const booking = sqliteTable(
 		slotId: text("slot_id")
 			.notNull()
 			.references(() => appointmentSlot.id, { onDelete: "cascade" }),
-		requestId: text("request_id").references(() => serviceRequest.id, {
-			onDelete: "set null",
-		}),
+		requestId: text("request_id").references(
+			(): AnySQLiteColumn => serviceRequest.id,
+			{
+				onDelete: "set null",
+			},
+		),
 		citizenUserId: text("citizen_user_id").references(() => user.id, {
 			onDelete: "set null",
 		}),
@@ -447,9 +507,12 @@ export const booking = sqliteTable(
 		sourceBookingId: text("source_booking_id"),
 		kind: text("kind").notNull(),
 		status: text("status").notNull(),
+		isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
 		holdToken: text("hold_token").unique(),
 		holdExpiresAt: integer("hold_expires_at", { mode: "timestamp_ms" }),
-		seriesKey: text("series_key"),
+		seriesKey: text("series_key").references(() => bookingSeries.id, {
+			onDelete: "set null",
+		}),
 		statusReason: text("status_reason"),
 		notes: text("notes"),
 		snapshot: text("snapshot", { mode: "json" }).$type<JsonValue>().default({}),
@@ -469,9 +532,15 @@ export const booking = sqliteTable(
 		index("booking_request_idx").on(table.requestId),
 		index("booking_citizen_idx").on(table.citizenUserId),
 		index("booking_staff_idx").on(table.staffUserId),
+		index("booking_active_idx").on(table.isActive),
 		index("booking_kind_status_idx").on(table.kind, table.status),
 		index("booking_hold_expiry_idx").on(table.holdExpiresAt),
 		index("booking_series_idx").on(table.seriesKey),
+		uniqueIndex("booking_active_request_unique_idx")
+			.on(table.requestId)
+			.where(
+				sql`${table.requestId} is not null and ${table.kind} = 'citizen' and ${table.isActive} = 1`,
+			),
 	],
 );
 
@@ -586,6 +655,10 @@ export const serviceRequestRelations = relations(
 			fields: [serviceRequest.citizenUserId],
 			references: [user.id],
 		}),
+		activeBooking: one(booking, {
+			fields: [serviceRequest.activeBookingId],
+			references: [booking.id],
+		}),
 		documents: many(requestDocument),
 		bookings: many(booking),
 	}),
@@ -593,10 +666,18 @@ export const serviceRequestRelations = relations(
 
 export const requestDocumentRelations = relations(
 	requestDocument,
-	({ one }) => ({
+	({ one, many }) => ({
 		request: one(serviceRequest, {
 			fields: [requestDocument.requestId],
 			references: [serviceRequest.id],
+		}),
+		replacesDocument: one(requestDocument, {
+			fields: [requestDocument.replacesDocumentId],
+			references: [requestDocument.id],
+			relationName: "document_replacement",
+		}),
+		replacedByDocuments: many(requestDocument, {
+			relationName: "document_replacement",
 		}),
 	}),
 );
@@ -607,6 +688,10 @@ export const appointmentSlotRelations = relations(
 		bookings: many(booking),
 	}),
 );
+
+export const bookingSeriesRelations = relations(bookingSeries, ({ many }) => ({
+	bookings: many(booking),
+}));
 
 export const bookingRelations = relations(booking, ({ one }) => ({
 	slot: one(appointmentSlot, {
@@ -624,5 +709,9 @@ export const bookingRelations = relations(booking, ({ one }) => ({
 	staff: one(user, {
 		fields: [booking.staffUserId],
 		references: [user.id],
+	}),
+	series: one(bookingSeries, {
+		fields: [booking.seriesKey],
+		references: [bookingSeries.id],
 	}),
 }));
