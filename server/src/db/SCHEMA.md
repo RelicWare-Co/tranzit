@@ -7,6 +7,8 @@ Este esquema busca cubrir la operación real sin abrir tablas por cada detalle c
 `user` + `verification`
 La identidad vive en `better-auth`. La tabla `verification` se deja con el shape estándar del framework para que el plugin de email OTP maneje expiración, intentos y validación sin columnas propias en nuestro dominio.
 
+`verification.identifier` tiene un índice UNIQUE para garantizar que solo exista un código vigente por identificador (email + tipo). Esto es necesario para que el flujo de reenvío de OTP invalide automáticamente el código anterior: el plugin `emailOTP` de Better Auth usa un patrón create-then-catch en `resolveOTP` que depende de esta restricción para eliminar el OTP previo antes de insertar el nuevo. Sin unicidad, el `.catch` nunca se ejecuta y ambos códigos coexisten, permitiendo que el OTP anterior siga siendo válido tras un reenvío.
+
 `procedure_type`
 Cada trámite guarda su formulario, reglas de elegibilidad, documentos requeridos y políticas como JSON. Eso evita una explosión de tablas de "campos", "secciones", "reglas" y "dependencias" en esta primera fase.
 

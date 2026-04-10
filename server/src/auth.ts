@@ -34,6 +34,12 @@ export const auth = betterAuth({
 		provider: "sqlite",
 		schema,
 	}),
+	rateLimit: {
+		enabled: true,
+		window: 10,
+		max: 100,
+		storage: "memory",
+	},
 	plugins: [
 		admin(),
 		emailOTP({

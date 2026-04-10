@@ -118,7 +118,9 @@ export const verification = sqliteTable(
 			.$onUpdate(() => new Date())
 			.notNull(),
 	},
-	(table) => [index("verification_identifier_idx").on(table.identifier)],
+	(table) => [
+		uniqueIndex("verification_identifier_unique_idx").on(table.identifier),
+	],
 );
 
 export const appSetting = sqliteTable("app_setting", {

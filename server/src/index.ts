@@ -9,10 +9,21 @@ type AppVariables = {
 
 const app = new Hono<{ Variables: AppVariables }>();
 
+/**
+ * CORS configuration for auth endpoints.
+ *
+ * - Only the explicitly allowed origin(s) receive Access-Control-Allow-Origin
+ *   and Access-Control-Allow-Credentials: true.
+ * - Disallowed origins get no CORS headers, which prevents credential-bearing
+ *   cross-origin requests from browsers.
+ * - Default is corrected to http://localhost:3000 (frontend port).
+ */
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+
 app.use(
 	"/api/auth/*",
 	cors({
-		origin: process.env.CORS_ORIGIN || "http://localhost:3001",
+		origin: corsOrigin,
 		allowHeaders: ["Content-Type", "Authorization"],
 		allowMethods: ["POST", "GET", "OPTIONS"],
 		exposeHeaders: ["Content-Length"],
