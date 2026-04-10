@@ -23,8 +23,12 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
 	const navigate = useNavigate();
-	const { login, register, isAuthenticated, isLoading: authLoading } =
-		useAuth();
+	const {
+		login,
+		register,
+		isAuthenticated,
+		isLoading: authLoading,
+	} = useAuth();
 	const [mode, setMode] = useState<"login" | "signup">("login");
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -206,7 +210,9 @@ function LoginPage() {
 						</form>
 
 						<Text size="sm" ta="center" c="#6b7280" mt="md">
-							{mode === "signup" ? "¿Ya tienes cuenta? " : "¿No tienes cuenta? "}
+							{mode === "signup"
+								? "¿Ya tienes cuenta? "
+								: "¿No tienes cuenta? "}
 							<Anchor
 								component="button"
 								type="button"
@@ -224,7 +230,9 @@ function LoginPage() {
 									cursor: "pointer",
 								}}
 							>
-								{mode === "signup" ? "Volver a iniciar sesión" : "Crear una cuenta"}
+								{mode === "signup"
+									? "Volver a iniciar sesión"
+									: "Crear una cuenta"}
 							</Anchor>
 						</Text>
 

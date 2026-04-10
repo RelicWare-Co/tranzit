@@ -1,6 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
-	AnySQLiteColumn,
+	type AnySQLiteColumn,
 	index,
 	integer,
 	sqliteTable,

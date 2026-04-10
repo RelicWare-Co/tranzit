@@ -99,7 +99,7 @@ function AgendarCita() {
 	// OTP Handlers
 	const handleSendOtp = async () => {
 		setOtpError("");
-		if (!otpEmail || !otpEmail.includes("@")) {
+		if (!otpEmail?.includes("@")) {
 			setOtpError("Ingrese un correo electrónico válido.");
 			return;
 		}
@@ -108,7 +108,9 @@ function AgendarCita() {
 			await sendVerificationOtp(otpEmail, "sign-in");
 			setOtpSent(true);
 		} catch (err) {
-			setOtpError(err instanceof Error ? err.message : "Error al enviar el código.");
+			setOtpError(
+				err instanceof Error ? err.message : "Error al enviar el código.",
+			);
 		} finally {
 			setOtpSending(false);
 		}
@@ -437,7 +439,8 @@ function AgendarCita() {
 												loading={otpVerifying}
 												disabled={otpCode.length < 6}
 												style={{
-													backgroundColor: otpCode.length < 6 ? "#e5e7eb" : "#16a34a",
+													backgroundColor:
+														otpCode.length < 6 ? "#e5e7eb" : "#16a34a",
 													color: otpCode.length < 6 ? "#9ca3af" : "white",
 													borderRadius: "12px",
 													fontWeight: 600,

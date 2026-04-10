@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo } from "react";
 
-import { authClient, type AuthUser } from "./auth-client";
+import { type AuthUser, authClient } from "./auth-client";
 
 interface AuthContextValue {
 	user: AuthUser | null;
@@ -10,7 +10,10 @@ interface AuthContextValue {
 	register: (name: string, email: string, password: string) => Promise<void>;
 	logout: () => Promise<void>;
 	refreshUser: () => Promise<void>;
-	sendVerificationOtp: (email: string, type?: "sign-in" | "email-verification" | "forget-password") => Promise<void>;
+	sendVerificationOtp: (
+		email: string,
+		type?: "sign-in" | "email-verification" | "forget-password",
+	) => Promise<void>;
 	signInEmailOtp: (email: string, otp: string, name?: string) => Promise<void>;
 }
 
@@ -72,7 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	}, [refetch]);
 
 	const sendVerificationOtp = useCallback(
-		async (email: string, type: "sign-in" | "email-verification" | "forget-password" = "sign-in") => {
+		async (
+			email: string,
+			type: "sign-in" | "email-verification" | "forget-password" = "sign-in",
+		) => {
 			if (!email) {
 				throw new Error("Correo electrónico requerido.");
 			}
@@ -122,7 +128,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			sendVerificationOtp,
 			signInEmailOtp,
 		}),
-		[session, isPending, login, register, logout, refreshUser, sendVerificationOtp, signInEmailOtp],
+		[
+			session,
+			isPending,
+			login,
+			register,
+			logout,
+			refreshUser,
+			sendVerificationOtp,
+			signInEmailOtp,
+		],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

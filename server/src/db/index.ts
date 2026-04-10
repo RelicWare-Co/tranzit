@@ -1,6 +1,5 @@
-import { config as loadEnv } from "dotenv";
-
 import { createClient } from "@libsql/client/node";
+import { config as loadEnv } from "dotenv";
 import { drizzle } from "drizzle-orm/libsql/node";
 import * as schema from "./schema";
 
