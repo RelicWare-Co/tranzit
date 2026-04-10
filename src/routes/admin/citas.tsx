@@ -1,5 +1,3 @@
-import "@mantine/schedule/styles.css";
-
 import {
 	Box,
 	Button,

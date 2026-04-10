@@ -6,6 +6,7 @@ import { AuthProvider } from "./lib/AuthContext";
 import { routeTree } from "./routeTree.gen";
 
 import "@mantine/core/styles.css";
+import "@mantine/schedule/styles.css";
 
 const theme = createTheme({
 	primaryColor: "red",
