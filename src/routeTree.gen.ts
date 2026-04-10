@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as MiPerfilRouteImport } from './routes/mi-perfil'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AgendarRouteImport } from './routes/agendar'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminCitasRouteImport } from './routes/admin/citas'
 
 const MiPerfilRoute = MiPerfilRouteImport.update({
   id: '/mi-perfil',
@@ -29,41 +32,80 @@ const AgendarRoute = AgendarRouteImport.update({
   path: '/agendar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminCitasRoute = AdminCitasRouteImport.update({
+  id: '/citas',
+  path: '/citas',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/agendar': typeof AgendarRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
+  '/admin/citas': typeof AdminCitasRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agendar': typeof AgendarRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
+  '/admin/citas': typeof AdminCitasRoute
+  '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/agendar': typeof AgendarRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
+  '/admin/citas': typeof AdminCitasRoute
+  '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/agendar' | '/login' | '/mi-perfil'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/agendar'
+    | '/login'
+    | '/mi-perfil'
+    | '/admin/citas'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/agendar' | '/login' | '/mi-perfil'
-  id: '__root__' | '/' | '/agendar' | '/login' | '/mi-perfil'
+  to: '/' | '/agendar' | '/login' | '/mi-perfil' | '/admin/citas' | '/admin'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/agendar'
+    | '/login'
+    | '/mi-perfil'
+    | '/admin/citas'
+    | '/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AgendarRoute: typeof AgendarRoute
   LoginRoute: typeof LoginRoute
   MiPerfilRoute: typeof MiPerfilRoute
@@ -92,6 +134,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgendarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -99,11 +148,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/citas': {
+      id: '/admin/citas'
+      path: '/citas'
+      fullPath: '/admin/citas'
+      preLoaderRoute: typeof AdminCitasRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
+interface AdminRouteRouteChildren {
+  AdminCitasRoute: typeof AdminCitasRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminCitasRoute: AdminCitasRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
   AgendarRoute: AgendarRoute,
   LoginRoute: LoginRoute,
   MiPerfilRoute: MiPerfilRoute,
