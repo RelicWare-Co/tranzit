@@ -1,0 +1,30 @@
+commands:
+  install: bun install && cd server && bun install
+  lint: bun run lint
+  check: bun run check
+  typecheck: bunx tsc --noEmit
+  typecheck_server: cd server && bunx tsc --noEmit
+  build: bun run build
+  test: bun run test -- --passWithNoTests --maxWorkers=5
+
+services:
+  maildev:
+    start: cd server && maildev --smtp 1025 --web 1080 --ip 127.0.0.1 --web-ip 127.0.0.1
+    stop: pids="$(lsof -ti :1080 -sTCP:LISTEN) $(lsof -ti :1025 -sTCP:LISTEN)"; [ -n "$pids" ] && kill $pids || true
+    healthcheck: curl -sf http://127.0.0.1:1080/
+    port: 1080
+    depends_on: []
+
+  api:
+    start: cd server && bun run dev
+    stop: pids="$(lsof -ti :3001 -sTCP:LISTEN)"; [ -n "$pids" ] && kill $pids || true
+    healthcheck: curl -sf http://localhost:3001/
+    port: 3001
+    depends_on: [maildev]
+
+  web:
+    start: bun run dev
+    stop: pids="$(lsof -ti :3000 -sTCP:LISTEN)"; [ -n "$pids" ] && kill $pids || true
+    healthcheck: curl -sf http://localhost:3000/
+    port: 3000
+    depends_on: [api]
