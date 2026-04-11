@@ -14,10 +14,10 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomUUID } from "node:crypto";
-import { eq, like, or } from "drizzle-orm";
 import { memoryAdapter } from "@better-auth/memory-adapter";
 import { betterAuth } from "better-auth";
 import { admin, emailOTP } from "better-auth/plugins";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -25,8 +25,8 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
 	checkCapacity,
 	consumeCapacity,
-	releaseCapacity,
 	reassignBooking,
+	releaseCapacity,
 } from "./capacity";
 import { db, schema } from "./db";
 
@@ -297,7 +297,11 @@ async function createAdminSession(auth: any, memDb: any, _otpStore: any) {
 // Use a date far in the future to avoid conflicts with existing data
 const TEST_SLOT_DATE = "2030-12-31";
 
-async function cleanupTestData(staffUserId: string, slotId: string, bookingIds: string[]) {
+async function cleanupTestData(
+	staffUserId: string,
+	slotId: string,
+	bookingIds: string[],
+) {
 	// Clean up bookings first (depends on slot_id and staff_user_id)
 	for (const id of bookingIds) {
 		try {
@@ -307,21 +311,21 @@ async function cleanupTestData(staffUserId: string, slotId: string, bookingIds: 
 		}
 	}
 
-	// Clean up the main slot and any additional slots (like -daily-*, -staff2-*)
+	// Clean up all slots matching the test date (UNIQUE constraint is on slot_date + start_time)
+	// This ensures cleanup works regardless of how many slots were created at different times
 	try {
-		await db.delete(schema.appointmentSlot).where(
-			or(
-				like(schema.appointmentSlot.id, `${slotId}%`),
-				eq(schema.appointmentSlot.id, slotId)
-			)
-		);
+		await db
+			.delete(schema.appointmentSlot)
+			.where(eq(schema.appointmentSlot.slotDate, TEST_SLOT_DATE));
 	} catch {
 		// Ignore
 	}
 
 	// Clean up staff profile
 	try {
-		await db.delete(schema.staffProfile).where(eq(schema.staffProfile.userId, staffUserId));
+		await db
+			.delete(schema.staffProfile)
+			.where(eq(schema.staffProfile.userId, staffUserId));
 	} catch {
 		// Ignore
 	}
@@ -382,7 +386,11 @@ describe("VAL-CAP-001: Combined global + staff capacity checks", () => {
 
 		const authSetup = createTestAuth();
 		const app = createTestApp(authSetup.auth);
-		const adminCookie = await createAdminSession(authSetup.auth, authSetup.memDb, authSetup.otpStore);
+		const adminCookie = await createAdminSession(
+			authSetup.auth,
+			authSetup.memDb,
+			authSetup.otpStore,
+		);
 		return { app, adminCookie };
 	});
 
@@ -716,7 +724,10 @@ describe("VAL-CAP-003: Idempotent release (no double-release)", () => {
 		bookingIds.push(createResult.bookingId);
 
 		// Release the booking
-		const releaseResult = await releaseCapacity(createResult.bookingId, "cancelled");
+		const releaseResult = await releaseCapacity(
+			createResult.bookingId,
+			"cancelled",
+		);
 
 		expect(releaseResult.success).toBe(true);
 		expect(releaseResult.alreadyReleased).toBe(false);
@@ -829,11 +840,17 @@ describe("VAL-CAP-004: Reassign booking to different staff", () => {
 		await cleanupTestData(staffUserId, slotId, bookingIds);
 		// Clean up second staff
 		try {
-			await db.delete(schema.staffProfile).where(eq(schema.staffProfile.userId, staffUserId2));
-		} catch { /* ignore */ }
+			await db
+				.delete(schema.staffProfile)
+				.where(eq(schema.staffProfile.userId, staffUserId2));
+		} catch {
+			/* ignore */
+		}
 		try {
 			await db.delete(schema.user).where(eq(schema.user.id, staffUserId2));
-		} catch { /* ignore */ }
+		} catch {
+			/* ignore */
+		}
 	});
 
 	test("reassignBooking moves booking to new staff successfully", async () => {
@@ -853,7 +870,10 @@ describe("VAL-CAP-004: Reassign booking to different staff", () => {
 		bookingIds.push(createResult.bookingId);
 
 		// Reassign to second staff
-		const reassignResult = await reassignBooking(createResult.bookingId, staffUserId2);
+		const reassignResult = await reassignBooking(
+			createResult.bookingId,
+			staffUserId2,
+		);
 
 		expect(reassignResult.success).toBe(true);
 		expect(reassignResult.conflicts).toHaveLength(0);
@@ -935,7 +955,10 @@ describe("VAL-CAP-004: Reassign booking to different staff", () => {
 		bookingIds.push(createResult.bookingId);
 
 		// Reassign to same staff - should be no-op
-		const reassignResult = await reassignBooking(createResult.bookingId, staffUserId);
+		const reassignResult = await reassignBooking(
+			createResult.bookingId,
+			staffUserId,
+		);
 
 		expect(reassignResult.success).toBe(true);
 		expect(reassignResult.conflicts).toHaveLength(0);

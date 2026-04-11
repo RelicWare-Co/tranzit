@@ -17,7 +17,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomUUID } from "node:crypto";
-import { eq, like, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
@@ -50,15 +50,12 @@ async function cleanupTestData(
 		}
 	}
 
+	// Clean up all slots matching the test date (UNIQUE constraint is on slot_date + start_time)
+	// This ensures cleanup works regardless of how many slots were created at different times
 	try {
 		await db
 			.delete(schema.appointmentSlot)
-			.where(
-				or(
-					like(schema.appointmentSlot.id, `${slotId}%`),
-					eq(schema.appointmentSlot.id, slotId),
-				),
-			);
+			.where(eq(schema.appointmentSlot.slotDate, TEST_SLOT_DATE));
 	} catch {
 		// Ignore
 	}
@@ -615,12 +612,7 @@ describe("VAL-RAS-013: Reject stale source not matching activeBookingId", () => 
 		expect(result2.success).toBe(true);
 		if (!result2.bookingId) throw new Error("bookingId2 should exist");
 		bookingIds.push(result2.bookingId);
-		const bookingId2 = result2.bookingId;
 
-		// Verify serviceRequest.activeBookingId points to booking2
-		const serviceRequest = await db.query.serviceRequest.findFirst({
-			where: eq(schema.serviceRequest.id, requestId),
-		});
 		// Note: due to the unique index, only one can be active, so this setup
 		// would have failed - let's adjust our test
 

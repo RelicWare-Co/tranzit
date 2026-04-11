@@ -26,7 +26,7 @@ import { randomUUID } from "node:crypto";
 import { memoryAdapter } from "@better-auth/memory-adapter";
 import { betterAuth } from "better-auth";
 import { admin, emailOTP } from "better-auth/plugins";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -253,22 +253,14 @@ async function cleanupTestData(
 		}
 	}
 
-	// Delete slots by ID - use individual deletes to avoid SQL template issues
+	// Clean up all slots matching the test date (UNIQUE constraint is on slot_date + start_time)
+	// This ensures cleanup works regardless of how many slots were created at different times
 	try {
 		await db
 			.delete(schema.appointmentSlot)
-			.where(eq(schema.appointmentSlot.id, slotId));
+			.where(eq(schema.appointmentSlot.slotDate, TEST_SLOT_DATE));
 	} catch {
 		/* ignore */
-	}
-	if (slotId2) {
-		try {
-			await db
-				.delete(schema.appointmentSlot)
-				.where(eq(schema.appointmentSlot.id, slotId2));
-		} catch {
-			/* ignore */
-		}
 	}
 
 	try {
