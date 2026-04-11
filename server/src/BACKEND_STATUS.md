@@ -25,9 +25,20 @@ This file complements (not replaces):
 - Better Auth endpoint is mounted on `/api/auth/*`.
 
 ### Authorization
-- `/api/auth/admin/*` and `/api/admin/*` are protected by role guard:
-  - no session -> `401 UNAUTHENTICATED`
-  - non-admin role -> `403 FORBIDDEN`
+- Role-based access control with three roles: `admin`, `staff`, `auditor`.
+- Roles and permissions are defined in `server/src/permissions.ts` using Better Auth's Access Control system.
+- `/api/auth/admin/*` requires `admin` role.
+- `/api/admin/*` requires at least one of: `admin`, `staff`, `auditor`.
+- Each domain module has granular permission guards:
+  - `/api/admin/schedule/*` requires `schedule: ["read"]`
+  - `/api/admin/staff/*` requires `staff: ["read"]`
+  - `/api/admin/bookings/*` requires `booking: ["read"]`
+  - `/api/admin/reservation-series/*` requires `reservation-series: ["read"]`
+  - `/api/admin/reservations/*` requires `reservation-series: ["read"]`
+- Permission verification uses `auth.api.userHasPermission` server-side.
+- Middleware helpers in `server/src/permission-guard.ts`:
+  - `requirePermissions(permissions)` — checks granular permissions
+  - `requireRole(...roles)` — checks user has at least one role
 
 ### CORS
 - CORS is applied for `/api/auth/*` and `/api/admin/*`.
@@ -43,6 +54,10 @@ This file complements (not replaces):
 - Additional per-email rate limit exists for OTP send endpoint:
   - `POST /api/auth/email-otp/send-verification-otp`
   - limit: 3 requests per 60s window per email (in-memory)
+
+### Admin onboarding
+- `POST /api/admin/onboard`: eleva el usuario autenticado a admin solo si no existe ningun admin en el sistema. No requiere rol previo.
+- `GET /api/admin/onboard/status`: devuelve `{ adminExists: boolean }` para que el frontend sepa si debe mostrar el flujo de onboarding. No requiere rol previo.
 
 ## 2) Domain modules and active routes
 

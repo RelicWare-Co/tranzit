@@ -33,7 +33,6 @@ function LoginPage() {
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
 
-	// Redirect to profile if already authenticated
 	useEffect(() => {
 		if (!authLoading && isAuthenticated) {
 			navigate({ to: "/mi-perfil" });

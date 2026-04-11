@@ -315,7 +315,7 @@ function SidebarItem({
 }
 
 function AdminLayout() {
-	const { isAuthenticated, isLoading } = useAuth();
+	const { isAuthenticated, isLoading, hasRole } = useAuth();
 	const navigate = useNavigate();
 	const [scroll] = useWindowScroll();
 	const isScrolled = scroll.y > 20;
@@ -333,12 +333,28 @@ function AdminLayout() {
 		return "dashboard";
 	}, [location.pathname]);
 
+	const hasAdminAccess = useMemo(() => {
+		return hasRole("admin") || hasRole("staff") || hasRole("auditor");
+	}, [hasRole]);
+
 	// Redirect to admin login if not authenticated
 	useEffect(() => {
 		if (!isLoading && !isAuthenticated && !isAdminLoginRoute) {
 			navigate({ to: "/admin/login" });
 		}
 	}, [isAuthenticated, isLoading, isAdminLoginRoute, navigate]);
+
+	// Redirect to home if authenticated but no admin access
+	useEffect(() => {
+		if (
+			!isLoading &&
+			isAuthenticated &&
+			!hasAdminAccess &&
+			!isAdminLoginRoute
+		) {
+			navigate({ to: "/" });
+		}
+	}, [isAuthenticated, isLoading, hasAdminAccess, isAdminLoginRoute, navigate]);
 
 	if (isLoading || (!isAuthenticated && !isAdminLoginRoute)) {
 		return (
@@ -374,6 +390,39 @@ function AdminLayout() {
 									animationDelay: "0.1s",
 								}}
 							/>
+						</Stack>
+					</Card>
+				</Container>
+			</Box>
+		);
+	}
+
+	if (isAuthenticated && !hasAdminAccess && !isAdminLoginRoute) {
+		return (
+			<Box bg="#f8f9fa" mih="100vh" pt={160} pb={60}>
+				<Container size="lg">
+					<Card
+						p={60}
+						radius="xl"
+						bg="white"
+						style={{
+							border: "1px solid #e5e7eb",
+							boxShadow:
+								"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
+						}}
+					>
+						<Stack align="center" gap="lg">
+							<Title order={2} c="#dc2626">
+								Acceso denegado
+							</Title>
+							<Text c="#6b7280" ta="center">
+								No tenés permisos para acceder al panel administrativo.
+							</Text>
+							<Link to="/" style={{ textDecoration: "none" }}>
+								<Text c="#2563eb" fw={600}>
+									Volver al inicio
+								</Text>
+							</Link>
 						</Stack>
 					</Card>
 				</Container>

@@ -2,6 +2,9 @@ import { createContext, useCallback, useContext, useMemo } from "react";
 
 import { type AuthUser, authClient } from "./auth-client";
 
+type PermissionMap = Record<string, string[]>;
+type AdminRole = "admin" | "staff" | "auditor";
+
 interface AuthContextValue {
 	user: AuthUser | null;
 	isAuthenticated: boolean;
@@ -15,6 +18,12 @@ interface AuthContextValue {
 		type?: "sign-in" | "email-verification" | "forget-password",
 	) => Promise<void>;
 	signInEmailOtp: (email: string, otp: string, name?: string) => Promise<void>;
+	hasPermission: (permissions: PermissionMap) => Promise<boolean>;
+	checkRolePermission: (params: {
+		permissions: PermissionMap;
+		role: AdminRole;
+	}) => boolean;
+	hasRole: (role: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -116,6 +125,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		[refetch],
 	);
 
+	const hasPermission = useCallback(async (permissions: PermissionMap) => {
+		const result = await authClient.admin.hasPermission({
+			permissions,
+		});
+		return result.data?.success ?? false;
+	}, []);
+
+	const checkRolePermission = useCallback(
+		(params: { permissions: PermissionMap; role: AdminRole }) => {
+			return authClient.admin.checkRolePermission(params);
+		},
+		[],
+	);
+
+	const hasRole = useCallback(
+		(role: string) => {
+			const user = session?.user;
+			if (!user?.role) return false;
+			return user.role
+				.split(",")
+				.map((r) => r.trim())
+				.includes(role);
+		},
+		[session],
+	);
+
 	const value = useMemo(
 		() => ({
 			user: session?.user ? (session.user as AuthUser) : null,
@@ -127,6 +162,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			refreshUser,
 			sendVerificationOtp,
 			signInEmailOtp,
+			hasPermission,
+			checkRolePermission,
+			hasRole,
 		}),
 		[
 			session,
@@ -137,6 +175,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			refreshUser,
 			sendVerificationOtp,
 			signInEmailOtp,
+			hasPermission,
+			checkRolePermission,
+			hasRole,
 		],
 	);
 

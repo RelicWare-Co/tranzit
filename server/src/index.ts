@@ -1,12 +1,16 @@
 import { Hono } from "hono";
 import { auth } from "./auth";
 import { bookingsApp } from "./bookings";
+import { db, schema } from "./db";
+import { requirePermissions, requireRole } from "./permission-guard";
 import {
 	reservationInstanceApp,
 	reservationSeriesApp,
 } from "./reservation-series";
 import { scheduleApp } from "./schedule";
 import { staffApp } from "./staff";
+const { user } = schema;
+import { sql } from "drizzle-orm";
 
 type AppVariables = {
 	user: typeof auth.$Infer.Session.user | null;
@@ -146,66 +150,78 @@ app.use("*", async (c, next) => {
 });
 
 /**
- * Admin authorization guard.
- *
- * Applied to both Better Auth admin provider endpoints (/api/auth/admin/*)
- * and future domain admin endpoints (/api/admin/*).
+ * Admin authorization guard for Better Auth admin provider endpoints.
  *
  * - No session → 401 UNAUTHENTICATED
- * - Session present but user.role !== "admin" → 403 FORBIDDEN
- * - Admin session → pass through (the auth handler or domain handler
- *   handles the request normally)
- *
- * This is defense-in-depth on top of the Better Auth admin plugin's own
- * middleware, ensuring consistent 401/403 semantics at the Hono layer.
+ * - No admin/staff/auditor role → 403 FORBIDDEN
  */
-const ADMIN_ROLE = "admin";
+app.use("/api/auth/admin/*", requireRole("admin"));
 
-app.use("/api/auth/admin/*", async (c, next) => {
-	const user = c.get("user");
+app.post("/api/admin/onboard", async (c) => {
+	const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
-	if (!user) {
+	if (!session) {
 		return c.json(
-			{ code: "UNAUTHENTICATED", message: "Authentication required" },
+			{ code: "UNAUTHENTICATED", message: "Debes iniciar sesion" },
 			401,
 		);
 	}
 
-	if (user.role !== ADMIN_ROLE) {
+	const existingAdmins = await db
+		.select({ id: user.id })
+		.from(user)
+		.where(sql`${user.role} LIKE '%admin%'`);
+
+	if (existingAdmins.length > 0) {
 		return c.json(
 			{
-				code: "FORBIDDEN",
-				message: "Admin privileges required for this operation",
+				code: "ADMIN_ALREADY_EXISTS",
+				message: "El onboarding de admin ya fue completado",
 			},
 			403,
 		);
 	}
 
-	await next();
+	await db
+		.update(user)
+		.set({ role: "admin" })
+		.where(sql`${user.id} = ${session.user.id}`);
+
+	return c.json({ success: true, role: "admin" });
 });
 
-app.use("/api/admin/*", async (c, next) => {
-	const user = c.get("user");
+app.get("/api/admin/onboard/status", async (c) => {
+	const existingAdmins = await db
+		.select({ id: user.id })
+		.from(user)
+		.where(sql`${user.role} LIKE '%admin%'`);
 
-	if (!user) {
-		return c.json(
-			{ code: "UNAUTHENTICATED", message: "Authentication required" },
-			401,
-		);
-	}
-
-	if (user.role !== ADMIN_ROLE) {
-		return c.json(
-			{
-				code: "FORBIDDEN",
-				message: "Admin privileges required for this operation",
-			},
-			403,
-		);
-	}
-
-	await next();
+	return c.json({ adminExists: existingAdmins.length > 0 });
 });
+
+/**
+ * Domain admin endpoints guard.
+ *
+ * Requires at least one of the platform roles (admin, staff, auditor).
+ * Individual route groups apply finer-grained permission guards.
+ */
+app.use("/api/admin/*", requireRole("admin", "staff", "auditor"));
+
+/**
+ * Permission guards for each domain module.
+ * These are applied BEFORE the route handlers mount.
+ */
+app.use("/api/admin/schedule/*", requirePermissions({ schedule: ["read"] }));
+app.use("/api/admin/staff/*", requirePermissions({ staff: ["read"] }));
+app.use("/api/admin/bookings/*", requirePermissions({ booking: ["read"] }));
+app.use(
+	"/api/admin/reservation-series/*",
+	requirePermissions({ "reservation-series": ["read"] }),
+);
+app.use(
+	"/api/admin/reservations/*",
+	requirePermissions({ "reservation-series": ["read"] }),
+);
 
 /**
  * Application-level session endpoint.
@@ -335,35 +351,26 @@ app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) => {
 
 /**
  * Mount schedule CRUD routes under /api/admin/schedule/*
- * The admin auth guard is applied to /api/admin/* before this mount,
- * so all schedule routes are protected.
  */
 app.route("/api/admin/schedule", scheduleApp);
 
 /**
  * Mount staff profile and date override routes under /api/admin/staff/*
- * The admin auth guard is applied to /api/admin/* before this mount,
- * so all staff routes are protected.
  */
 app.route("/api/admin/staff", staffApp);
 
 /**
  * Mount booking routes under /api/admin/bookings/*
- * The admin auth guard is applied to /api/admin/* before this mount,
- * so all booking routes are protected.
  */
 app.route("/api/admin/bookings", bookingsApp);
 
 /**
  * Mount reservation series routes under /api/admin/reservation-series/*
- * The admin auth guard is applied to /api/admin/* before this mount,
- * so all series routes are protected.
  */
 app.route("/api/admin/reservation-series", reservationSeriesApp);
 
 /**
  * Mount single reservation instance routes under /api/admin/reservations/*
- * The admin auth guard is applied to /api/admin/* before this mount.
  */
 app.route("/api/admin/reservations", reservationInstanceApp);
 

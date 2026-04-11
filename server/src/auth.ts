@@ -1,8 +1,9 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
-import { admin, emailOTP } from "better-auth/plugins";
+import { admin as adminPlugin, emailOTP } from "better-auth/plugins";
 import { db, schema } from "./db";
 import { sendVerificationOtpEmail } from "./mailer";
+import { ac, admin, auditor, staff } from "./permissions";
 
 const secret = process.env.BETTER_AUTH_SECRET;
 
@@ -41,7 +42,15 @@ export const auth = betterAuth({
 		storage: "memory",
 	},
 	plugins: [
-		admin(),
+		adminPlugin({
+			ac,
+			roles: {
+				admin,
+				staff,
+				auditor,
+			},
+			defaultRole: "user",
+		}),
 		emailOTP({
 			otpLength,
 			expiresIn: otpExpiresIn,
