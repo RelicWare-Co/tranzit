@@ -620,6 +620,7 @@ app.post("/reassignments/preview", async (c) => {
  * Request body:
  * - reassignments: required, array of { bookingId, targetStaffUserId }
  * - executionMode: optional, "best_effort" (default) or "atomic"
+ * - previewToken: optional, token from previewReassignments for drift protection
  *
  * best_effort: applies each item, fails don't affect others
  * atomic: all succeed or all fail
@@ -675,6 +676,12 @@ app.post("/reassignments", async (c) => {
 		);
 	}
 
+	// If previewToken is provided but there are excluded items, reject
+	// This ensures preview->apply consistency
+	if (body.previewToken) {
+		// previewToken validation and drift detection is done in executeBulkReassignments
+	}
+
 	const result = await executeBulkReassignments(
 		body.reassignments.map(
 			(r: { bookingId: string; targetStaffUserId: string }) => ({
@@ -683,11 +690,27 @@ app.post("/reassignments", async (c) => {
 			}),
 		),
 		executionMode,
+		body.previewToken,
 	);
 
 	// Determine appropriate HTTP status
 	const status =
 		result.failedCount === 0 ? 200 : result.appliedCount === 0 ? 409 : 207; // Multi-status for partial success
+
+	// If PREVIEW_STALE, return 409 specifically
+	if (
+		result.results.length > 0 &&
+		result.results[0].error === "PREVIEW_STALE"
+	) {
+		return c.json(
+			{
+				code: "PREVIEW_STALE",
+				message: "Preview has expired or state has changed since preview",
+				...result,
+			},
+			409,
+		);
+	}
 
 	return c.json(result, status);
 });
