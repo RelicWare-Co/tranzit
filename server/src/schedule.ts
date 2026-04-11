@@ -60,6 +60,18 @@ const errorResponse = (code: string, message: string, status: number) =>
 		headers: { "Content-Type": "application/json" },
 	});
 
+const parsePositiveInteger = (value: unknown): number | null => {
+	const parsed = Number(value);
+	if (!Number.isInteger(parsed) || parsed <= 0) return null;
+	return parsed;
+};
+
+const parseNonNegativeInteger = (value: unknown): number | null => {
+	const parsed = Number(value);
+	if (!Number.isInteger(parsed) || parsed < 0) return null;
+	return parsed;
+};
+
 // =============================================================================
 // SCHEDULE TEMPLATES CRUD
 // =============================================================================
@@ -87,7 +99,7 @@ app.post("/templates", async (c) => {
 	}
 
 	const weekday = Number(body.weekday);
-	const slotDurationMinutes = Number(body.slotDurationMinutes);
+	const slotDurationMinutes = parsePositiveInteger(body.slotDurationMinutes);
 
 	// Validate weekday range
 	if (!isValidWeekday(weekday)) {
@@ -99,12 +111,34 @@ app.post("/templates", async (c) => {
 	}
 
 	// Validate slotDurationMinutes > 0
-	if (!Number.isInteger(slotDurationMinutes) || slotDurationMinutes <= 0) {
+	if (slotDurationMinutes === null) {
 		return errorResponse(
 			"INVALID_SLOT_DURATION",
 			"slotDurationMinutes must be a positive integer",
 			422,
 		);
+	}
+
+	if (body.bufferMinutes !== undefined) {
+		const bufferMinutes = parseNonNegativeInteger(body.bufferMinutes);
+		if (bufferMinutes === null) {
+			return errorResponse(
+				"INVALID_BUFFER_MINUTES",
+				"bufferMinutes must be a non-negative integer",
+				422,
+			);
+		}
+	}
+
+	if (body.slotCapacityLimit !== undefined && body.slotCapacityLimit !== null) {
+		const slotCapacityLimit = parsePositiveInteger(body.slotCapacityLimit);
+		if (slotCapacityLimit === null) {
+			return errorResponse(
+				"INVALID_SLOT_CAPACITY",
+				"slotCapacityLimit must be a positive integer or null",
+				422,
+			);
+		}
 	}
 
 	// Validate time formats
@@ -256,8 +290,8 @@ app.patch("/templates/:id", async (c) => {
 
 	// Validate and set slotDurationMinutes if provided
 	if (body.slotDurationMinutes !== undefined) {
-		const slotDurationMinutes = Number(body.slotDurationMinutes);
-		if (!Number.isInteger(slotDurationMinutes) || slotDurationMinutes <= 0) {
+		const slotDurationMinutes = parsePositiveInteger(body.slotDurationMinutes);
+		if (slotDurationMinutes === null) {
 			return errorResponse(
 				"INVALID_SLOT_DURATION",
 				"slotDurationMinutes must be a positive integer",
@@ -265,6 +299,34 @@ app.patch("/templates/:id", async (c) => {
 			);
 		}
 		updates.slotDurationMinutes = slotDurationMinutes;
+	}
+
+	if (body.bufferMinutes !== undefined) {
+		const bufferMinutes = parseNonNegativeInteger(body.bufferMinutes);
+		if (bufferMinutes === null) {
+			return errorResponse(
+				"INVALID_BUFFER_MINUTES",
+				"bufferMinutes must be a non-negative integer",
+				422,
+			);
+		}
+		updates.bufferMinutes = bufferMinutes;
+	}
+
+	if (body.slotCapacityLimit !== undefined) {
+		if (body.slotCapacityLimit === null) {
+			updates.slotCapacityLimit = null;
+		} else {
+			const slotCapacityLimit = parsePositiveInteger(body.slotCapacityLimit);
+			if (slotCapacityLimit === null) {
+				return errorResponse(
+					"INVALID_SLOT_CAPACITY",
+					"slotCapacityLimit must be a positive integer or null",
+					422,
+				);
+			}
+			updates.slotCapacityLimit = slotCapacityLimit;
+		}
 	}
 
 	// Validate time formats if provided
@@ -320,10 +382,6 @@ app.patch("/templates/:id", async (c) => {
 	if (body.afternoonStart !== undefined)
 		updates.afternoonStart = body.afternoonStart;
 	if (body.afternoonEnd !== undefined) updates.afternoonEnd = body.afternoonEnd;
-	if (body.bufferMinutes !== undefined)
-		updates.bufferMinutes = body.bufferMinutes;
-	if (body.slotCapacityLimit !== undefined)
-		updates.slotCapacityLimit = body.slotCapacityLimit;
 	if (body.notes !== undefined) updates.notes = body.notes;
 	if (body.isEnabled !== undefined) updates.isEnabled = body.isEnabled;
 
@@ -422,6 +480,42 @@ app.post("/overrides", async (c) => {
 			"Cannot set isClosed=true while providing opening hours or enabling morning/afternoon",
 			422,
 		);
+	}
+
+	if (
+		body.slotDurationMinutes !== undefined &&
+		body.slotDurationMinutes !== null
+	) {
+		const slotDurationMinutes = parsePositiveInteger(body.slotDurationMinutes);
+		if (slotDurationMinutes === null) {
+			return errorResponse(
+				"INVALID_SLOT_DURATION",
+				"slotDurationMinutes must be a positive integer or null",
+				422,
+			);
+		}
+	}
+
+	if (body.bufferMinutes !== undefined && body.bufferMinutes !== null) {
+		const bufferMinutes = parseNonNegativeInteger(body.bufferMinutes);
+		if (bufferMinutes === null) {
+			return errorResponse(
+				"INVALID_BUFFER_MINUTES",
+				"bufferMinutes must be a non-negative integer or null",
+				422,
+			);
+		}
+	}
+
+	if (body.slotCapacityLimit !== undefined && body.slotCapacityLimit !== null) {
+		const slotCapacityLimit = parsePositiveInteger(body.slotCapacityLimit);
+		if (slotCapacityLimit === null) {
+			return errorResponse(
+				"INVALID_SLOT_CAPACITY",
+				"slotCapacityLimit must be a positive integer or null",
+				422,
+			);
+		}
 	}
 
 	// Validate time formats
@@ -566,13 +660,21 @@ app.patch("/overrides/:id", async (c) => {
 
 	// Validate isClosed contradiction if being updated
 	const isClosed = body.isClosed ?? existing.isClosed;
+	const effectiveMorningEnabled =
+		body.morningEnabled ?? existing.morningEnabled;
+	const effectiveAfternoonEnabled =
+		body.afternoonEnabled ?? existing.afternoonEnabled;
+	const effectiveMorningStart = body.morningStart ?? existing.morningStart;
+	const effectiveMorningEnd = body.morningEnd ?? existing.morningEnd;
+	const effectiveAfternoonStart =
+		body.afternoonStart ?? existing.afternoonStart;
+	const effectiveAfternoonEnd = body.afternoonEnd ?? existing.afternoonEnd;
+
 	const hasOpeningHours =
-		body.morningStart ||
-		body.morningEnd ||
-		body.afternoonStart ||
-		body.afternoonEnd ||
-		body.morningEnabled === true ||
-		body.afternoonEnabled === true;
+		(effectiveMorningEnabled && effectiveMorningStart && effectiveMorningEnd) ||
+		(effectiveAfternoonEnabled &&
+			effectiveAfternoonStart &&
+			effectiveAfternoonEnd);
 
 	if (isClosed && hasOpeningHours) {
 		return errorResponse(
@@ -580,6 +682,53 @@ app.patch("/overrides/:id", async (c) => {
 			"Cannot set isClosed=true while providing opening hours or enabling morning/afternoon",
 			422,
 		);
+	}
+
+	if (body.slotDurationMinutes !== undefined) {
+		if (body.slotDurationMinutes === null) {
+			// allowed: explicit null to inherit from template
+		} else {
+			const slotDurationMinutes = parsePositiveInteger(
+				body.slotDurationMinutes,
+			);
+			if (slotDurationMinutes === null) {
+				return errorResponse(
+					"INVALID_SLOT_DURATION",
+					"slotDurationMinutes must be a positive integer or null",
+					422,
+				);
+			}
+		}
+	}
+
+	if (body.bufferMinutes !== undefined) {
+		if (body.bufferMinutes === null) {
+			// allowed
+		} else {
+			const bufferMinutes = parseNonNegativeInteger(body.bufferMinutes);
+			if (bufferMinutes === null) {
+				return errorResponse(
+					"INVALID_BUFFER_MINUTES",
+					"bufferMinutes must be a non-negative integer or null",
+					422,
+				);
+			}
+		}
+	}
+
+	if (body.slotCapacityLimit !== undefined) {
+		if (body.slotCapacityLimit === null) {
+			// allowed
+		} else {
+			const slotCapacityLimit = parsePositiveInteger(body.slotCapacityLimit);
+			if (slotCapacityLimit === null) {
+				return errorResponse(
+					"INVALID_SLOT_CAPACITY",
+					"slotCapacityLimit must be a positive integer or null",
+					422,
+				);
+			}
+		}
 	}
 
 	// Validate time formats
@@ -629,12 +778,24 @@ app.patch("/overrides/:id", async (c) => {
 	if (body.afternoonStart !== undefined)
 		updates.afternoonStart = body.afternoonStart;
 	if (body.afternoonEnd !== undefined) updates.afternoonEnd = body.afternoonEnd;
-	if (body.slotDurationMinutes !== undefined)
-		updates.slotDurationMinutes = body.slotDurationMinutes;
-	if (body.bufferMinutes !== undefined)
-		updates.bufferMinutes = body.bufferMinutes;
-	if (body.slotCapacityLimit !== undefined)
-		updates.slotCapacityLimit = body.slotCapacityLimit;
+	if (body.slotDurationMinutes !== undefined) {
+		updates.slotDurationMinutes =
+			body.slotDurationMinutes === null
+				? null
+				: parsePositiveInteger(body.slotDurationMinutes);
+	}
+	if (body.bufferMinutes !== undefined) {
+		updates.bufferMinutes =
+			body.bufferMinutes === null
+				? null
+				: parseNonNegativeInteger(body.bufferMinutes);
+	}
+	if (body.slotCapacityLimit !== undefined) {
+		updates.slotCapacityLimit =
+			body.slotCapacityLimit === null
+				? null
+				: parsePositiveInteger(body.slotCapacityLimit);
+	}
 	if (body.reason !== undefined) updates.reason = body.reason;
 
 	await db
@@ -702,6 +863,13 @@ const minutesToTime = (minutes: number): string => {
 	const h = Math.floor(minutes / 60) % 24;
 	const m = minutes % 60;
 	return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+const formatDateLocal = (date: Date): string => {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 };
 
 /**
@@ -855,6 +1023,20 @@ const generateSlotsForWindow = (
 	const windowEndMin = timeToMinutes(window.end);
 	const slotWithBuffer = slotDurationMinutes + bufferMinutes;
 
+	if (slotDurationMinutes <= 0) {
+		throw new Error("slotDurationMinutes must be > 0");
+	}
+
+	if (bufferMinutes < 0) {
+		throw new Error("bufferMinutes must be >= 0");
+	}
+
+	if (slotWithBuffer <= 0) {
+		throw new Error(
+			"slotDurationMinutes + bufferMinutes must be > 0 for slot generation",
+		);
+	}
+
 	let currentMin = windowStartMin;
 	while (currentMin + slotDurationMinutes <= windowEndMin) {
 		const slotEndMin = currentMin + slotDurationMinutes;
@@ -948,7 +1130,7 @@ app.post("/slots/generate", async (c) => {
 	const currentDate = new Date(fromDate);
 
 	while (currentDate <= toDate) {
-		const dateStr = currentDate.toISOString().split("T")[0];
+		const dateStr = formatDateLocal(currentDate);
 
 		// Get effective schedule for this date
 		const { schedule } = await getEffectiveSchedule(dateStr);
@@ -972,13 +1154,26 @@ app.post("/slots/generate", async (c) => {
 
 		// Generate all slots from all windows
 		const allSlots: { startTime: string; endTime: string }[] = [];
-		for (const window of schedule.windows) {
-			const windowSlots = generateSlotsForWindow(
-				window,
-				schedule.slotDurationMinutes,
-				schedule.bufferMinutes,
-			);
-			allSlots.push(...windowSlots);
+		try {
+			for (const window of schedule.windows) {
+				const windowSlots = generateSlotsForWindow(
+					window,
+					schedule.slotDurationMinutes,
+					schedule.bufferMinutes,
+				);
+				allSlots.push(...windowSlots);
+			}
+		} catch (err) {
+			errors.push({
+				date: dateStr,
+				code: "INVALID_SCHEDULE_CONFIGURATION",
+				message:
+					err instanceof Error
+						? err.message
+						: "Invalid schedule configuration for slot generation",
+			});
+			currentDate.setDate(currentDate.getDate() + 1);
+			continue;
 		}
 
 		// Filter out already-existing slots

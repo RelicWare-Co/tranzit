@@ -35,8 +35,263 @@ export interface CapacityCheck {
 }
 
 export interface CapacityConflict {
-	type: "GLOBAL_OVER_CAPACITY" | "STAFF_OVER_CAPACITY" | "STAFF_UNAVAILABLE";
+	type:
+		| "GLOBAL_OVER_CAPACITY"
+		| "STAFF_OVER_CAPACITY"
+		| "STAFF_UNAVAILABLE"
+		| "STAFF_NOT_ASSIGNABLE"
+		| "REQUEST_ACTIVE_BOOKING_CONFLICT"
+		| "HOLD_TOKEN_CONFLICT";
 	details: string;
+}
+
+type DbLike = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function getErrorMessage(err: unknown): string {
+	if (err instanceof Error) return err.message;
+	if (err && typeof err === "object" && "message" in err) {
+		const message = (err as { message?: unknown }).message;
+		if (typeof message === "string") return message;
+	}
+	try {
+		return JSON.stringify(err);
+	} catch {
+		return String(err);
+	}
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+	const message = getErrorMessage(err).toLowerCase();
+	return (
+		message.includes("sqlite_constraint") &&
+		message.includes("unique constraint")
+	);
+}
+
+function slotFitsWindow(
+	slotStartTime: string,
+	slotEndTime: string,
+	windowStart: string,
+	windowEnd: string,
+): boolean {
+	return slotStartTime >= windowStart && slotEndTime <= windowEnd;
+}
+
+/**
+ * Resolve staff availability and effective capacity for a specific slot context.
+ * This enforces:
+ * - staff active + assignable
+ * - date overrides (including partial-day windows)
+ * - weekly availability windows
+ */
+export async function resolveStaffAvailabilityAndCapacity(
+	dbLike: DbLike,
+	staffUserId: string,
+	slotDate: string,
+	slotStartTime: string,
+	slotEndTime: string,
+): Promise<{
+	available: boolean;
+	staffCapacity: number;
+	reason?: string;
+}> {
+	const staffProfile = await dbLike.query.staffProfile.findFirst({
+		where: eq(schema.staffProfile.userId, staffUserId),
+	});
+
+	if (!staffProfile) {
+		return {
+			available: false,
+			staffCapacity: 0,
+			reason: "Staff profile not found",
+		};
+	}
+
+	if (!staffProfile.isActive || !staffProfile.isAssignable) {
+		return {
+			available: false,
+			staffCapacity: 0,
+			reason: "Staff is not active or not assignable",
+		};
+	}
+
+	const dateOverride = await dbLike.query.staffDateOverride.findFirst({
+		where: and(
+			eq(schema.staffDateOverride.staffUserId, staffUserId),
+			eq(schema.staffDateOverride.overrideDate, slotDate),
+		),
+	});
+
+	let staffCapacity = staffProfile.defaultDailyCapacity;
+
+	if (dateOverride) {
+		if (!dateOverride.isAvailable) {
+			return {
+				available: false,
+				staffCapacity: 0,
+				reason: "Staff is unavailable on this date (override)",
+			};
+		}
+
+		if (dateOverride.capacityOverride !== null) {
+			staffCapacity = dateOverride.capacityOverride;
+		}
+
+		if (dateOverride.availableStartTime && dateOverride.availableEndTime) {
+			if (
+				!slotFitsWindow(
+					slotStartTime,
+					slotEndTime,
+					dateOverride.availableStartTime,
+					dateOverride.availableEndTime,
+				)
+			) {
+				return {
+					available: false,
+					staffCapacity: 0,
+					reason: "Staff is outside available window for this date",
+				};
+			}
+		}
+
+		return {
+			available: true,
+			staffCapacity,
+		};
+	}
+
+	const weekday = new Date(`${slotDate}T00:00:00`).getDay();
+	const weeklyAvailability = (staffProfile.weeklyAvailability ?? {}) as Record<
+		string,
+		{
+			enabled?: boolean;
+			morningStart?: string;
+			morningEnd?: string;
+			afternoonStart?: string;
+			afternoonEnd?: string;
+		}
+	>;
+
+	const dayConfig = weeklyAvailability[String(weekday)];
+
+	if (dayConfig?.enabled === false) {
+		return {
+			available: false,
+			staffCapacity: 0,
+			reason: "Staff is unavailable by weekly availability",
+		};
+	}
+
+	const hasMorningWindow = !!(dayConfig?.morningStart && dayConfig?.morningEnd);
+	const hasAfternoonWindow = !!(
+		dayConfig?.afternoonStart && dayConfig?.afternoonEnd
+	);
+	const hasAnyWindow =
+		!!dayConfig &&
+		(dayConfig.morningStart !== undefined ||
+			dayConfig.morningEnd !== undefined ||
+			dayConfig.afternoonStart !== undefined ||
+			dayConfig.afternoonEnd !== undefined);
+
+	if (hasAnyWindow && !hasMorningWindow && !hasAfternoonWindow) {
+		return {
+			available: false,
+			staffCapacity: 0,
+			reason: "Staff has invalid weekly availability window configuration",
+		};
+	}
+
+	if (hasMorningWindow || hasAfternoonWindow) {
+		const inMorning = hasMorningWindow
+			? slotFitsWindow(
+					slotStartTime,
+					slotEndTime,
+					dayConfig?.morningStart ?? "00:00",
+					dayConfig?.morningEnd ?? "00:00",
+				)
+			: false;
+
+		const inAfternoon = hasAfternoonWindow
+			? slotFitsWindow(
+					slotStartTime,
+					slotEndTime,
+					dayConfig?.afternoonStart ?? "00:00",
+					dayConfig?.afternoonEnd ?? "00:00",
+				)
+			: false;
+
+		if (!inMorning && !inAfternoon) {
+			return {
+				available: false,
+				staffCapacity: 0,
+				reason: "Staff is outside weekly availability windows",
+			};
+		}
+	}
+
+	return {
+		available: true,
+		staffCapacity,
+	};
+}
+
+export async function countActiveSlotBookings(
+	dbLike: DbLike,
+	slotId: string,
+	excludeBookingId?: string,
+): Promise<number> {
+	const conditions = [
+		eq(schema.booking.slotId, slotId),
+		eq(schema.booking.isActive, true),
+	];
+
+	if (excludeBookingId) {
+		conditions.push(ne(schema.booking.id, excludeBookingId));
+	}
+
+	const activeBookings = await dbLike.query.booking.findMany({
+		where: and(...conditions),
+	});
+
+	return activeBookings.length;
+}
+
+export async function countActiveStaffBookingsOnDate(
+	dbLike: DbLike,
+	staffUserId: string,
+	date: string,
+	excludeBookingId?: string,
+): Promise<number> {
+	const conditions = [
+		eq(schema.booking.staffUserId, staffUserId),
+		eq(schema.booking.isActive, true),
+	];
+
+	if (excludeBookingId) {
+		conditions.push(ne(schema.booking.id, excludeBookingId));
+	}
+
+	const staffBookings = await dbLike.query.booking.findMany({
+		where: and(...conditions),
+	});
+
+	if (staffBookings.length === 0) return 0;
+
+	const bookingSlotIds = staffBookings.map((booking) => booking.slotId);
+	const bookingSlots =
+		bookingSlotIds.length > 0
+			? await dbLike.query.appointmentSlot.findMany({
+					where: sql`${schema.appointmentSlot.id} IN ${bookingSlotIds}`,
+				})
+			: [];
+	const bookingSlotDateMap = new Map(
+		bookingSlots.map((slot) => [slot.id, slot.slotDate]),
+	);
+
+	return staffBookings.filter((booking) => {
+		const bookingSlotDate = bookingSlotDateMap.get(booking.slotId);
+		return bookingSlotDate === date;
+	}).length;
 }
 
 /**
@@ -49,7 +304,6 @@ export async function checkCapacity(
 ): Promise<CapacityCheck> {
 	const conflicts: CapacityConflict[] = [];
 
-	// Get slot details
 	const slot = await db.query.appointmentSlot.findFirst({
 		where: eq(schema.appointmentSlot.id, slotId),
 	});
@@ -72,20 +326,11 @@ export async function checkCapacity(
 		};
 	}
 
-	// Count active bookings for this slot (global capacity)
-	const slotActiveBookings = await db.query.booking.findMany({
-		where: and(
-			eq(schema.booking.slotId, slotId),
-			eq(schema.booking.isActive, true),
-		),
-	});
-
-	const globalUsed = slotActiveBookings.length;
+	const globalUsed = await countActiveSlotBookings(db, slotId);
 	const globalCapacity = slot.capacityLimit;
 	const globalRemaining =
 		globalCapacity !== null ? globalCapacity - globalUsed : null;
 
-	// Check global capacity
 	if (globalCapacity !== null && globalUsed >= globalCapacity) {
 		conflicts.push({
 			type: "GLOBAL_OVER_CAPACITY",
@@ -93,15 +338,15 @@ export async function checkCapacity(
 		});
 	}
 
-	// Get staff effective capacity for the date
-	const date = slot.slotDate;
+	const staffResolution = await resolveStaffAvailabilityAndCapacity(
+		db,
+		staffUserId,
+		slot.slotDate,
+		slot.startTime,
+		slot.endTime,
+	);
 
-	// Get staff profile
-	const staffProfile = await db.query.staffProfile.findFirst({
-		where: eq(schema.staffProfile.userId, staffUserId),
-	});
-
-	if (!staffProfile?.isActive || !staffProfile?.isAssignable) {
+	if (!staffResolution.available) {
 		return {
 			available: false,
 			globalCapacity,
@@ -113,77 +358,21 @@ export async function checkCapacity(
 			conflicts: [
 				{
 					type: "STAFF_UNAVAILABLE",
-					details: "Staff is not active or not assignable",
+					details: staffResolution.reason ?? "Staff is unavailable",
 				},
 				...conflicts,
 			],
 		};
 	}
 
-	// Check date override
-	const dateOverride = await db.query.staffDateOverride.findFirst({
-		where: and(
-			eq(schema.staffDateOverride.staffUserId, staffUserId),
-			eq(schema.staffDateOverride.overrideDate, date),
-		),
-	});
-
-	let staffCapacity = staffProfile.defaultDailyCapacity;
-
-	if (dateOverride) {
-		if (!dateOverride.isAvailable) {
-			return {
-				available: false,
-				globalCapacity,
-				globalUsed,
-				globalRemaining,
-				staffCapacity: 0,
-				staffUsed: 0,
-				staffRemaining: 0,
-				conflicts: [
-					{
-						type: "STAFF_UNAVAILABLE",
-						details: "Staff is unavailable on this date (override)",
-					},
-					...conflicts,
-				],
-			};
-		}
-		if (dateOverride.capacityOverride !== null) {
-			staffCapacity = dateOverride.capacityOverride;
-		}
-	}
-
-	// Count active bookings for this staff on this date
-	const staffDateBookings = await db.query.booking.findMany({
-		where: and(
-			eq(schema.booking.staffUserId, staffUserId),
-			eq(schema.booking.isActive, true),
-		),
-	});
-
-	// Get slot dates for each booking to filter by target date
-	const bookingSlotIds = staffDateBookings.map((b) => b.slotId);
-	const bookingSlots =
-		bookingSlotIds.length > 0
-			? await db.query.appointmentSlot.findMany({
-					where: sql`${schema.appointmentSlot.id} IN ${bookingSlotIds}`,
-				})
-			: [];
-	const bookingSlotDateMap = new Map(
-		bookingSlots.map((s) => [s.id, s.slotDate]),
+	const staffCapacity = staffResolution.staffCapacity;
+	const staffUsed = await countActiveStaffBookingsOnDate(
+		db,
+		staffUserId,
+		slot.slotDate,
 	);
-
-	// Filter to bookings on the same date
-	const staffBookingsForDate = staffDateBookings.filter((b) => {
-		const bSlotDate = bookingSlotDateMap.get(b.slotId);
-		return bSlotDate === date;
-	});
-
-	const staffUsed = staffBookingsForDate.length;
 	const staffRemaining = staffCapacity - staffUsed;
 
-	// Check staff capacity
 	if (staffUsed >= staffCapacity) {
 		conflicts.push({
 			type: "STAFF_OVER_CAPACITY",
@@ -250,13 +439,6 @@ export async function consumeCapacity(
 	try {
 		const result = await db.transaction(async (tx) => {
 			// Re-check global capacity within transaction
-			const slotBookings = await tx.query.booking.findMany({
-				where: and(
-					eq(schema.booking.slotId, slotId),
-					eq(schema.booking.isActive, true),
-				),
-			});
-
 			const slot = await tx.query.appointmentSlot.findFirst({
 				where: eq(schema.appointmentSlot.id, slotId),
 			});
@@ -266,70 +448,39 @@ export async function consumeCapacity(
 			}
 
 			const globalCapacity = slot.capacityLimit;
-			if (globalCapacity !== null && slotBookings.length >= globalCapacity) {
+			const globalUsed = await countActiveSlotBookings(tx, slotId);
+			if (globalCapacity !== null && globalUsed >= globalCapacity) {
 				throw {
 					type: "GLOBAL_OVER_CAPACITY",
 					message: `Slot has reached capacity limit (${globalCapacity})`,
 				};
 			}
 
-			// Re-check staff capacity within transaction
-			const staffBookings = await tx.query.booking.findMany({
-				where: and(
-					eq(schema.booking.staffUserId, staffUserId),
-					eq(schema.booking.isActive, true),
-				),
-			});
-
-			const date = slot.slotDate;
-
-			// Get slots for staff bookings to check dates
-			const staffBookingSlots = await tx.query.appointmentSlot.findMany({
-				where: sql`${schema.appointmentSlot.id} IN ${staffBookings.map(
-					(b) => b.slotId,
-				)}`,
-			});
-
-			const slotDateMap = new Map(
-				staffBookingSlots.map((s) => [s.id, s.slotDate]),
-			);
-			const staffBookingsOnDate = staffBookings.filter(
-				(b) => slotDateMap.get(b.slotId) === date,
+			const staffResolution = await resolveStaffAvailabilityAndCapacity(
+				tx,
+				staffUserId,
+				slot.slotDate,
+				slot.startTime,
+				slot.endTime,
 			);
 
-			// Get effective staff capacity
-			const staffProfile = await tx.query.staffProfile.findFirst({
-				where: eq(schema.staffProfile.userId, staffUserId),
-			});
-
-			if (!staffProfile) {
-				throw { type: "STAFF_UNAVAILABLE", message: "Staff profile not found" };
+			if (!staffResolution.available) {
+				throw {
+					type: "STAFF_UNAVAILABLE",
+					message: staffResolution.reason ?? "Staff unavailable for slot",
+				};
 			}
 
-			let staffCapacity = staffProfile.defaultDailyCapacity;
-			const dateOverride = await tx.query.staffDateOverride.findFirst({
-				where: and(
-					eq(schema.staffDateOverride.staffUserId, staffUserId),
-					eq(schema.staffDateOverride.overrideDate, date),
-				),
-			});
+			const staffUsed = await countActiveStaffBookingsOnDate(
+				tx,
+				staffUserId,
+				slot.slotDate,
+			);
 
-			if (dateOverride) {
-				if (!dateOverride.isAvailable) {
-					throw {
-						type: "STAFF_UNAVAILABLE",
-						message: "Staff unavailable on this date",
-					};
-				}
-				if (dateOverride.capacityOverride !== null) {
-					staffCapacity = dateOverride.capacityOverride;
-				}
-			}
-
-			if (staffBookingsOnDate.length >= staffCapacity) {
+			if (staffUsed >= staffResolution.staffCapacity) {
 				throw {
 					type: "STAFF_OVER_CAPACITY",
-					message: `Staff has reached daily capacity limit (${staffCapacity})`,
+					message: `Staff has reached daily capacity limit (${staffResolution.staffCapacity})`,
 				};
 			}
 
@@ -385,6 +536,46 @@ export async function consumeCapacity(
 				error: errorObj.message,
 			};
 		}
+
+		if (isUniqueConstraintError(err)) {
+			const message = getErrorMessage(err);
+
+			if (
+				kind === "citizen" &&
+				requestId &&
+				(message.includes("booking_active_request_unique_idx") ||
+					message.includes("booking.request_id"))
+			) {
+				return {
+					success: false,
+					conflicts: [
+						{
+							type: "REQUEST_ACTIVE_BOOKING_CONFLICT",
+							details: "Service request already has an active citizen booking",
+						},
+					],
+					error: "Service request already has an active citizen booking",
+				};
+			}
+
+			if (
+				holdToken &&
+				(message.includes("booking_hold_token_unique") ||
+					message.includes("booking.hold_token"))
+			) {
+				return {
+					success: false,
+					conflicts: [
+						{
+							type: "HOLD_TOKEN_CONFLICT",
+							details: "Hold token already exists",
+						},
+					],
+					error: "Hold token already exists",
+				};
+			}
+		}
+
 		throw err;
 	}
 }
@@ -438,13 +629,16 @@ export async function releaseCapacity(
 
 	switch (reason) {
 		case "cancelled":
+			updates.status = "cancelled";
 			updates.cancelledAt = now;
 			updates.statusReason = "Cancelled by user or admin";
 			break;
 		case "expired":
+			updates.status = "expired";
 			updates.statusReason = "Hold expired";
 			break;
 		case "attended":
+			updates.status = "attended";
 			updates.attendedAt = now;
 			updates.statusReason = "Service attended";
 			break;
@@ -564,6 +758,18 @@ export async function confirmBooking(bookingId: string): Promise<{
 		return {
 			success: false,
 			error: `Cannot confirm booking in status: ${booking.status}`,
+			conflicts: [],
+		};
+	}
+
+	if (
+		booking.holdExpiresAt &&
+		booking.holdExpiresAt.getTime() <= now.getTime()
+	) {
+		await releaseCapacity(bookingId, "expired");
+		return {
+			success: false,
+			error: "Booking hold expired",
 			conflicts: [],
 		};
 	}
@@ -699,6 +905,8 @@ export async function previewReassignment(
 		}
 	}
 
+	const isNoOp = booking.staffUserId === newStaffUserId;
+
 	// Get target staff
 	const targetStaff = await db.query.staffProfile.findFirst({
 		where: eq(schema.staffProfile.userId, newStaffUserId),
@@ -763,11 +971,16 @@ export async function previewReassignment(
 		return true;
 	});
 
+	if (isNoOp) {
+		filteredConflicts.length = 0;
+	}
+
 	const canReassign =
-		!staleSource &&
-		targetStaff.isActive &&
-		targetStaff.isAssignable &&
-		filteredConflicts.length === 0;
+		isNoOp ||
+		(!staleSource &&
+			targetStaff.isActive &&
+			targetStaff.isAssignable &&
+			filteredConflicts.length === 0);
 
 	return {
 		canReassign,
@@ -793,9 +1006,10 @@ export async function previewReassignment(
 		conflicts: filteredConflicts,
 		staleSource,
 		currentActiveBookingId,
-		error: canReassign
-			? undefined
-			: "Target staff lacks capacity or is not available",
+		error:
+			canReassign || isNoOp
+				? undefined
+				: "Target staff lacks capacity or is not available",
 	};
 }
 
@@ -1157,61 +1371,46 @@ export async function reassignBooking(
 				};
 			}
 
-			// Check staff availability
-			if (!targetStaff.isActive || !targetStaff.isAssignable) {
-				throw {
-					type: "STAFF_NOT_ASSIGNABLE",
-					message: "Target staff is not active or not assignable",
-				};
-			}
-
-			// Check date override
-			const dateOverride = await tx.query.staffDateOverride.findFirst({
-				where: and(
-					eq(schema.staffDateOverride.staffUserId, newStaffUserId),
-					eq(schema.staffDateOverride.overrideDate, slot.slotDate),
-				),
-			});
-
-			if (dateOverride && !dateOverride.isAvailable) {
-				throw {
-					type: "STAFF_UNAVAILABLE",
-					message: "Target staff is unavailable on this date",
-				};
-			}
-
-			// Check capacity for new staff (excluding current booking which will be moved)
-			// Count active bookings for this staff on this date
-			const staffDateBookings = await tx.query.booking.findMany({
-				where: and(
-					eq(schema.booking.staffUserId, newStaffUserId),
-					eq(schema.booking.isActive, true),
-				),
-			});
-
-			// Get slot dates to filter
-			const bookingSlotIds = staffDateBookings.map((b) => b.slotId);
-			const bookingSlots =
-				bookingSlotIds.length > 0
-					? await tx.query.appointmentSlot.findMany({
-							where: sql`${schema.appointmentSlot.id} IN ${bookingSlotIds}`,
-						})
-					: [];
-			const slotDateMap = new Map(bookingSlots.map((s) => [s.id, s.slotDate]));
-			const staffBookingsOnDate = staffDateBookings.filter(
-				(b) => slotDateMap.get(b.slotId) === slot.slotDate,
+			const staffResolution = await resolveStaffAvailabilityAndCapacity(
+				tx,
+				newStaffUserId,
+				slot.slotDate,
+				slot.startTime,
+				slot.endTime,
 			);
 
-			// Get effective staff capacity
-			let staffCapacity = targetStaff.defaultDailyCapacity;
-			if (dateOverride && dateOverride.capacityOverride !== null) {
-				staffCapacity = dateOverride.capacityOverride ?? staffCapacity;
+			if (!staffResolution.available) {
+				const isAssignableError =
+					staffResolution.reason === "Staff is not active or not assignable";
+				const isOverrideUnavailable =
+					staffResolution.reason ===
+					"Staff is unavailable on this date (override)";
+
+				const mappedMessage = isAssignableError
+					? "Target staff is not active or not assignable"
+					: isOverrideUnavailable
+						? "Target staff is unavailable on this date"
+						: (staffResolution.reason ?? "Target staff unavailable");
+
+				throw {
+					type: isAssignableError
+						? "STAFF_NOT_ASSIGNABLE"
+						: "STAFF_UNAVAILABLE",
+					message: mappedMessage,
+				};
 			}
 
-			if (staffBookingsOnDate.length >= staffCapacity) {
+			const staffUsed = await countActiveStaffBookingsOnDate(
+				tx,
+				newStaffUserId,
+				slot.slotDate,
+				booking.id,
+			);
+
+			if (staffUsed >= staffResolution.staffCapacity) {
 				throw {
 					type: "STAFF_OVER_CAPACITY",
-					message: `Target staff has reached daily capacity limit (${staffCapacity})`,
+					message: `Target staff has reached daily capacity limit (${staffResolution.staffCapacity})`,
 				};
 			}
 
@@ -1681,56 +1880,34 @@ async function previewReassignmentWithTx(
 	// Check capacity conflicts
 	const conflicts: CapacityConflict[] = [];
 
-	if (!targetStaff.isActive || !targetStaff.isAssignable) {
-		conflicts.push({
-			type: "STAFF_UNAVAILABLE",
-			details: "Target staff is not active or not assignable",
-		});
-	}
-
-	const dateOverride = await tx.query.staffDateOverride.findFirst({
-		where: and(
-			eq(schema.staffDateOverride.staffUserId, newStaffUserId),
-			eq(schema.staffDateOverride.overrideDate, slot.slotDate),
-		),
-	});
-
-	if (dateOverride && !dateOverride.isAvailable) {
-		conflicts.push({
-			type: "STAFF_UNAVAILABLE",
-			details: "Target staff is unavailable on this date (override)",
-		});
-	}
-
-	// Count staff bookings on this date
-	const staffDateBookings = await tx.query.booking.findMany({
-		where: and(
-			eq(schema.booking.staffUserId, newStaffUserId),
-			eq(schema.booking.isActive, true),
-		),
-	});
-
-	const bookingSlotIds = staffDateBookings.map((b) => b.slotId);
-	const bookingSlots =
-		bookingSlotIds.length > 0
-			? await tx.query.appointmentSlot.findMany({
-					where: sql`${schema.appointmentSlot.id} IN ${bookingSlotIds}`,
-				})
-			: [];
-	const slotDateMap = new Map(bookingSlots.map((s) => [s.id, s.slotDate]));
-	const staffBookingsOnDate = staffDateBookings.filter(
-		(b) => slotDateMap.get(b.slotId) === slot.slotDate,
+	const staffResolution = await resolveStaffAvailabilityAndCapacity(
+		tx,
+		newStaffUserId,
+		slot.slotDate,
+		slot.startTime,
+		slot.endTime,
 	);
 
-	let staffCapacity = targetStaff.defaultDailyCapacity;
-	if (dateOverride && dateOverride.capacityOverride !== null) {
-		staffCapacity = dateOverride.capacityOverride ?? staffCapacity;
+	if (!staffResolution.available) {
+		const isAssignableError =
+			staffResolution.reason === "Staff is not active or not assignable";
+		conflicts.push({
+			type: isAssignableError ? "STAFF_NOT_ASSIGNABLE" : "STAFF_UNAVAILABLE",
+			details: staffResolution.reason ?? "Target staff unavailable",
+		});
 	}
 
-	if (staffBookingsOnDate.length >= staffCapacity) {
+	const staffUsed = await countActiveStaffBookingsOnDate(
+		tx,
+		newStaffUserId,
+		slot.slotDate,
+		booking.id,
+	);
+
+	if (staffUsed >= staffResolution.staffCapacity) {
 		conflicts.push({
 			type: "STAFF_OVER_CAPACITY",
-			details: `Target staff has reached daily capacity limit (${staffCapacity})`,
+			details: `Target staff has reached daily capacity limit (${staffResolution.staffCapacity})`,
 		});
 	}
 

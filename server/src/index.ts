@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { auth } from "./auth";
 import { bookingsApp } from "./bookings";
-import { reservationSeriesApp } from "./reservation-series";
+import {
+	reservationInstanceApp,
+	reservationSeriesApp,
+} from "./reservation-series";
 import { scheduleApp } from "./schedule";
 import { staffApp } from "./staff";
 
@@ -35,7 +38,7 @@ const EMAIL_OTP_RATE_LIMIT_MAX = 3;
 const EMAIL_OTP_RATE_LIMIT_WINDOW_MS = 60_000; // 60 seconds
 
 // Cleanup old entries periodically (every 5 minutes)
-setInterval(
+const cleanupInterval = setInterval(
 	() => {
 		const now = Date.now();
 		for (const [email, entry] of emailOtpRateLimitStore.entries()) {
@@ -46,6 +49,7 @@ setInterval(
 	},
 	5 * 60 * 1000,
 );
+cleanupInterval.unref?.();
 
 /**
  * CORS configuration for auth endpoints.
@@ -361,7 +365,7 @@ app.route("/api/admin/reservation-series", reservationSeriesApp);
  * Mount single reservation instance routes under /api/admin/reservations/*
  * The admin auth guard is applied to /api/admin/* before this mount.
  */
-app.route("/api/admin/reservations", reservationSeriesApp);
+app.route("/api/admin/reservations", reservationInstanceApp);
 
 export default {
 	port: 3001,

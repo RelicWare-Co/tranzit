@@ -213,6 +213,7 @@ app.post("/", async (c) => {
 	}
 
 	// Validate defaultDailyCapacity > 0 if provided
+	let parsedDefaultCapacity: number | undefined;
 	if (body.defaultDailyCapacity !== undefined) {
 		const capacity = Number(body.defaultDailyCapacity);
 		if (!Number.isInteger(capacity) || capacity <= 0) {
@@ -222,6 +223,7 @@ app.post("/", async (c) => {
 				422,
 			);
 		}
+		parsedDefaultCapacity = capacity;
 	}
 
 	// Validate weeklyAvailability structure
@@ -240,7 +242,7 @@ app.post("/", async (c) => {
 		userId: body.userId,
 		isActive: body.isActive ?? true,
 		isAssignable: body.isAssignable ?? true,
-		defaultDailyCapacity: body.defaultDailyCapacity ?? 25,
+		defaultDailyCapacity: parsedDefaultCapacity ?? 25,
 		weeklyAvailability: weeklyAvResult.parsed,
 		notes: body.notes ?? null,
 		metadata: body.metadata ?? {},
@@ -368,6 +370,7 @@ app.patch("/:userId", async (c) => {
 	}
 
 	// Validate defaultDailyCapacity > 0 if provided
+	let parsedDefaultCapacity: number | undefined;
 	if (body.defaultDailyCapacity !== undefined) {
 		const capacity = Number(body.defaultDailyCapacity);
 		if (!Number.isInteger(capacity) || capacity <= 0) {
@@ -377,6 +380,7 @@ app.patch("/:userId", async (c) => {
 				422,
 			);
 		}
+		parsedDefaultCapacity = capacity;
 	}
 
 	// Validate weeklyAvailability structure if provided
@@ -417,8 +421,8 @@ app.patch("/:userId", async (c) => {
 
 	if (body.isActive !== undefined) updates.isActive = body.isActive;
 	if (body.isAssignable !== undefined) updates.isAssignable = body.isAssignable;
-	if (body.defaultDailyCapacity !== undefined)
-		updates.defaultDailyCapacity = body.defaultDailyCapacity;
+	if (parsedDefaultCapacity !== undefined)
+		updates.defaultDailyCapacity = parsedDefaultCapacity;
 	if (body.weeklyAvailability !== undefined) {
 		const weeklyAvResult = validateWeeklyAvailability(body.weeklyAvailability);
 		// Already validated above, so we know it's valid
@@ -545,6 +549,7 @@ app.post("/:userId/date-overrides", async (c) => {
 	}
 
 	// Validate capacityOverride > 0 if provided
+	let parsedCapacityOverride: number | undefined;
 	if (body.capacityOverride !== undefined) {
 		const capacity = Number(body.capacityOverride);
 		if (!Number.isInteger(capacity) || capacity <= 0) {
@@ -554,6 +559,7 @@ app.post("/:userId/date-overrides", async (c) => {
 				422,
 			);
 		}
+		parsedCapacityOverride = capacity;
 	}
 
 	// Validate time formats
@@ -614,7 +620,7 @@ app.post("/:userId/date-overrides", async (c) => {
 
 		if (body.isAvailable !== undefined) updates.isAvailable = body.isAvailable;
 		if (body.capacityOverride !== undefined)
-			updates.capacityOverride = body.capacityOverride;
+			updates.capacityOverride = parsedCapacityOverride;
 		if (body.availableStartTime !== undefined)
 			updates.availableStartTime = body.availableStartTime;
 		if (body.availableEndTime !== undefined)
@@ -641,7 +647,7 @@ app.post("/:userId/date-overrides", async (c) => {
 		staffUserId: userId,
 		overrideDate: body.overrideDate,
 		isAvailable: body.isAvailable ?? true,
-		capacityOverride: body.capacityOverride ?? null,
+		capacityOverride: parsedCapacityOverride ?? null,
 		availableStartTime: availableStartTime ?? null,
 		availableEndTime: availableEndTime ?? null,
 		notes: body.notes ?? null,
@@ -784,6 +790,7 @@ app.patch("/:userId/date-overrides/:overrideId", async (c) => {
 	}
 
 	// Validate capacityOverride > 0 if provided
+	let parsedPatchCapacityOverride: number | undefined;
 	if (body.capacityOverride !== undefined) {
 		const capacity = Number(body.capacityOverride);
 		if (!Number.isInteger(capacity) || capacity <= 0) {
@@ -793,6 +800,7 @@ app.patch("/:userId/date-overrides/:overrideId", async (c) => {
 				422,
 			);
 		}
+		parsedPatchCapacityOverride = capacity;
 	}
 
 	// Validate time formats
@@ -843,8 +851,8 @@ app.patch("/:userId/date-overrides/:overrideId", async (c) => {
 
 	if (body.overrideDate !== undefined) updates.overrideDate = body.overrideDate;
 	if (body.isAvailable !== undefined) updates.isAvailable = body.isAvailable;
-	if (body.capacityOverride !== undefined)
-		updates.capacityOverride = body.capacityOverride;
+	if (parsedPatchCapacityOverride !== undefined)
+		updates.capacityOverride = parsedPatchCapacityOverride;
 	if (body.availableStartTime !== undefined)
 		updates.availableStartTime = body.availableStartTime;
 	if (body.availableEndTime !== undefined)

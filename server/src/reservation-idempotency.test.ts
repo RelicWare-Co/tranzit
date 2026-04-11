@@ -290,6 +290,27 @@ async function cleanupTestData(
 	}
 }
 
+// Guard against stale rows from interrupted previous runs.
+beforeEach(async () => {
+	try {
+		await db
+			.delete(schema.booking)
+			.where(
+				sql`${schema.booking.slotId} IN (SELECT id FROM appointment_slot WHERE slot_date = ${TEST_SLOT_DATE})`,
+			);
+	} catch {
+		// Ignore
+	}
+
+	try {
+		await db
+			.delete(schema.appointmentSlot)
+			.where(eq(schema.appointmentSlot.slotDate, TEST_SLOT_DATE));
+	} catch {
+		// Ignore
+	}
+});
+
 // ---------------------------------------------------------------------------
 // Test suite: VAL-ADM-025 - Booking kind guard
 // ---------------------------------------------------------------------------

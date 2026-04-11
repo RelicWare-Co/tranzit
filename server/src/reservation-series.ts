@@ -43,7 +43,10 @@ import {
 	type CapacityConflict,
 	checkCapacity,
 	consumeCapacity,
+	countActiveSlotBookings,
+	countActiveStaffBookingsOnDate,
 	releaseCapacity,
+	resolveStaffAvailabilityAndCapacity,
 } from "./capacity";
 import { db, schema } from "./db";
 
@@ -53,6 +56,7 @@ type AppVariables = {
 };
 
 const app = new Hono<{ Variables: AppVariables }>();
+const instanceApp = new Hono<{ Variables: AppVariables }>();
 
 // =============================================================================
 // SHARED TYPES & ERROR HELPERS
@@ -230,6 +234,7 @@ function parseRRule(rruleStr: string): RecurrenceRule {
 	for (const part of parts) {
 		const [key, value] = part.split("=");
 		switch (key) {
+			case "FREQ":
 			case "FREQUENCY":
 				if (value === "DAILY") rule.frequency = "daily";
 				else if (value === "WEEKLY") rule.frequency = "weekly";
@@ -275,45 +280,80 @@ function generateOccurrences(
 	rule: RecurrenceRule,
 	startDate: string,
 	endDate: string,
-	existingDates: Set<string>,
+	existingOccurrenceKeys: Set<string>,
+	slotStartTime: string,
 ): string[] {
 	const dates: string[] = [];
 	const start = new Date(`${startDate}T00:00:00`);
-	const end = new Date(`${endDate}T23:59:59`);
+	const untilDate =
+		rule.untilDate && rule.untilDate < endDate ? rule.untilDate : endDate;
+	const end = new Date(`${untilDate}T23:59:59`);
 
-	const current = new Date(start);
 	let count = 0;
-	const maxCount = rule.count || 365; // Safety limit
+	const maxCount = rule.count || 365;
+	const interval = rule.interval && rule.interval > 0 ? rule.interval : 1;
 
-	while (current <= end && count < maxCount) {
-		const year = current.getFullYear();
-		const month = String(current.getMonth() + 1).padStart(2, "0");
-		const day = String(current.getDate()).padStart(2, "0");
-		const dateStr = `${year}-${month}-${day}`;
+	const formatDate = (date: Date) => {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, "0");
+		const day = String(date.getDate()).padStart(2, "0");
+		return `${year}-${month}-${day}`;
+	};
 
-		let include = true;
-		if (rule.byDayOfWeek && rule.byDayOfWeek.length > 0) {
-			include = rule.byDayOfWeek.includes(current.getDay());
+	if (
+		rule.frequency === "weekly" &&
+		rule.byDayOfWeek &&
+		rule.byDayOfWeek.length > 0
+	) {
+		const byDays = new Set(rule.byDayOfWeek);
+		const current = new Date(start);
+		while (current <= end && count < maxCount) {
+			const daysSinceStart = Math.floor(
+				(current.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+			);
+			const weekIndex = Math.floor(daysSinceStart / 7);
+			const onIntervalWeek = weekIndex % interval === 0;
+			const dateStr = formatDate(current);
+			const key = `${dateStr}|${slotStartTime}`;
+
+			if (
+				onIntervalWeek &&
+				byDays.has(current.getDay()) &&
+				!existingOccurrenceKeys.has(key)
+			) {
+				dates.push(dateStr);
+				count += 1;
+			}
+
+			current.setDate(current.getDate() + 1);
 		}
 
-		if (include && !existingDates.has(dateStr)) {
+		return dates;
+	}
+
+	const current = new Date(start);
+
+	while (current <= end && count < maxCount) {
+		const dateStr = formatDate(current);
+		const key = `${dateStr}|${slotStartTime}`;
+
+		if (!existingOccurrenceKeys.has(key)) {
 			dates.push(dateStr);
 			count++;
 		}
 
-		// Advance
 		switch (rule.frequency) {
 			case "daily":
-				current.setDate(current.getDate() + (rule.interval || 1));
+				current.setDate(current.getDate() + interval);
 				break;
 			case "weekly":
-				current.setDate(current.getDate() + (rule.interval || 1) * 7);
+				current.setDate(current.getDate() + interval * 7);
 				break;
 			case "biweekly":
 				current.setDate(current.getDate() + 14);
 				break;
 			case "monthly":
-				current.setMonth(current.getMonth() + (rule.interval || 1));
+				current.setMonth(current.getMonth() + interval);
 				break;
 		}
 	}
@@ -692,7 +732,7 @@ app.post("/", async (c) => {
 
 	const timezone = body.timezone || "America/Bogota";
 
-	// Find existing booking dates for this staff to avoid duplicates
+	// Find existing booking occurrences for this staff to avoid duplicates
 	const existingBookings = await db.query.booking.findMany({
 		where: and(
 			eq(schema.booking.staffUserId, body.staffUserId),
@@ -706,14 +746,17 @@ app.post("/", async (c) => {
 					where: sql`${schema.appointmentSlot.id} IN ${existingSlotIds}`,
 				})
 			: [];
-	const existingDates = new Set(existingSlots.map((s) => s.slotDate));
+	const existingOccurrenceKeys = new Set(
+		existingSlots.map((slot) => `${slot.slotDate}|${slot.startTime}`),
+	);
 
 	// Generate occurrence dates
 	const occurrences = generateOccurrences(
 		rule,
 		body.startDate,
 		body.endDate,
-		existingDates,
+		existingOccurrenceKeys,
+		baseSlot.startTime,
 	);
 
 	if (occurrences.length === 0) {
@@ -1048,6 +1091,51 @@ app.patch("/:id", async (c) => {
 	const updatedIds: string[] = [];
 	const now = new Date();
 
+	if (body.staffUserId !== undefined) {
+		const targetStaff = await db.query.staffProfile.findFirst({
+			where: eq(schema.staffProfile.userId, body.staffUserId),
+		});
+		if (!targetStaff) {
+			return errorResponse("NOT_FOUND", "Target staff profile not found", 404);
+		}
+
+		const reassignmentConflicts: Array<{
+			bookingId: string;
+			conflicts: CapacityConflict[];
+		}> = [];
+
+		for (const booking of toUpdate) {
+			if (booking.staffUserId === body.staffUserId) {
+				continue;
+			}
+			const capacityCheck = await checkCapacity(
+				booking.slotId,
+				body.staffUserId,
+			);
+			const conflicts = capacityCheck.conflicts.filter(
+				(conflict) => conflict.type !== "GLOBAL_OVER_CAPACITY",
+			);
+			if (conflicts.length > 0) {
+				reassignmentConflicts.push({ bookingId: booking.id, conflicts });
+			}
+		}
+
+		if (reassignmentConflicts.length > 0) {
+			return new Response(
+				JSON.stringify({
+					code: "CAPACITY_CONFLICT",
+					message:
+						"Cannot update series staff assignment due to staff availability/capacity conflicts",
+					conflicts: reassignmentConflicts,
+				}),
+				{
+					status: 409,
+					headers: { "Content-Type": "application/json" },
+				},
+			);
+		}
+	}
+
 	// Apply updates
 	if (body.staffUserId !== undefined) {
 		for (const booking of toUpdate) {
@@ -1163,6 +1251,51 @@ app.patch("/:id/from-date", async (c) => {
 
 	const updatedIds: string[] = [];
 	const now = new Date();
+
+	if (body.staffUserId !== undefined) {
+		const targetStaff = await db.query.staffProfile.findFirst({
+			where: eq(schema.staffProfile.userId, body.staffUserId),
+		});
+		if (!targetStaff) {
+			return errorResponse("NOT_FOUND", "Target staff profile not found", 404);
+		}
+
+		const reassignmentConflicts: Array<{
+			bookingId: string;
+			conflicts: CapacityConflict[];
+		}> = [];
+
+		for (const booking of toUpdate) {
+			if (booking.staffUserId === body.staffUserId) {
+				continue;
+			}
+			const capacityCheck = await checkCapacity(
+				booking.slotId,
+				body.staffUserId,
+			);
+			const conflicts = capacityCheck.conflicts.filter(
+				(conflict) => conflict.type !== "GLOBAL_OVER_CAPACITY",
+			);
+			if (conflicts.length > 0) {
+				reassignmentConflicts.push({ bookingId: booking.id, conflicts });
+			}
+		}
+
+		if (reassignmentConflicts.length > 0) {
+			return new Response(
+				JSON.stringify({
+					code: "CAPACITY_CONFLICT",
+					message:
+						"Cannot update series staff assignment due to staff availability/capacity conflicts",
+					conflicts: reassignmentConflicts,
+				}),
+				{
+					status: 409,
+					headers: { "Content-Type": "application/json" },
+				},
+			);
+		}
+	}
 
 	// Apply updates
 	if (body.staffUserId !== undefined) {
@@ -1323,7 +1456,7 @@ app.post("/:id/release", async (c) => {
  * GET /api/admin/reservations/:bookingId
  * Get a single reservation instance.
  */
-app.get("/:bookingId", async (c) => {
+instanceApp.get("/:bookingId", async (c) => {
 	const { bookingId } = c.req.param();
 
 	const booking = await db.query.booking.findFirst({
@@ -1361,7 +1494,7 @@ app.get("/:bookingId", async (c) => {
  * VAL-ADM-025: Rejects non-administrative booking kinds
  * VAL-ADM-022: Rejects non-mutable state bookings
  */
-app.patch("/:bookingId", async (c) => {
+instanceApp.patch("/:bookingId", async (c) => {
 	const { bookingId } = c.req.param();
 	const body = await c.req.json();
 	const ifMatch = parseIfMatch(c.req.header("If-Match"));
@@ -1445,7 +1578,7 @@ app.patch("/:bookingId", async (c) => {
  * VAL-ADM-025: Rejects non-administrative booking kinds
  * VAL-ADM-021: Release updates complete state and prevents reactivation
  */
-app.post("/:bookingId/release", async (c) => {
+instanceApp.post("/:bookingId/release", async (c) => {
 	const { bookingId } = c.req.param();
 	const body = await c.req.json();
 	const idempotencyKeyHeader = parseIdempotencyKey(
@@ -1770,122 +1903,192 @@ app.post("/:id/move", async (c) => {
 		return errResp;
 	}
 
-	// Check capacity for each instance
-	for (const booking of activeBookings) {
-		if (!booking.staffUserId) {
-			const errResp = errorResponse(
-				"INVALID_STATE",
-				"Booking has no staff assigned",
-				422,
-			);
+	let movedIds: string[] = [];
+
+	try {
+		movedIds = await db.transaction(async (tx) => {
+			const now = new Date();
+			const moved: string[] = [];
+
+			for (const booking of activeBookings) {
+				if (!booking.staffUserId) {
+					throw {
+						code: "INVALID_STATE",
+						status: 422,
+						message: "Booking has no staff assigned",
+					};
+				}
+
+				const currentSlot = await tx.query.appointmentSlot.findFirst({
+					where: eq(schema.appointmentSlot.id, booking.slotId),
+				});
+
+				if (!currentSlot) {
+					throw {
+						code: "INVALID_STATE",
+						status: 422,
+						message: "Current slot not found for booking",
+					};
+				}
+
+				const destinationStaffUserId =
+					body.targetStaffUserId || booking.staffUserId;
+
+				let destinationSlot = await tx.query.appointmentSlot.findFirst({
+					where: and(
+						eq(schema.appointmentSlot.slotDate, currentSlot.slotDate),
+						eq(schema.appointmentSlot.startTime, targetSlot.startTime),
+					),
+				});
+
+				if (!destinationSlot) {
+					const destinationSlotId = crypto.randomUUID();
+					await tx.insert(schema.appointmentSlot).values({
+						id: destinationSlotId,
+						slotDate: currentSlot.slotDate,
+						startTime: targetSlot.startTime,
+						endTime: targetSlot.endTime,
+						status: "open",
+						capacityLimit: targetSlot.capacityLimit,
+						generatedFrom: "series",
+						metadata: {
+							movedFromSeriesId: id,
+							targetSlotTemplateId: targetSlot.id,
+						},
+						createdAt: now,
+						updatedAt: now,
+					});
+
+					destinationSlot = await tx.query.appointmentSlot.findFirst({
+						where: eq(schema.appointmentSlot.id, destinationSlotId),
+					});
+				}
+
+				if (!destinationSlot) {
+					throw {
+						code: "INVALID_STATE",
+						status: 422,
+						message: "Failed to resolve destination slot",
+					};
+				}
+
+				const globalUsed = await countActiveSlotBookings(
+					tx,
+					destinationSlot.id,
+					booking.id,
+				);
+				if (
+					destinationSlot.capacityLimit !== null &&
+					globalUsed >= destinationSlot.capacityLimit
+				) {
+					throw {
+						code: "CAPACITY_CONFLICT",
+						status: 409,
+						conflicts: [
+							{
+								type: "GLOBAL_OVER_CAPACITY",
+								details: `Destination slot reached capacity (${destinationSlot.capacityLimit})`,
+							},
+						] as CapacityConflict[],
+					};
+				}
+
+				const staffResolution = await resolveStaffAvailabilityAndCapacity(
+					tx,
+					destinationStaffUserId,
+					destinationSlot.slotDate,
+					destinationSlot.startTime,
+					destinationSlot.endTime,
+				);
+
+				if (!staffResolution.available) {
+					throw {
+						code: "CAPACITY_CONFLICT",
+						status: 409,
+						conflicts: [
+							{
+								type: "STAFF_UNAVAILABLE",
+								details:
+									staffResolution.reason ?? "Destination staff unavailable",
+							},
+						] as CapacityConflict[],
+					};
+				}
+
+				const staffUsed = await countActiveStaffBookingsOnDate(
+					tx,
+					destinationStaffUserId,
+					destinationSlot.slotDate,
+					booking.id,
+				);
+				if (staffUsed >= staffResolution.staffCapacity) {
+					throw {
+						code: "CAPACITY_CONFLICT",
+						status: 409,
+						conflicts: [
+							{
+								type: "STAFF_OVER_CAPACITY",
+								details: `Destination staff reached daily capacity (${staffResolution.staffCapacity})`,
+							},
+						] as CapacityConflict[],
+					};
+				}
+
+				await tx
+					.update(schema.booking)
+					.set({
+						slotId: destinationSlot.id,
+						staffUserId: destinationStaffUserId,
+						statusReason: "Moved by administrative series operation",
+						updatedAt: now,
+					})
+					.where(eq(schema.booking.id, booking.id));
+
+				moved.push(booking.id);
+			}
+
+			return moved;
+		});
+	} catch (err) {
+		const payloadHash = hashPayload({
+			seriesId: id,
+			targetSlotId: body.targetSlotId,
+			targetStaffUserId: body.targetStaffUserId,
+		});
+
+		if (err && typeof err === "object" && "code" in err && "status" in err) {
+			const errorObj = err as {
+				code: string;
+				status: number;
+				message?: string;
+				conflicts?: CapacityConflict[];
+			};
+
+			const response =
+				errorObj.code === "CAPACITY_CONFLICT"
+					? conflictResponse(errorObj.conflicts ?? [])
+					: errorResponse(
+							errorObj.code,
+							errorObj.message ?? "Series move failed",
+							errorObj.status,
+						);
+
 			if (idempotencyKeyHeader) {
+				const responseBody = await response.json();
 				await storeIdempotencyKey(
 					idempotencyKeyHeader,
 					"move_series",
 					id,
-					hashPayload({
-						seriesId: id,
-						targetSlotId: body.targetSlotId,
-						targetStaffUserId: body.targetStaffUserId,
-					}),
-					422,
-					{ code: "INVALID_STATE", message: "Booking has no staff assigned" },
+					payloadHash,
+					errorObj.status,
+					responseBody,
 				);
 			}
-			return errResp;
-		}
-		const staffUserId = body.targetStaffUserId || booking.staffUserId;
-		const capacityCheck = await checkCapacity(body.targetSlotId, staffUserId);
-		if (!capacityCheck.available) {
-			const errResp = conflictResponse(capacityCheck.conflicts);
-			if (idempotencyKeyHeader) {
-				const body2 = await errResp.json();
-				await storeIdempotencyKey(
-					idempotencyKeyHeader,
-					"move_series",
-					id,
-					hashPayload({
-						seriesId: id,
-						targetSlotId: body.targetSlotId,
-						targetStaffUserId: body.targetStaffUserId,
-					}),
-					409,
-					body2,
-				);
-			}
-			return errResp;
-		}
-	}
 
-	// All capacity checks passed - perform the move
-	// VAL-ADM-005: Release capacity from origin slot before moving,
-	// then consume capacity for destination slot after updating
-	const now = new Date();
-	const movedIds: string[] = [];
-
-	for (const booking of activeBookings) {
-		// Safety check - staffUserId should always be present for series bookings
-		if (!booking.staffUserId) {
-			throw new Error("Booking has no staff assigned - unexpected state");
-		}
-		const originSlotId = booking.slotId;
-		const originStaffUserId = booking.staffUserId;
-		const destinationSlotId = body.targetSlotId;
-		const destinationStaffUserId =
-			body.targetStaffUserId || booking.staffUserId;
-
-		// Release capacity from origin (prevents double-capacity during move)
-		await releaseCapacity(booking.id, "cancelled");
-
-		// Update the booking to new slot/staff
-		await db
-			.update(schema.booking)
-			.set({
-				slotId: destinationSlotId,
-				staffUserId: destinationStaffUserId,
-				updatedAt: now,
-			})
-			.where(eq(schema.booking.id, booking.id));
-
-		// Consume capacity on destination slot/staff
-		const consumeResult = await consumeCapacity(
-			destinationSlotId,
-			destinationStaffUserId,
-			booking.kind as "administrative" | "citizen",
-			booking.requestId,
-			booking.citizenUserId,
-			booking.createdByUserId,
-			null,
-			null,
-		);
-
-		if (!consumeResult.success) {
-			// Rollback: restore original slot/staff
-			await db
-				.update(schema.booking)
-				.set({
-					slotId: originSlotId,
-					staffUserId: originStaffUserId,
-					updatedAt: now,
-				})
-				.where(eq(schema.booking.id, booking.id));
-			// Re-consume original slot to restore capacity state
-			await consumeCapacity(
-				originSlotId,
-				originStaffUserId,
-				booking.kind as "administrative" | "citizen",
-				booking.requestId,
-				booking.citizenUserId,
-				booking.createdByUserId,
-				null,
-				null,
-			);
-			throw new Error(
-				`Failed to consume capacity on destination: ${consumeResult.error}`,
-			);
+			return response;
 		}
 
-		movedIds.push(booking.id);
+		throw err;
 	}
 
 	const responseBody = {
@@ -1927,7 +2130,7 @@ app.post("/:id/move", async (c) => {
  * VAL-ADM-025: Rejects non-administrative booking kinds
  * VAL-ADM-022: Rejects non-mutable state bookings
  */
-app.post("/:bookingId/move", async (c) => {
+instanceApp.post("/:bookingId/move", async (c) => {
 	const { bookingId } = c.req.param();
 	const body = await c.req.json();
 	const idempotencyKeyHeader = parseIdempotencyKey(
@@ -2104,88 +2307,141 @@ app.post("/:bookingId/move", async (c) => {
 
 	const staffUserId = body.targetStaffUserId || booking.staffUserId;
 
-	// Check capacity for target
-	const capacityCheck = await checkCapacity(body.targetSlotId, staffUserId);
-	if (!capacityCheck.available) {
-		const errResp = conflictResponse(capacityCheck.conflicts);
-		if (idempotencyKeyHeader) {
-			const body2 = await errResp.json();
-			await storeIdempotencyKey(
-				idempotencyKeyHeader,
-				"move",
-				bookingId,
-				hashPayload({
-					bookingId,
-					targetSlotId: body.targetSlotId,
-					targetStaffUserId: body.targetStaffUserId,
-				}),
-				409,
-				body2,
+	try {
+		await db.transaction(async (tx) => {
+			const currentBooking = await tx.query.booking.findFirst({
+				where: eq(schema.booking.id, bookingId),
+			});
+
+			if (!currentBooking?.isActive) {
+				throw {
+					code: "BOOKING_NOT_MUTABLE",
+					status: 409,
+					message: "Reservation is no longer mutable",
+				};
+			}
+
+			const destinationSlot = await tx.query.appointmentSlot.findFirst({
+				where: eq(schema.appointmentSlot.id, body.targetSlotId),
+			});
+			if (!destinationSlot) {
+				throw {
+					code: "NOT_FOUND",
+					status: 404,
+					message: "Target slot not found",
+				};
+			}
+
+			const globalUsed = await countActiveSlotBookings(
+				tx,
+				destinationSlot.id,
+				currentBooking.id,
 			);
+			if (
+				destinationSlot.capacityLimit !== null &&
+				globalUsed >= destinationSlot.capacityLimit
+			) {
+				throw {
+					code: "CAPACITY_CONFLICT",
+					status: 409,
+					conflicts: [
+						{
+							type: "GLOBAL_OVER_CAPACITY",
+							details: `Destination slot reached capacity (${destinationSlot.capacityLimit})`,
+						},
+					] as CapacityConflict[],
+				};
+			}
+
+			const staffResolution = await resolveStaffAvailabilityAndCapacity(
+				tx,
+				staffUserId,
+				destinationSlot.slotDate,
+				destinationSlot.startTime,
+				destinationSlot.endTime,
+			);
+			if (!staffResolution.available) {
+				throw {
+					code: "CAPACITY_CONFLICT",
+					status: 409,
+					conflicts: [
+						{
+							type: "STAFF_UNAVAILABLE",
+							details:
+								staffResolution.reason ?? "Destination staff unavailable",
+						},
+					] as CapacityConflict[],
+				};
+			}
+
+			const staffUsed = await countActiveStaffBookingsOnDate(
+				tx,
+				staffUserId,
+				destinationSlot.slotDate,
+				currentBooking.id,
+			);
+			if (staffUsed >= staffResolution.staffCapacity) {
+				throw {
+					code: "CAPACITY_CONFLICT",
+					status: 409,
+					conflicts: [
+						{
+							type: "STAFF_OVER_CAPACITY",
+							details: `Destination staff reached daily capacity (${staffResolution.staffCapacity})`,
+						},
+					] as CapacityConflict[],
+				};
+			}
+
+			await tx
+				.update(schema.booking)
+				.set({
+					slotId: destinationSlot.id,
+					staffUserId: staffUserId,
+					statusReason: "Moved by administrative instance operation",
+					updatedAt: new Date(),
+				})
+				.where(eq(schema.booking.id, bookingId));
+		});
+	} catch (err) {
+		const payloadHash = hashPayload({
+			bookingId,
+			targetSlotId: body.targetSlotId,
+			targetStaffUserId: body.targetStaffUserId,
+		});
+
+		if (err && typeof err === "object" && "code" in err && "status" in err) {
+			const errorObj = err as {
+				code: string;
+				status: number;
+				message?: string;
+				conflicts?: CapacityConflict[];
+			};
+			const response =
+				errorObj.code === "CAPACITY_CONFLICT"
+					? conflictResponse(errorObj.conflicts ?? [])
+					: errorResponse(
+							errorObj.code,
+							errorObj.message ?? "Reservation move failed",
+							errorObj.status,
+						);
+
+			if (idempotencyKeyHeader) {
+				const responseBody = await response.json();
+				await storeIdempotencyKey(
+					idempotencyKeyHeader,
+					"move",
+					bookingId,
+					payloadHash,
+					errorObj.status,
+					responseBody,
+				);
+			}
+
+			return response;
 		}
-		return errResp;
-	}
 
-	// Perform the move
-	// VAL-ADM-005: Release capacity from origin slot before moving,
-	// then consume capacity for destination slot after updating
-	const now = new Date();
-	const originSlotId = booking.slotId;
-	const originStaffUserId = booking.staffUserId;
-	const destinationSlotId = body.targetSlotId;
-	const destinationStaffUserId = staffUserId;
-
-	// Release capacity from origin (prevents double-capacity during move)
-	await releaseCapacity(bookingId, "cancelled");
-
-	// Update the booking to new slot/staff
-	await db
-		.update(schema.booking)
-		.set({
-			slotId: destinationSlotId,
-			staffUserId: destinationStaffUserId,
-			updatedAt: now,
-		})
-		.where(eq(schema.booking.id, bookingId));
-
-	// Consume capacity on destination slot/staff
-	const consumeResult = await consumeCapacity(
-		destinationSlotId,
-		destinationStaffUserId,
-		booking.kind as "administrative" | "citizen",
-		booking.requestId,
-		booking.citizenUserId,
-		booking.createdByUserId,
-		null,
-		null,
-	);
-
-	if (!consumeResult.success) {
-		// Rollback: restore original slot/staff
-		await db
-			.update(schema.booking)
-			.set({
-				slotId: originSlotId,
-				staffUserId: originStaffUserId,
-				updatedAt: now,
-			})
-			.where(eq(schema.booking.id, bookingId));
-		// Re-consume original slot to restore capacity state
-		await consumeCapacity(
-			originSlotId,
-			originStaffUserId,
-			booking.kind as "administrative" | "citizen",
-			booking.requestId,
-			booking.citizenUserId,
-			booking.createdByUserId,
-			null,
-			null,
-		);
-		return errorResponse(
-			"CAPACITY_CONFLICT",
-			`Failed to consume capacity on destination: ${consumeResult.error}`,
-			409,
-		);
+		throw err;
 	}
 
 	const updated = await db.query.booking.findFirst({
@@ -2211,4 +2467,4 @@ app.post("/:bookingId/move", async (c) => {
 	return c.json(updated);
 });
 
-export { app as reservationSeriesApp };
+export { app as reservationSeriesApp, instanceApp as reservationInstanceApp };

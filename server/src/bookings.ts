@@ -15,7 +15,7 @@
  * - Release is idempotent
  */
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { Hono } from "hono";
 import {
 	type CapacityConflict,
@@ -59,6 +59,9 @@ const conflictResponse = (conflicts: CapacityConflict[]) =>
 			headers: { "Content-Type": "application/json" },
 		},
 	);
+
+const isValidIsoDate = (date: string): boolean =>
+	/^\d{4}-\d{2}-\d{2}$/.test(date);
 
 // =============================================================================
 // BOOKING CREATION
@@ -123,7 +126,7 @@ app.post("/", async (c) => {
 
 	// Parse hold expiration if provided
 	let holdExpiresAt: Date | null = null;
-	if (body.holdExpiresAt) {
+	if (body.kind === "citizen" && body.holdExpiresAt) {
 		holdExpiresAt = new Date(body.holdExpiresAt);
 		if (Number.isNaN(holdExpiresAt.getTime())) {
 			return errorResponse(
@@ -134,6 +137,9 @@ app.post("/", async (c) => {
 		}
 	}
 
+	const holdToken =
+		body.kind === "citizen" ? (body.holdToken ?? crypto.randomUUID()) : null;
+
 	// Attempt to consume capacity and create booking
 	const result = await consumeCapacity(
 		body.slotId,
@@ -142,7 +148,7 @@ app.post("/", async (c) => {
 		body.requestId ?? null,
 		body.citizenUserId ?? null,
 		c.get("user")?.id ?? null,
-		body.holdToken ?? crypto.randomUUID(), // Generate hold token
+		holdToken,
 		holdExpiresAt,
 	);
 
@@ -190,6 +196,22 @@ app.get("/", async (c) => {
 		dateTo,
 	} = c.req.query();
 
+	if (dateFrom && !isValidIsoDate(dateFrom)) {
+		return errorResponse("INVALID_DATE", "dateFrom must be YYYY-MM-DD", 422);
+	}
+
+	if (dateTo && !isValidIsoDate(dateTo)) {
+		return errorResponse("INVALID_DATE", "dateTo must be YYYY-MM-DD", 422);
+	}
+
+	if (dateFrom && dateTo && dateTo < dateFrom) {
+		return errorResponse(
+			"INVALID_DATE_RANGE",
+			"dateTo must be greater than or equal to dateFrom",
+			422,
+		);
+	}
+
 	// Build conditions
 	const conditions = [];
 
@@ -226,26 +248,23 @@ app.get("/", async (c) => {
 
 	// If date filters are provided, filter by slot date
 	if (dateFrom || dateTo) {
-		// Get all slots to filter
-		const slotIds = bookings.map((b) => b.slotId);
-		if (slotIds.length > 0) {
-			const slots = await db.query.appointmentSlot.findMany({
-				where: and(
-					dateFrom ? eq(schema.appointmentSlot.slotDate, dateFrom) : undefined,
-					// Note: This is simplified; in production you'd want proper range query
-				),
-			});
-
-			const slotDateMap = new Map(slots.map((s) => [s.id, s.slotDate]));
-
-			bookings = bookings.filter((b) => {
-				const date = slotDateMap.get(b.slotId);
-				if (!date) return false;
-				if (dateFrom && date < dateFrom) return false;
-				if (dateTo && date > dateTo) return false;
-				return true;
-			});
+		const slotDateConditions = [];
+		if (dateFrom) {
+			slotDateConditions.push(gte(schema.appointmentSlot.slotDate, dateFrom));
 		}
+		if (dateTo) {
+			slotDateConditions.push(lte(schema.appointmentSlot.slotDate, dateTo));
+		}
+
+		const matchingSlots = await db.query.appointmentSlot.findMany({
+			where:
+				slotDateConditions.length > 0 ? and(...slotDateConditions) : undefined,
+		});
+
+		const slotDateMap = new Map(
+			matchingSlots.map((slot) => [slot.id, slot.slotDate]),
+		);
+		bookings = bookings.filter((booking) => slotDateMap.has(booking.slotId));
 	}
 
 	// Enrich with slot and staff info

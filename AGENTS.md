@@ -30,19 +30,22 @@ Principios que debes preservar:
 Antes de tocar el dominio o el esquema, lee estos archivos:
 - `server/src/db/SCHEMA.md`
 - `server/src/db/schema.ts`
+- `server/src/BACKEND_STATUS.md`
 
 Notas importantes:
 - `server/src/db/SCHEMA.md` explica por que el modelo esta simplificado como esta y que invariantes deben respetarse.
+- `server/src/BACKEND_STATUS.md` describe las rutas y servicios backend realmente implementados hoy.
 - `README.md` sigue siendo casi boilerplate de TanStack/Vite. No lo tomes como documentacion funcional del proyecto.
-- Este `AGENTS.md` y `server/src/db/SCHEMA.md` son mas confiables que el `README.md`.
+- Este `AGENTS.md`, `server/src/db/SCHEMA.md` y `server/src/BACKEND_STATUS.md` son mas confiables que el `README.md`.
 
 ## Estado actual del proyecto
 
 No asumas que el sistema ya esta completo. Hoy el repo esta en una fase intermedia:
 
 - El frontend ya tiene landing, login, perfil y una experiencia visual de agendamiento.
-- El backend ya tiene auth y esquema del dominio.
-- El dominio de citas existe en BD, pero todavia casi no hay endpoints ni servicios reales de negocio.
+- El backend ya tiene auth, esquema del dominio y una capa administrativa funcional.
+- Ya existen endpoints reales para schedule, staff, bookings y reservation-series, con capacidad y reasignacion en backend.
+- Todavia faltan APIs ciudadanas completas para service request/documentos/flujo OTP de punta a punta.
 
 Hoy hay varias piezas mock o incompletas:
 - `src/routes/agendar.tsx` es mayormente UI/prototipo con estado local, `setTimeout` y flujo simulado.
@@ -99,6 +102,7 @@ Backend:
 - `server/src/mailer.ts`: envio de OTP por correo
 - `server/src/db/schema.ts`: schema Drizzle
 - `server/src/db/SCHEMA.md`: explicacion del modelo e invariantes
+- `server/src/BACKEND_STATUS.md`: inventario funcional real del backend (rutas/servicios/estado)
 
 Migraciones:
 - migraciones canonicas: `server/drizzle/000*.sql`
@@ -272,23 +276,27 @@ Si vas a implementar algo real:
 
 ## Estado real de backend
 
-Hoy el backend expone muy poco:
-- `GET /`
-- `GET /session`
-- `/api/auth/*`
+Hoy el backend ya expone:
+- `GET /`, `GET /session`, `/api/auth/*` (Better Auth + OTP),
+- `/api/admin/schedule/*` (templates, overrides, generacion y consulta de slots),
+- `/api/admin/staff/*` (perfil operativo, overrides por fecha, disponibilidad efectiva),
+- `/api/admin/bookings/*` (creacion/confirmacion/liberacion/reasignacion y bulk reassign),
+- `/api/admin/reservation-series/*` y `/api/admin/reservations/*` (series administrativas, mutaciones por instancia, move/release con idempotencia).
 
-No existe aun una capa completa para:
-- service requests,
-- documents,
-- slots,
-- bookings,
-- assignment,
-- admin backoffice.
+El detalle endpoint por endpoint vive en `server/src/BACKEND_STATUS.md`.
+
+Lo que todavia no esta completo:
+- APIs ciudadanas de service requests,
+- flujo documental ciudadano completo,
+- integracion frontend-backend de punta a punta para el flujo ciudadano.
 
 Si vas a construir esa parte:
 - manten la logica critica en backend,
 - no pongas la autoridad de disponibilidad en frontend,
 - diseña APIs alrededor del dominio, no solo CRUD generico.
+
+Cuando cambies rutas o servicios backend:
+- actualiza `server/src/BACKEND_STATUS.md` en el mismo cambio.
 
 ## Workflow para cambios de schema
 
