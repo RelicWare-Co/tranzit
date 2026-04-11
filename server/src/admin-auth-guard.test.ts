@@ -458,8 +458,6 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 				},
 			},
 		);
-		const _adminSessionCookie = getSessionCookieFromResponse(signInRes);
-
 		// 3. Set the user's role to admin using the admin API.
 		// Since we don't have an admin session yet to call the endpoint,
 		// we directly manipulate the in-memory db to set the role,
@@ -541,8 +539,6 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 				},
 			},
 		);
-		const _sessionCookie = getSessionCookieFromResponse(signInRes);
-
 		// Directly set role in the in-memory db (simulates setRole API)
 		const userRecord = db.user.find(
 			(u: Record<string, unknown>) => u.id === signInBody.user.id,

@@ -1,0 +1,90 @@
+{
+  "milestone": "auth-separation",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
+    "typecheck": { "passed": true, "command": "bunx tsc --noEmit", "exitCode": 0 },
+    "typecheck-server": { "passed": true, "command": "cd server && bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 },
+    "build": { "passed": true, "command": "bun run build", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document the pattern of relaxing biome lint rules for test files (noExplicitAny off, noUnusedVariables warn for **/*.test.ts files). This pattern was added to support Better Auth integration test patterns using explicit any for auth instance types. Future workers should understand this convention is acceptable for test files without needing to add overrides.",
+      "evidence": "Feature auth-admin-login-and-surface-guards added biome.json overrides for test files. AGENTS.md does not document this lint relaxation convention.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Clarify that when testing admin role promotion via integration tests, direct db mutation (userRecord.role = 'admin') is an acceptable approach for validating guard middleware behavior, even though it doesn't exercise the full setRole API pipeline. The test scope (guarding) is correctly served by this approach.",
+      "evidence": "Feature auth-admin-login-and-surface-guards test for VAL-AUTH-010 uses direct db mutation. Reviewer noted this is acceptable but worth documenting.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [],
+  "reviewDetails": [
+    {
+      "featureId": "auth-citizen-otp-hardening",
+      "status": "pass",
+      "commitId": "26241d7",
+      "issues": [
+        {
+          "severity": "non_blocking",
+          "description": "Rate limiting window=10 and max=100 configured. emailOTP plugin has its own internal rate limits (3 per 60s) which take precedence over the global limit.",
+          "location": "server/src/auth.ts:41"
+        },
+        {
+          "severity": "suggestion",
+          "description": "Better Auth rate limiting is disabled by default in development mode. Enabling it explicitly with { enabled: true, storage: 'memory' } is correct.",
+          "location": "server/src/auth.ts:38"
+        },
+        {
+          "severity": "non_blocking",
+          "description": "CORS origin is a single string. Hono's cors middleware with a string origin only matches that exact origin. Currently fine for single-origin deployment.",
+          "location": "server/src/index.ts:23"
+        }
+      ],
+      "sharedStateObservations": [
+        "Better Auth rate limiting disabled by default in development mode - documented in .factory/library/auth-hardening.md",
+        "Better Auth emailOTP plugin uses create-then-catch pattern for resend invalidation - documented in auth-hardening.md and SCHEMA.md"
+      ]
+    },
+    {
+      "featureId": "auth-admin-login-and-surface-guards",
+      "status": "pass",
+      "commitId": "45884ee",
+      "issues": [
+        {
+          "severity": "non_blocking",
+          "description": "VAL-AUTH-010 admin test sets role via direct in-memory db mutation rather than through a proper setRole API call. Acceptable given test scope (guarding) but doesn't exercise full role promotion pipeline.",
+          "location": "server/src/admin-auth-guard.test.ts:353"
+        },
+        {
+          "severity": "suggestion",
+          "description": "biome.json overrides for test files (noExplicitAny off, noUnusedVariables warn) are not documented in AGENTS.md or project conventions.",
+          "location": "biome.json:36"
+        },
+        {
+          "severity": "suggestion",
+          "description": "Test labeled under VAL-AUTH-009 actually uses email/password session instead of OTP session. Should be labeled distinctly to avoid confusion.",
+          "location": "server/src/admin-auth-guard.test.ts:309"
+        }
+      ],
+      "sharedStateObservations": [
+        "biome.json lint overrides for test files are not documented in AGENTS.md",
+        "Memory adapter doesn't enforce SQLite unique constraint on verification.identifier - test simulation via manual deletion is correct approach"
+      ]
+    }
+  ],
+  "previousRound": null
+}
