@@ -1,0 +1,45 @@
+{
+  "milestone": "schedule-overrides",
+  "round": 3,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 27,
+    "passed": 26,
+    "failed": 1,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-SCH-001", "VAL-SCH-002", "VAL-SCH-003", "VAL-SCH-004", "VAL-SCH-005",
+    "VAL-SCH-006", "VAL-SCH-007", "VAL-SCH-008", "VAL-SCH-009", "VAL-SCH-010",
+    "VAL-SCH-011", "VAL-SCH-012", "VAL-SCH-013", "VAL-SCH-014", "VAL-SCH-015",
+    "VAL-SCH-016", "VAL-SCH-017", "VAL-SCH-019", "VAL-SCH-020", "VAL-SCH-021",
+    "VAL-SCH-022", "VAL-SCH-023", "VAL-SCH-024", "VAL-SCH-025", "VAL-SCH-026",
+    "VAL-SCH-027"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-SCH-018",
+      "reason": "Design mismatch persists: assertion expects 422 for invalid slotDurationMinutes (≤0) and invalid time (25:00), but implementation ignores slotDurationMinutes parameter entirely and returns 200 (not 422) for invalid times. Fix feature 'schedule-slot-generation-params-validation' is still pending implementation. Implementation is functionally correct: no invalid slots are ever created."
+    }
+  ],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": ".factory/validation/schedule-overrides/user-testing/synthesis.json",
+  "testedAssertions": [],
+  "summary": "Round 3 validation: No new assertions to test. VAL-SCH-018 fix feature 'schedule-slot-generation-params-validation' is still pending. All 26 other assertions remain passed. Status unchanged from round 2.",
+  "evidenceDir": ".factory/validation/schedule-overrides/user-testing/evidence",
+  "keyFindings": {
+    "VAL-SCH-018": {
+      "description": "No crear slots inválidos por payload inválido",
+      "assertionExpects": "422 for slotDurationMinutes<=0 or invalid time 25:00",
+      "implementationContract": "slotDurationMinutes is NOT a parameter (ignored), invalid times skip date with 200",
+      "functionalCorrectness": "No invalid slots are ever created - slots always derive duration from schedule template (via getEffectiveSchedule)",
+      "assessment": "Design mismatch - fix feature 'schedule-slot-generation-params-validation' is pending. Implementation is correct for the actual API design (slot generation derives params from templates/overrides, not request body).",
+      "blockingFeature": {
+        "id": "schedule-slot-generation-params-validation",
+        "status": "pending",
+        "fulfills": ["VAL-SCH-018"]
+      }
+    }
+  }
+}
