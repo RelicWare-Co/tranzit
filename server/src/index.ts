@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { auth } from "./auth";
 import { bookingsApp } from "./bookings";
+import { reservationSeriesApp } from "./reservation-series";
 import { scheduleApp } from "./schedule";
 import { staffApp } from "./staff";
 
@@ -345,6 +346,19 @@ app.route("/api/admin/staff", staffApp);
  * so all booking routes are protected.
  */
 app.route("/api/admin/bookings", bookingsApp);
+
+/**
+ * Mount reservation series routes under /api/admin/reservation-series/*
+ * The admin auth guard is applied to /api/admin/* before this mount,
+ * so all series routes are protected.
+ */
+app.route("/api/admin/reservation-series", reservationSeriesApp);
+
+/**
+ * Mount single reservation instance routes under /api/admin/reservations/*
+ * The admin auth guard is applied to /api/admin/* before this mount.
+ */
+app.route("/api/admin/reservations", reservationSeriesApp);
 
 export default {
 	port: 3001,
