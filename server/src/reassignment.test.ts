@@ -125,8 +125,8 @@ async function createTestSlot(
 
 describe("VAL-RAS-001: Successful reassignment preserves single active booking", () => {
 	const testPrefix = randomUUID().slice(0, 8);
-	const staffUserId1 = `staff1-${testPrefix}`;
-	const staffUserId2 = `staff2-${testPrefix}`;
+	const staffUserId1 = `staff-${testPrefix}-1`;
+	const staffUserId2 = `staff-${testPrefix}-2`;
 	const slotId = `slot-${testPrefix}`;
 	const bookingIds: string[] = [];
 
@@ -204,8 +204,8 @@ describe("VAL-RAS-001: Successful reassignment preserves single active booking",
 
 describe("VAL-RAS-002: Reassignment blocked for inactive/unassignable staff", () => {
 	const testPrefix = randomUUID().slice(0, 8);
-	const staffUserId1 = `staff1-${testPrefix}`;
-	const staffUserId2 = `staff2-${testPrefix}`;
+	const staffUserId1 = `staff-${testPrefix}-1`;
+	const staffUserId2 = `staff-${testPrefix}-2`;
 	const slotId = `slot-${testPrefix}`;
 	const bookingIds: string[] = [];
 
@@ -304,8 +304,8 @@ describe("VAL-RAS-002: Reassignment blocked for inactive/unassignable staff", ()
 
 describe("VAL-RAS-003: Reassignment blocked for unavailable staff (override)", () => {
 	const testPrefix = randomUUID().slice(0, 8);
-	const staffUserId1 = `staff1-${testPrefix}`;
-	const staffUserId2 = `staff2-${testPrefix}`;
+	const staffUserId1 = `staff-${testPrefix}-1`;
+	const staffUserId2 = `staff-${testPrefix}-2`;
 	const slotId = `slot-${testPrefix}`;
 	const bookingIds: string[] = [];
 
@@ -382,8 +382,8 @@ describe("VAL-RAS-003: Reassignment blocked for unavailable staff (override)", (
 
 describe("VAL-RAS-004: Preview without side effects", () => {
 	const testPrefix = randomUUID().slice(0, 8);
-	const staffUserId1 = `staff1-${testPrefix}`;
-	const staffUserId2 = `staff2-${testPrefix}`;
+	const staffUserId1 = `staff-${testPrefix}-1`;
+	const staffUserId2 = `staff-${testPrefix}-2`;
 	const slotId = `slot-${testPrefix}`;
 	const bookingIds: string[] = [];
 
@@ -505,8 +505,8 @@ describe("VAL-RAS-004: Preview without side effects", () => {
 
 describe("VAL-RAS-013: Reject stale source not matching activeBookingId", () => {
 	const testPrefix = randomUUID().slice(0, 8);
-	const staffUserId1 = `staff1-${testPrefix}`;
-	const staffUserId2 = `staff2-${testPrefix}`;
+	const staffUserId1 = `staff-${testPrefix}-1`;
+	const staffUserId2 = `staff-${testPrefix}-2`;
 	const citizenUserId = `citizen-${testPrefix}`;
 	const slotId1 = `slot1-${testPrefix}`;
 	const slotId2 = `slot2-${testPrefix}`;
@@ -642,8 +642,8 @@ describe("VAL-RAS-013: Reject stale source not matching activeBookingId", () => 
 
 describe("VAL-RAS-018: Reject stale source and return reference to current active", () => {
 	const testPrefix = randomUUID().slice(0, 8);
-	const staffUserId1 = `staff1-${testPrefix}`;
-	const staffUserId2 = `staff2-${testPrefix}`;
+	const staffUserId1 = `staff-${testPrefix}-1`;
+	const staffUserId2 = `staff-${testPrefix}-2`;
 	const slotId = `slot-${testPrefix}`;
 	const bookingIds: string[] = [];
 
@@ -702,8 +702,8 @@ describe("VAL-RAS-018: Reject stale source and return reference to current activ
 
 describe("Bulk reassignment operations", () => {
 	const testPrefix = randomUUID().slice(0, 8);
-	const staffUserId1 = `staff1-${testPrefix}`;
-	const staffUserId2 = `staff2-${testPrefix}`;
+	const staffUserId1 = `staff-${testPrefix}-1`;
+	const staffUserId2 = `staff-${testPrefix}-2`;
 	const slotId = `slot-${testPrefix}`;
 	const bookingIds: string[] = [];
 
@@ -1005,8 +1005,8 @@ describe("Reassignment is no-op for same staff", () => {
 
 describe("Reassignment preserves booking metadata", () => {
 	const testPrefix = randomUUID().slice(0, 8);
-	const staffUserId1 = `staff1-${testPrefix}`;
-	const staffUserId2 = `staff2-${testPrefix}`;
+	const staffUserId1 = `staff-${testPrefix}-1`;
+	const staffUserId2 = `staff-${testPrefix}-2`;
 	const slotId = `slot-${testPrefix}`;
 	const bookingIds: string[] = [];
 
