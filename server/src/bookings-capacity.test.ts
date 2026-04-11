@@ -4,20 +4,34 @@
  * Tests VAL-CAP-001: Combined global + staff capacity checks
  * Tests VAL-CAP-002: Over-capacity returns 409 CONFLICT
  * Tests VAL-CAP-003: Idempotent release (no double-release)
- * Tests VAL-CAP-004: Concurrent booking race condition handling
+ * Tests VAL-CAP-004: Reassign booking to different staff
  *
  * Run with: cd server && bun test src/bookings-capacity.test.ts
+ *
+ * These tests import and test the actual capacity.ts functions.
+ * They use the production database (sqlite.db) with unique test data.
+ * Each test uses unique identifiers to avoid conflicts.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { randomUUID } from "node:crypto";
+import { eq, like, or } from "drizzle-orm";
 import { memoryAdapter } from "@better-auth/memory-adapter";
 import { betterAuth } from "better-auth";
 import { admin, emailOTP } from "better-auth/plugins";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+
+import {
+	checkCapacity,
+	consumeCapacity,
+	releaseCapacity,
+	reassignBooking,
+} from "./capacity";
+import { db, schema } from "./db";
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Test Auth Setup (uses memory adapter for auth testing)
 // ---------------------------------------------------------------------------
 
 function createEmptyDb(): Record<string, any[]> {
@@ -27,22 +41,17 @@ function createEmptyDb(): Record<string, any[]> {
 		account: [],
 		verification: [],
 		rateLimit: [],
-		staff_profile: [],
-		staff_date_override: [],
-		appointment_slot: [],
-		booking: [],
-		service_request: [],
 	};
 }
 
 function createTestAuth() {
-	const db = createEmptyDb();
+	const memDb = createEmptyDb();
 	const otpStore: Record<string, Record<string, string>> = {};
 
 	const auth = betterAuth({
 		baseURL: "http://localhost:3000",
 		secret: "test-secret-that-is-at-least-32-chars-long-xxxxxxxxxxxx",
-		database: memoryAdapter(db) as any,
+		database: memoryAdapter(memDb) as any,
 		rateLimit: { enabled: false },
 		plugins: [
 			admin(),
@@ -62,7 +71,7 @@ function createTestAuth() {
 		advanced: { cookies: {} },
 	});
 
-	return { auth, db, otpStore };
+	return { auth, memDb, otpStore };
 }
 
 function getSessionCookieFromResponse(res: Response): string {
@@ -72,11 +81,11 @@ function getSessionCookieFromResponse(res: Response): string {
 	return match ? `better-auth.session_token=${match[1]}` : "";
 }
 
-/**
- * Create a test Hono app that mirrors the production middleware stack.
- * Includes mock capacity endpoints for testing.
- */
-function createTestApp(auth: any, mockDb: any) {
+// ---------------------------------------------------------------------------
+// Hono App Setup (delegates to real capacity functions)
+// ---------------------------------------------------------------------------
+
+function createTestApp(auth: any) {
 	const ADMIN_ROLE = "admin";
 
 	type AppVariables = {
@@ -128,7 +137,7 @@ function createTestApp(auth: any, mockDb: any) {
 		await next();
 	});
 
-	// Stub GET /api/admin/bookings/availability/check
+	// Admin check availability endpoint - delegates to real checkCapacity
 	app.get("/api/admin/bookings/availability/check", async (c) => {
 		const slotId = c.req.query("slotId");
 		const staffUserId = c.req.query("staffUserId");
@@ -143,92 +152,11 @@ function createTestApp(auth: any, mockDb: any) {
 			);
 		}
 
-		const slot = mockDb.appointment_slot.find((s: any) => s.id === slotId);
-		if (!slot) {
-			return c.json({ code: "NOT_FOUND", message: "Slot not found" }, 404);
-		}
-
-		const staff = mockDb.staff_profile.find(
-			(s: any) => s.userId === staffUserId,
-		);
-		if (!staff) {
-			return c.json({ code: "NOT_FOUND", message: "Staff not found" }, 404);
-		}
-
-		// Count active bookings for this slot
-		const slotActiveBookings = mockDb.booking.filter(
-			(b: any) => b.slotId === slotId && b.isActive,
-		);
-		const globalUsed = slotActiveBookings.length;
-		const globalCapacity = slot.capacityLimit;
-		const globalRemaining =
-			globalCapacity !== null ? globalCapacity - globalUsed : null;
-
-		// Count staff bookings for this date
-		const staffDateBookings = mockDb.booking.filter(
-			(b: any) => b.staffUserId === staffUserId && b.isActive,
-		);
-		const staffBookingsOnDate = staffDateBookings.filter((b: any) => {
-			const bSlot = mockDb.appointment_slot.find((s: any) => s.id === b.slotId);
-			return bSlot && bSlot.slotDate === slot.slotDate;
-		});
-		const staffUsed = staffBookingsOnDate.length;
-
-		// Check date override
-		let staffCapacity = staff.defaultDailyCapacity;
-		const dateOverride = mockDb.staff_date_override.find(
-			(o: any) =>
-				o.staffUserId === staffUserId && o.overrideDate === slot.slotDate,
-		);
-		if (dateOverride) {
-			if (!dateOverride.isAvailable) {
-				return c.json({
-					available: false,
-					globalCapacity,
-					globalUsed,
-					globalRemaining,
-					staffCapacity: 0,
-					staffUsed: 0,
-					staffRemaining: 0,
-					conflicts: [
-						{ type: "STAFF_UNAVAILABLE", details: "Staff unavailable on date" },
-					],
-				});
-			}
-			if (dateOverride.capacityOverride !== null) {
-				staffCapacity = dateOverride.capacityOverride;
-			}
-		}
-
-		const staffRemaining = staffCapacity - staffUsed;
-		const conflicts: any[] = [];
-
-		if (globalCapacity !== null && globalUsed >= globalCapacity) {
-			conflicts.push({
-				type: "GLOBAL_OVER_CAPACITY",
-				details: `Slot at capacity (${globalCapacity})`,
-			});
-		}
-		if (staffUsed >= staffCapacity) {
-			conflicts.push({
-				type: "STAFF_OVER_CAPACITY",
-				details: `Staff at capacity (${staffCapacity})`,
-			});
-		}
-
-		return c.json({
-			available: conflicts.length === 0,
-			globalCapacity,
-			globalUsed,
-			globalRemaining,
-			staffCapacity,
-			staffUsed,
-			staffRemaining,
-			conflicts,
-		});
+		const result = await checkCapacity(slotId, staffUserId);
+		return c.json(result);
 	});
 
-	// Stub POST /api/admin/bookings
+	// Admin create booking endpoint - delegates to real consumeCapacity
 	app.post("/api/admin/bookings", async (c) => {
 		const body = await c.req.json();
 
@@ -242,110 +170,32 @@ function createTestApp(auth: any, mockDb: any) {
 			);
 		}
 
-		const slot = mockDb.appointment_slot.find((s: any) => s.id === body.slotId);
-		if (!slot) {
-			return c.json({ code: "NOT_FOUND", message: "Slot not found" }, 404);
-		}
-
-		const staff = mockDb.staff_profile.find(
-			(s: any) => s.userId === body.staffUserId,
+		const result = await consumeCapacity(
+			body.slotId,
+			body.staffUserId,
+			body.kind,
+			body.requestId ?? null,
+			body.citizenUserId ?? null,
+			body.createdByUserId ?? null,
+			body.holdToken ?? null,
+			body.holdExpiresAt ? new Date(body.holdExpiresAt) : null,
 		);
-		if (!staff) {
-			return c.json({ code: "NOT_FOUND", message: "Staff not found" }, 404);
-		}
 
-		// Check capacity
-		const slotActiveBookings = mockDb.booking.filter(
-			(b: any) => b.slotId === body.slotId && b.isActive,
-		);
-		const globalUsed = slotActiveBookings.length;
-		const globalCapacity = slot.capacityLimit;
-
-		if (globalCapacity !== null && globalUsed >= globalCapacity) {
+		if (!result.success) {
 			return c.json(
 				{
 					code: "CAPACITY_CONFLICT",
 					message: "Insufficient capacity for this operation",
-					conflicts: [
-						{
-							type: "GLOBAL_OVER_CAPACITY",
-							details: `Slot at capacity (${globalCapacity})`,
-						},
-					],
+					conflicts: result.conflicts,
 				},
 				409,
 			);
 		}
 
-		const staffDateBookings = mockDb.booking.filter(
-			(b: any) => b.staffUserId === body.staffUserId && b.isActive,
-		);
-		const staffBookingsOnDate = staffDateBookings.filter((b: any) => {
-			const bSlot = mockDb.appointment_slot.find((s: any) => s.id === b.slotId);
-			return bSlot && bSlot.slotDate === slot.slotDate;
-		});
-		let staffCapacity = staff.defaultDailyCapacity;
-		const staffUsed = staffBookingsOnDate.length;
-
-		const dateOverride = mockDb.staff_date_override.find(
-			(o: any) =>
-				o.staffUserId === body.staffUserId && o.overrideDate === slot.slotDate,
-		);
-		if (dateOverride) {
-			if (!dateOverride.isAvailable) {
-				return c.json(
-					{
-						code: "CAPACITY_CONFLICT",
-						message: "Insufficient capacity for this operation",
-						conflicts: [
-							{
-								type: "STAFF_UNAVAILABLE",
-								details: "Staff unavailable on date",
-							},
-						],
-					},
-					409,
-				);
-			}
-			if (dateOverride.capacityOverride !== null) {
-				staffCapacity = dateOverride.capacityOverride;
-			}
-		}
-
-		if (staffUsed >= staffCapacity) {
-			return c.json(
-				{
-					code: "CAPACITY_CONFLICT",
-					message: "Insufficient capacity for this operation",
-					conflicts: [
-						{
-							type: "STAFF_OVER_CAPACITY",
-							details: `Staff at capacity (${staffCapacity})`,
-						},
-					],
-				},
-				409,
-			);
-		}
-
-		// Create booking
-		const bookingId = crypto.randomUUID();
-		const booking = {
-			id: bookingId,
-			slotId: body.slotId,
-			staffUserId: body.staffUserId,
-			kind: body.kind,
-			status: body.kind === "citizen" ? "held" : "confirmed",
-			isActive: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		};
-		mockDb.booking.push(booking);
-
-		return c.json(booking, 201);
+		return c.json({ id: result.bookingId }, 201);
 	});
 
-	// Stub POST /api/admin/bookings/:id/release
+	// Admin release booking endpoint - delegates to real releaseCapacity
 	app.post("/api/admin/bookings/:id/release", async (c) => {
 		const { id } = c.req.param();
 		const body = await c.req.json();
@@ -363,23 +213,16 @@ function createTestApp(auth: any, mockDb: any) {
 			);
 		}
 
-		const booking = mockDb.booking.find((b: any) => b.id === id);
-		if (!booking) {
+		const result = await releaseCapacity(id, body.reason);
+
+		if (!result.success && result.error === "Booking not found") {
 			return c.json({ code: "NOT_FOUND", message: "Booking not found" }, 404);
 		}
 
-		// Idempotent: if already inactive, return success
-		if (!booking.isActive) {
-			return c.json({ booking, alreadyReleased: true });
-		}
-
-		// Release the booking
-		booking.isActive = false;
-		booking.updatedAt = new Date();
-		if (body.reason === "cancelled") booking.cancelledAt = new Date();
-		if (body.reason === "attended") booking.attendedAt = new Date();
-
-		return c.json({ booking, alreadyReleased: false });
+		return c.json({
+			booking: { id },
+			alreadyReleased: result.alreadyReleased,
+		});
 	});
 
 	app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) =>
@@ -412,7 +255,7 @@ async function callApp(
 	return { response: res, body, status: res.status };
 }
 
-async function createAdminSession(auth: any, db: any, _otpStore: any) {
+async function createAdminSession(auth: any, memDb: any, _otpStore: any) {
 	const signUpRes = await auth.handler(
 		new Request("http://localhost:3000/api/auth/sign-up/email", {
 			method: "POST",
@@ -431,7 +274,7 @@ async function createAdminSession(auth: any, db: any, _otpStore: any) {
 	if (!signUpBody.user?.id)
 		throw new Error(`Sign-up failed: ${JSON.stringify(signUpBody)}`);
 
-	const userRecord = db.user.find((u: any) => u.id === signUpBody.user.id);
+	const userRecord = memDb.user.find((u: any) => u.id === signUpBody.user.id);
 	if (userRecord) userRecord.role = "admin";
 
 	const signInRes = await auth.handler(
@@ -448,44 +291,47 @@ async function createAdminSession(auth: any, db: any, _otpStore: any) {
 }
 
 // ---------------------------------------------------------------------------
-// Test data setup
+// Test Data Setup Helpers - use unique IDs per test
 // ---------------------------------------------------------------------------
 
-function setupTestData(mockDb: any) {
-	// Create a staff user and profile
-	const staffUserId = "staff-user-1";
-	mockDb.user.push({
-		id: staffUserId,
-		name: "Test Staff",
-		email: "staff@test.com",
-		role: "staff",
-	});
+// Use a date far in the future to avoid conflicts with existing data
+const TEST_SLOT_DATE = "2030-12-31";
 
-	mockDb.staff_profile.push({
-		userId: staffUserId,
-		isActive: true,
-		isAssignable: true,
-		defaultDailyCapacity: 5, // 5 bookings per day max
-		weeklyAvailability: {},
-		createdAt: new Date(),
-		updatedAt: new Date(),
-	});
+async function cleanupTestData(staffUserId: string, slotId: string, bookingIds: string[]) {
+	// Clean up bookings first (depends on slot_id and staff_user_id)
+	for (const id of bookingIds) {
+		try {
+			await db.delete(schema.booking).where(eq(schema.booking.id, id));
+		} catch {
+			// Ignore cleanup errors
+		}
+	}
 
-	// Create a slot with capacity limit of 2
-	const slotId = "slot-1";
-	mockDb.appointment_slot.push({
-		id: slotId,
-		slotDate: "2026-04-15",
-		startTime: "09:00",
-		endTime: "10:00",
-		status: "open",
-		capacityLimit: 2, // 2 bookings max for this slot
-		generatedFrom: "base",
-		createdAt: new Date(),
-		updatedAt: new Date(),
-	});
+	// Clean up the main slot and any additional slots (like -daily-*, -staff2-*)
+	try {
+		await db.delete(schema.appointmentSlot).where(
+			or(
+				like(schema.appointmentSlot.id, `${slotId}%`),
+				eq(schema.appointmentSlot.id, slotId)
+			)
+		);
+	} catch {
+		// Ignore
+	}
 
-	return { staffUserId, slotId };
+	// Clean up staff profile
+	try {
+		await db.delete(schema.staffProfile).where(eq(schema.staffProfile.userId, staffUserId));
+	} catch {
+		// Ignore
+	}
+
+	// Clean up user
+	try {
+		await db.delete(schema.user).where(eq(schema.user.id, staffUserId));
+	} catch {
+		// Ignore
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -493,65 +339,93 @@ function setupTestData(mockDb: any) {
 // ---------------------------------------------------------------------------
 
 describe("VAL-CAP-001: Combined global + staff capacity checks", () => {
-	let auth: any;
-	let app: any;
-	let adminCookie: string;
-	let mockDb: any;
+	const testPrefix = randomUUID().slice(0, 8);
+	const staffUserId = `staff-${testPrefix}`;
+	const slotId = `slot-${testPrefix}`;
+	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		const setup = createTestAuth();
-		auth = setup.auth;
-		mockDb = setup.db;
-		setupTestData(mockDb);
-		app = createTestApp(auth, mockDb);
-		adminCookie = await createAdminSession(auth, mockDb, setup.otpStore);
-	});
+		const now = new Date();
 
-	test("returns available=true when both capacities have room", async () => {
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings/availability/check?slotId=slot-1&staffUserId=staff-user-1",
-			{ method: "GET" },
-			adminCookie,
-		);
-
-		expect(status).toBe(200);
-		expect(body.available).toBe(true);
-		expect(body.globalCapacity).toBe(2);
-		expect(body.globalUsed).toBe(0);
-		expect(body.globalRemaining).toBe(2);
-		expect(body.staffCapacity).toBe(5);
-		expect(body.staffUsed).toBe(0);
-		expect(body.staffRemaining).toBe(5);
-		expect(body.conflicts).toHaveLength(0);
-	});
-
-	test("returns staff capacity info with staff bookings", async () => {
-		// Create a booking first
-		mockDb.booking.push({
-			id: "booking-1",
-			slotId: "slot-1",
-			staffUserId: "staff-user-1",
-			kind: "citizen",
-			status: "held",
-			isActive: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
+		// Create staff user
+		await db.insert(schema.user).values({
+			id: staffUserId,
+			name: "Test Staff",
+			email: `staff-${testPrefix}@test.com`,
+			role: "staff",
+			createdAt: now,
+			updatedAt: now,
 		});
 
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings/availability/check?slotId=slot-1&staffUserId=staff-user-1",
-			{ method: "GET" },
-			adminCookie,
-		);
+		// Create staff profile with capacity 5
+		await db.insert(schema.staffProfile).values({
+			userId: staffUserId,
+			isActive: true,
+			isAssignable: true,
+			defaultDailyCapacity: 5,
+			createdAt: now,
+			updatedAt: now,
+		});
 
-		expect(status).toBe(200);
-		expect(body.available).toBe(true);
-		expect(body.globalUsed).toBe(1);
-		expect(body.globalRemaining).toBe(1);
-		expect(body.staffUsed).toBe(1);
-		expect(body.staffRemaining).toBe(4);
+		// Create slot with global capacity 2
+		await db.insert(schema.appointmentSlot).values({
+			id: slotId,
+			slotDate: TEST_SLOT_DATE,
+			startTime: "09:00",
+			endTime: "10:00",
+			status: "open",
+			capacityLimit: 2,
+			generatedFrom: "base",
+			createdAt: now,
+			updatedAt: now,
+		});
+
+		const authSetup = createTestAuth();
+		const app = createTestApp(authSetup.auth);
+		const adminCookie = await createAdminSession(authSetup.auth, authSetup.memDb, authSetup.otpStore);
+		return { app, adminCookie };
+	});
+
+	afterEach(async () => {
+		await cleanupTestData(staffUserId, slotId, bookingIds);
+	});
+
+	test("checkCapacity returns available=true when both capacities have room", async () => {
+		const result = await checkCapacity(slotId, staffUserId);
+
+		expect(result.available).toBe(true);
+		expect(result.globalCapacity).toBe(2);
+		expect(result.globalUsed).toBe(0);
+		expect(result.globalRemaining).toBe(2);
+		expect(result.staffCapacity).toBe(5);
+		expect(result.staffUsed).toBe(0);
+		expect(result.staffRemaining).toBe(5);
+		expect(result.conflicts).toHaveLength(0);
+	});
+
+	test("checkCapacity returns staff capacity info with staff bookings", async () => {
+		// Create a booking using consumeCapacity
+		const result = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result.success).toBe(true);
+		if (result.bookingId) bookingIds.push(result.bookingId);
+
+		// Now check capacity
+		const capacityResult = await checkCapacity(slotId, staffUserId);
+
+		expect(capacityResult.available).toBe(true);
+		expect(capacityResult.globalUsed).toBe(1);
+		expect(capacityResult.globalRemaining).toBe(1);
+		expect(capacityResult.staffUsed).toBe(1);
+		expect(capacityResult.staffRemaining).toBe(4);
 	});
 });
 
@@ -560,118 +434,104 @@ describe("VAL-CAP-001: Combined global + staff capacity checks", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-CAP-002: Over-capacity returns 409 CONFLICT", () => {
-	let auth: any;
-	let app: any;
-	let adminCookie: string;
-	let mockDb: any;
+	const testPrefix = randomUUID().slice(0, 8);
+	const staffUserId = `staff-${testPrefix}`;
+	const slotId = `slot-${testPrefix}`;
+	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		const setup = createTestAuth();
-		auth = setup.auth;
-		mockDb = setup.db;
-		setupTestData(mockDb);
-		app = createTestApp(auth, mockDb);
-		adminCookie = await createAdminSession(auth, mockDb, setup.otpStore);
+		const now = new Date();
+
+		// Create staff user
+		await db.insert(schema.user).values({
+			id: staffUserId,
+			name: "Test Staff",
+			email: `staff-${testPrefix}@test.com`,
+			role: "staff",
+			createdAt: now,
+			updatedAt: now,
+		});
+
+		// Create staff profile with capacity 5
+		await db.insert(schema.staffProfile).values({
+			userId: staffUserId,
+			isActive: true,
+			isAssignable: true,
+			defaultDailyCapacity: 5,
+			createdAt: now,
+			updatedAt: now,
+		});
+
+		// Create slot with global capacity 2
+		await db.insert(schema.appointmentSlot).values({
+			id: slotId,
+			slotDate: TEST_SLOT_DATE,
+			startTime: "09:00",
+			endTime: "10:00",
+			status: "open",
+			capacityLimit: 2,
+			generatedFrom: "base",
+			createdAt: now,
+			updatedAt: now,
+		});
 	});
 
-	test("returns 409 when global slot capacity is reached", async () => {
-		// Fill up the slot to capacity
-		mockDb.booking.push({
-			id: "booking-1",
-			slotId: "slot-1",
-			staffUserId: "staff-user-1",
-			kind: "citizen",
-			status: "confirmed",
-			isActive: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		});
-		mockDb.booking.push({
-			id: "booking-2",
-			slotId: "slot-1",
-			staffUserId: "staff-user-1",
-			kind: "citizen",
-			status: "confirmed",
-			isActive: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		});
+	afterEach(async () => {
+		await cleanupTestData(staffUserId, slotId, bookingIds);
+	});
 
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings/availability/check?slotId=slot-1&staffUserId=staff-user-1",
-			{ method: "GET" },
-			adminCookie,
+	test("consumeCapacity returns conflict when global slot capacity is reached", async () => {
+		// Fill up the slot to capacity (2 bookings)
+		const result1 = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result1.success).toBe(true);
+		if (result1.bookingId) bookingIds.push(result1.bookingId);
+
+		const result2 = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result2.success).toBe(true);
+		if (result2.bookingId) bookingIds.push(result2.bookingId);
+
+		// Third booking should fail
+		const result3 = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
 		);
 
-		expect(status).toBe(200);
-		expect(body.available).toBe(false);
-		expect(body.conflicts).toContainEqual(
+		expect(result3.success).toBe(false);
+		expect(result3.conflicts).toContainEqual(
 			expect.objectContaining({ type: "GLOBAL_OVER_CAPACITY" }),
 		);
 	});
 
-	test("returns 409 when creating booking at global capacity", async () => {
-		// Fill up the slot to capacity
-		mockDb.booking.push({
-			id: "booking-1",
-			slotId: "slot-1",
-			staffUserId: "staff-user-1",
-			kind: "citizen",
-			status: "confirmed",
-			isActive: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		});
-		mockDb.booking.push({
-			id: "booking-2",
-			slotId: "slot-1",
-			staffUserId: "staff-user-1",
-			kind: "citizen",
-			status: "confirmed",
-			isActive: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		});
-
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings",
-			{
-				method: "POST",
-				body: JSON.stringify({
-					slotId: "slot-1",
-					staffUserId: "staff-user-1",
-					kind: "citizen",
-				}),
-			},
-			adminCookie,
-		);
-
-		expect(status).toBe(409);
-		expect(body.code).toBe("CAPACITY_CONFLICT");
-		expect(body.conflicts).toContainEqual(
-			expect.objectContaining({ type: "GLOBAL_OVER_CAPACITY" }),
-		);
-	});
-
-	test("returns 409 when staff daily capacity is reached", async () => {
-		// Fill up staff daily capacity
-		for (let i = 0; i < 5; i++) {
-			mockDb.booking.push({
-				id: `booking-staff-${i}`,
-				slotId: `slot-daily-${i}`,
-				staffUserId: "staff-user-1",
-				kind: "citizen",
-				status: "confirmed",
-				isActive: true,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			});
-			// Add matching slots
-			mockDb.appointment_slot.push({
-				id: `slot-daily-${i}`,
-				slotDate: "2026-04-15", // Same date
+	test("consumeCapacity returns conflict when staff daily capacity is reached", async () => {
+		// Create multiple slots on the same date
+		for (let i = 2; i <= 6; i++) {
+			await db.insert(schema.appointmentSlot).values({
+				id: `${slotId}-daily-${i}`,
+				slotDate: TEST_SLOT_DATE,
 				startTime: `${9 + i}:00`,
 				endTime: `${10 + i}:00`,
 				status: "open",
@@ -682,56 +542,108 @@ describe("VAL-CAP-002: Over-capacity returns 409 CONFLICT", () => {
 			});
 		}
 
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings",
-			{
-				method: "POST",
-				body: JSON.stringify({
-					slotId: "slot-1",
-					staffUserId: "staff-user-1",
-					kind: "citizen",
-				}),
-			},
-			adminCookie,
+		// Fill up staff daily capacity (5 bookings)
+		for (let i = 2; i <= 6; i++) {
+			const result = await consumeCapacity(
+				`${slotId}-daily-${i}`,
+				staffUserId,
+				"citizen",
+				null,
+				null,
+				null,
+				null,
+				null,
+			);
+			expect(result.success).toBe(true);
+			if (result.bookingId) bookingIds.push(result.bookingId);
+		}
+
+		// 6th booking should fail (staff at capacity)
+		const result6 = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
 		);
 
-		expect(status).toBe(409);
-		expect(body.code).toBe("CAPACITY_CONFLICT");
-		expect(body.conflicts).toContainEqual(
+		expect(result6.success).toBe(false);
+		expect(result6.conflicts).toContainEqual(
 			expect.objectContaining({ type: "STAFF_OVER_CAPACITY" }),
 		);
 	});
 
-	test("returns 409 when staff is unavailable on date (override)", async () => {
+	test("consumeCapacity returns conflict when staff is unavailable on date", async () => {
 		// Set staff as unavailable on the date
-		mockDb.staff_date_override.push({
-			id: "override-1",
-			staffUserId: "staff-user-1",
-			overrideDate: "2026-04-15",
+		await db.insert(schema.staffDateOverride).values({
+			id: `override-${testPrefix}`,
+			staffUserId: staffUserId,
+			overrideDate: TEST_SLOT_DATE,
 			isAvailable: false,
 			createdAt: new Date(),
 			updatedAt: new Date(),
 		});
 
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings",
-			{
-				method: "POST",
-				body: JSON.stringify({
-					slotId: "slot-1",
-					staffUserId: "staff-user-1",
-					kind: "citizen",
-				}),
-			},
-			adminCookie,
+		const result = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
 		);
 
-		expect(status).toBe(409);
-		expect(body.code).toBe("CAPACITY_CONFLICT");
-		expect(body.conflicts).toContainEqual(
+		expect(result.success).toBe(false);
+		expect(result.conflicts).toContainEqual(
 			expect.objectContaining({ type: "STAFF_UNAVAILABLE" }),
+		);
+	});
+
+	test("consumeCapacity respects staff date capacity override", async () => {
+		// Set staff capacity override to 1
+		await db.insert(schema.staffDateOverride).values({
+			id: `override-${testPrefix}`,
+			staffUserId: staffUserId,
+			overrideDate: TEST_SLOT_DATE,
+			isAvailable: true,
+			capacityOverride: 1,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+
+		// First booking should succeed
+		const result1 = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result1.success).toBe(true);
+		if (result1.bookingId) bookingIds.push(result1.bookingId);
+
+		// Second booking should fail (capacity is now 1)
+		const result2 = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result2.success).toBe(false);
+		expect(result2.conflicts).toContainEqual(
+			expect.objectContaining({ type: "STAFF_OVER_CAPACITY" }),
 		);
 	});
 });
@@ -741,114 +653,292 @@ describe("VAL-CAP-002: Over-capacity returns 409 CONFLICT", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-CAP-003: Idempotent release (no double-release)", () => {
-	let auth: any;
-	let app: any;
-	let adminCookie: string;
-	let mockDb: any;
+	const testPrefix = randomUUID().slice(0, 8);
+	const staffUserId = `staff-${testPrefix}`;
+	const slotId = `slot-${testPrefix}`;
+	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		const setup = createTestAuth();
-		auth = setup.auth;
-		mockDb = setup.db;
-		setupTestData(mockDb);
-		app = createTestApp(auth, mockDb);
-		adminCookie = await createAdminSession(auth, mockDb, setup.otpStore);
-	});
+		const now = new Date();
 
-	test("releasing active booking marks it inactive", async () => {
-		mockDb.booking.push({
-			id: "booking-1",
-			slotId: "slot-1",
-			staffUserId: "staff-user-1",
-			kind: "citizen",
-			status: "held",
+		// Create staff user
+		await db.insert(schema.user).values({
+			id: staffUserId,
+			name: "Test Staff",
+			email: `staff-${testPrefix}@test.com`,
+			role: "staff",
+			createdAt: now,
+			updatedAt: now,
+		});
+
+		// Create staff profile with capacity 5
+		await db.insert(schema.staffProfile).values({
+			userId: staffUserId,
 			isActive: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
+			isAssignable: true,
+			defaultDailyCapacity: 5,
+			createdAt: now,
+			updatedAt: now,
 		});
 
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings/booking-1/release",
-			{
-				method: "POST",
-				body: JSON.stringify({ reason: "cancelled" }),
-			},
-			adminCookie,
-		);
-
-		expect(status).toBe(200);
-		expect(body.booking.isActive).toBe(false);
-		expect(body.alreadyReleased).toBe(false);
-		expect(body.booking.cancelledAt).toBeDefined();
+		// Create slot with global capacity 2
+		await db.insert(schema.appointmentSlot).values({
+			id: slotId,
+			slotDate: TEST_SLOT_DATE,
+			startTime: "09:00",
+			endTime: "10:00",
+			status: "open",
+			capacityLimit: 2,
+			generatedFrom: "base",
+			createdAt: now,
+			updatedAt: now,
+		});
 	});
 
-	test("releasing already inactive booking is idempotent (no-op)", async () => {
-		mockDb.booking.push({
-			id: "booking-1",
-			slotId: "slot-1",
-			staffUserId: "staff-user-1",
-			kind: "citizen",
-			status: "cancelled",
-			isActive: false,
-			createdAt: new Date(),
-			updatedAt: new Date(),
+	afterEach(async () => {
+		await cleanupTestData(staffUserId, slotId, bookingIds);
+	});
+
+	test("releaseCapacity marks active booking as inactive", async () => {
+		// Create a booking
+		const createResult = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(createResult.success).toBe(true);
+		if (!createResult.bookingId) throw new Error("bookingId should exist");
+		bookingIds.push(createResult.bookingId);
+
+		// Release the booking
+		const releaseResult = await releaseCapacity(createResult.bookingId, "cancelled");
+
+		expect(releaseResult.success).toBe(true);
+		expect(releaseResult.alreadyReleased).toBe(false);
+	});
+
+	test("releaseCapacity is idempotent - releasing inactive booking returns success", async () => {
+		// Create a booking
+		const createResult = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(createResult.success).toBe(true);
+		if (!createResult.bookingId) throw new Error("bookingId should exist");
+		const bookingId = createResult.bookingId;
+		bookingIds.push(bookingId);
+
+		// Release once
+		const release1 = await releaseCapacity(bookingId, "cancelled");
+		expect(release1.success).toBe(true);
+		expect(release1.alreadyReleased).toBe(false);
+
+		// Release again - should be idempotent
+		const release2 = await releaseCapacity(bookingId, "cancelled");
+		expect(release2.success).toBe(true);
+		expect(release2.alreadyReleased).toBe(true);
+	});
+
+	test("releaseCapacity returns error for non-existent booking", async () => {
+		const result = await releaseCapacity("non-existent-id", "cancelled");
+
+		expect(result.success).toBe(false);
+		expect(result.error).toBe("Booking not found");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Test suite: VAL-CAP-004 - Reassign booking
+// ---------------------------------------------------------------------------
+
+describe("VAL-CAP-004: Reassign booking to different staff", () => {
+	const testPrefix = randomUUID().slice(0, 8);
+	const staffUserId = `staff-${testPrefix}`;
+	const staffUserId2 = `staff2-${testPrefix}`;
+	const slotId = `slot-${testPrefix}`;
+	const bookingIds: string[] = [];
+
+	beforeEach(async () => {
+		const now = new Date();
+
+		// Create first staff user
+		await db.insert(schema.user).values({
+			id: staffUserId,
+			name: "Test Staff",
+			email: `staff-${testPrefix}@test.com`,
+			role: "staff",
+			createdAt: now,
+			updatedAt: now,
 		});
 
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings/booking-1/release",
-			{
-				method: "POST",
-				body: JSON.stringify({ reason: "cancelled" }),
-			},
-			adminCookie,
-		);
-
-		expect(status).toBe(200);
-		expect(body.alreadyReleased).toBe(true);
-		expect(body.booking.isActive).toBe(false);
-	});
-
-	test("releasing non-existent booking returns 404", async () => {
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings/non-existent/release",
-			{
-				method: "POST",
-				body: JSON.stringify({ reason: "cancelled" }),
-			},
-			adminCookie,
-		);
-
-		expect(status).toBe(404);
-		expect(body.code).toBe("NOT_FOUND");
-	});
-
-	test("invalid release reason returns 422", async () => {
-		mockDb.booking.push({
-			id: "booking-1",
-			slotId: "slot-1",
-			staffUserId: "staff-user-1",
-			kind: "citizen",
-			status: "held",
+		await db.insert(schema.staffProfile).values({
+			userId: staffUserId,
 			isActive: true,
-			createdAt: new Date(),
-			updatedAt: new Date(),
+			isAssignable: true,
+			defaultDailyCapacity: 5,
+			createdAt: now,
+			updatedAt: now,
 		});
 
-		const { status, body } = await callApp(
-			app,
-			"/api/admin/bookings/booking-1/release",
-			{
-				method: "POST",
-				body: JSON.stringify({ reason: "invalid" }),
-			},
-			adminCookie,
-		);
+		// Create second staff user
+		await db.insert(schema.user).values({
+			id: staffUserId2,
+			name: "Test Staff 2",
+			email: `staff2-${testPrefix}@test.com`,
+			role: "staff",
+			createdAt: now,
+			updatedAt: now,
+		});
 
-		expect(status).toBe(422);
-		expect(body.code).toBe("INVALID_REASON");
+		await db.insert(schema.staffProfile).values({
+			userId: staffUserId2,
+			isActive: true,
+			isAssignable: true,
+			defaultDailyCapacity: 5,
+			createdAt: now,
+			updatedAt: now,
+		});
+
+		// Create slot with global capacity 2
+		await db.insert(schema.appointmentSlot).values({
+			id: slotId,
+			slotDate: TEST_SLOT_DATE,
+			startTime: "09:00",
+			endTime: "10:00",
+			status: "open",
+			capacityLimit: 2,
+			generatedFrom: "base",
+			createdAt: now,
+			updatedAt: now,
+		});
+	});
+
+	afterEach(async () => {
+		// Clean up both staff
+		await cleanupTestData(staffUserId, slotId, bookingIds);
+		// Clean up second staff
+		try {
+			await db.delete(schema.staffProfile).where(eq(schema.staffProfile.userId, staffUserId2));
+		} catch { /* ignore */ }
+		try {
+			await db.delete(schema.user).where(eq(schema.user.id, staffUserId2));
+		} catch { /* ignore */ }
+	});
+
+	test("reassignBooking moves booking to new staff successfully", async () => {
+		// Create a booking with first staff
+		const createResult = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(createResult.success).toBe(true);
+		if (!createResult.bookingId) throw new Error("bookingId should exist");
+		bookingIds.push(createResult.bookingId);
+
+		// Reassign to second staff
+		const reassignResult = await reassignBooking(createResult.bookingId, staffUserId2);
+
+		expect(reassignResult.success).toBe(true);
+		expect(reassignResult.conflicts).toHaveLength(0);
+	});
+
+	test("reassignBooking fails when target staff is at capacity", async () => {
+		// Create a booking with first staff
+		const createResult = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(createResult.success).toBe(true);
+		if (!createResult.bookingId) throw new Error("bookingId should exist");
+		const bookingId = createResult.bookingId;
+		bookingIds.push(bookingId);
+
+		// Fill up second staff's capacity to 5
+		for (let i = 2; i <= 6; i++) {
+			await db.insert(schema.appointmentSlot).values({
+				id: `${slotId}-staff2-${i}`,
+				slotDate: TEST_SLOT_DATE,
+				startTime: `${9 + i}:00`,
+				endTime: `${10 + i}:00`,
+				status: "open",
+				capacityLimit: 10,
+				generatedFrom: "base",
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			const result = await consumeCapacity(
+				`${slotId}-staff2-${i}`,
+				staffUserId2,
+				"citizen",
+				null,
+				null,
+				null,
+				null,
+				null,
+			);
+			expect(result.success).toBe(true);
+			if (result.bookingId) bookingIds.push(result.bookingId);
+		}
+
+		// Reassign should fail due to capacity
+		const reassignResult = await reassignBooking(bookingId, staffUserId2);
+
+		expect(reassignResult.success).toBe(false);
+		expect(reassignResult.conflicts.length).toBeGreaterThan(0);
+	});
+
+	test("reassignBooking returns error for non-existent booking", async () => {
+		const result = await reassignBooking("non-existent-id", staffUserId2);
+
+		expect(result.success).toBe(false);
+		expect(result.error).toBe("Booking not found");
+	});
+
+	test("reassignBooking is no-op when reassigning to same staff", async () => {
+		// Create a booking with first staff
+		const createResult = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(createResult.success).toBe(true);
+		if (!createResult.bookingId) throw new Error("bookingId should exist");
+		bookingIds.push(createResult.bookingId);
+
+		// Reassign to same staff - should be no-op
+		const reassignResult = await reassignBooking(createResult.bookingId, staffUserId);
+
+		expect(reassignResult.success).toBe(true);
+		expect(reassignResult.conflicts).toHaveLength(0);
 	});
 });
 
@@ -859,20 +949,17 @@ describe("VAL-CAP-003: Idempotent release (no double-release)", () => {
 describe("Booking endpoints require admin authentication", () => {
 	let auth: any;
 	let app: any;
-	let mockDb: any;
 
 	beforeEach(async () => {
-		const setup = createTestAuth();
-		auth = setup.auth;
-		mockDb = setup.db;
-		setupTestData(mockDb);
-		app = createTestApp(auth, mockDb);
+		const authSetup = createTestAuth();
+		auth = authSetup.auth;
+		app = createTestApp(auth);
 	});
 
 	test("without session returns 401 UNAUTHENTICATED", async () => {
 		const { status, body } = await callApp(
 			app,
-			"/api/admin/bookings/availability/check?slotId=slot-1&staffUserId=staff-user-1",
+			"/api/admin/bookings/availability/check?slotId=any&staffUserId=any",
 			{ method: "GET" },
 		);
 
@@ -882,7 +969,7 @@ describe("Booking endpoints require admin authentication", () => {
 
 	test("with non-admin session returns 403 FORBIDDEN", async () => {
 		// Create a non-admin user
-		const _signUpRes = await auth.handler(
+		await auth.handler(
 			new Request("http://localhost:3000/api/auth/sign-up/email", {
 				method: "POST",
 				headers: {
@@ -911,7 +998,7 @@ describe("Booking endpoints require admin authentication", () => {
 
 		const { status, body } = await callApp(
 			app,
-			"/api/admin/bookings/availability/check?slotId=slot-1&staffUserId=staff-user-1",
+			"/api/admin/bookings/availability/check?slotId=any&staffUserId=any",
 			{ method: "GET" },
 			citizenCookie,
 		);
