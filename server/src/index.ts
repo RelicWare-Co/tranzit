@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { auth } from "./auth";
+import { bookingsApp } from "./bookings";
 import { scheduleApp } from "./schedule";
+import { staffApp } from "./staff";
 
 type AppVariables = {
 	user: typeof auth.$Infer.Session.user | null;
@@ -329,6 +331,20 @@ app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) => {
  * so all schedule routes are protected.
  */
 app.route("/api/admin/schedule", scheduleApp);
+
+/**
+ * Mount staff profile and date override routes under /api/admin/staff/*
+ * The admin auth guard is applied to /api/admin/* before this mount,
+ * so all staff routes are protected.
+ */
+app.route("/api/admin/staff", staffApp);
+
+/**
+ * Mount booking routes under /api/admin/bookings/*
+ * The admin auth guard is applied to /api/admin/* before this mount,
+ * so all booking routes are protected.
+ */
+app.route("/api/admin/bookings", bookingsApp);
 
 export default {
 	port: 3001,
