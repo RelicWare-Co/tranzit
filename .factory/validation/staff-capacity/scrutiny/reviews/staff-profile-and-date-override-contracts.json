@@ -1,0 +1,91 @@
+{
+  "featureId": "staff-profile-and-date-override-contracts",
+  "reviewedAt": "2026-04-11T15:30:00.000Z",
+  "commitId": "9faa0b5c55b678a442f6991040c494a05ef251b4",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation provides solid CRUD operations and auth guard coverage, but has blocking validation gaps and non-blocking quality issues. The weeklyAvailability JSON validator doesn't enforce ordering of start/end times within a window, which could allow invalid configurations to persist.",
+    "issues": [
+      {
+        "file": "server/src/staff.ts",
+        "line": 115,
+        "severity": "blocking",
+        "description": "validateWeeklyAvailability() validates time format strings individually but does NOT validate that morningEnd > morningStart or afternoonEnd > afternoonStart. This allows contradictory configurations like { \"morningStart\": \"14:00\", \"morningEnd\": \"08:00\" } to pass validation.",
+        "suggestedFix": "Add cross-field validation after line 113 to check: if morningStart and morningEnd are both present, ensure morningEnd > morningStart. Same for afternoonStart/afternoonEnd."
+      },
+      {
+        "file": "server/src/staff.ts",
+        "line": 193,
+        "severity": "non_blocking",
+        "description": "Capacity validation uses Number(body.defaultDailyCapacity) without trimming whitespace. If client sends \"  25  \", Number() still works but this could cause subtle issues with string comparisons elsewhere.",
+        "suggestedFix": "Use String(body.defaultDailyCapacity).trim() before Number(), or rely on strict type checking."
+      },
+      {
+        "file": "server/src/staff.ts",
+        "line": 618,
+        "severity": "non_blocking",
+        "description": "effective-availability endpoint uses new Date(`${date}T00:00:00`) which interprets the date in local timezone, not necessarily the 'Colombia timezone' mentioned in the comment. This could cause off-by-one errors at timezone boundaries.",
+        "suggestedFix": "Use a date library like date-fns-tz or document that the system assumes local server timezone matches the operational timezone."
+      },
+      {
+        "file": "server/src/staff.ts",
+        "line": 451,
+        "severity": "non_blocking",
+        "description": "DELETE /staff/:userId checks for active bookings but does NOT check for pending/active service_requests that reference this staff as assigned. If a service_request has staffUserId pointing to this staff, deletion would leave orphaned references despite the ON DELETE SET NULL schema.",
+        "suggestedFix": "Add check for service_requests with this staffUserId before deletion, or clarify that ON DELETE SET NULL is intentional cleanup."
+      },
+      {
+        "file": "server/src/staff.ts",
+        "line": 480,
+        "severity": "non_blocking",
+        "description": "The POST date-overrides endpoint performs a check-then-insert/update (not a true SQL upsert with ON CONFLICT). Under concurrent requests for the same staff+date, a race condition could cause duplicate key errors.",
+        "suggestedFix": "Use Drizzle's upsert functionality (db.insert().onConflictDoUpdate()) or add a unique constraint violation catch block."
+      },
+      {
+        "file": "server/src/staff.ts",
+        "line": 525,
+        "severity": "suggestion",
+        "description": "Capacity validation in date-override PATCH uses Number(body.capacityOverride) then checks !Number.isInteger(capacity). This works but Number() on undefined becomes NaN, which fails the isInteger check anyway. Consider explicit null check first for clarity.",
+        "suggestedFix": "Add explicit: if (body.capacityOverride === undefined) { /* skip */ } else { const capacity = Number(body.capacityOverride); ... }"
+      },
+      {
+        "file": "server/src/staff-auth-guard.test.ts",
+        "line": 1,
+        "severity": "non_blocking",
+        "description": "Tests only cover auth guard behavior and validation logic using stub endpoints, not actual CRUD operations with real database. Integration tests for CRUD operations and business logic (VAL-STF-002, STF-004, STF-005, STF-020, STF-023) are pending curl verification per the feature's own verificationSteps.",
+        "suggestedFix": "Add integration tests that cover: (1) actual DB CRUD operations, (2) isActive/isAssignable behavior when staff has bookings, (3) weeklyAvailability window validation with real data, (4) capacity tracking interactions."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The codebase uses both camelCase and snake_case for JSON field names in different places. The staff_date_override uses snake_case (availableStartTime) but SCHEMA.md documents them as availableStartTime/availableEndTime. This is consistent within the staff implementation, but AGENTS.md doesn't document the JSON field naming convention to follow.",
+      "evidence": "staff.ts uses body.availableStartTime, body.availableEndTime, body.capacityOverride throughout. Schema and SCHEMA.md confirm these names."
+    },
+    {
+      "area": "conventions",
+      "observation": "AGENTS.md specifies that staff_date_override.availableStartTime and availableEndTime exist for 'disponibilidad parcial', but there's no documented convention for how weeklyAvailability JSON structure should validate start/end ordering. The validator in staff.ts doesn't enforce morningEnd > morningStart, which seems like an oversight.",
+      "evidence": "SCHEMA.md says: 'If an auxiliar only attends a part of the day in a fecha puntual, use availableStartTime and availableEndTime'. validateWeeklyAvailability() in staff.ts:115 does not check ordering."
+    },
+    {
+      "area": "skills",
+      "observation": "The worker reported following the backend-domain-worker skill procedure correctly (skillFeedback.followedProcedure: true). However, the skill file could not be located at .factory/skills/backend-domain-worker/SKILL.md during this review, so the skill's actual requirements and whether they were fully satisfied could not be verified.",
+      "evidence": "Read of /Users/verzach3/.factory/skills/backend-domain-worker/SKILL.md returned ENOENT. skillFeedback in handoff claims deviations: []"
+    },
+    {
+      "area": "services",
+      "observation": "The verification steps specified 'cd server && bunx tsc --noEmit' and 'Manual: curl create/update staff + create/delete date overrides'. The TypeScript check was run successfully, but curl verification was noted as pending (not completed). The feature's own verificationSteps list these as verification requirements, but they appear to be unverified at time of handoff.",
+      "evidence": "Handoff 'whatWasLeftUndone': 'Full CRUD integration tests with real database and curl verification of booking/staff capacity interactions are pending'. Transcript shows TypeScript and test runs but no curl commands."
+    },
+    {
+      "area": "knowledge",
+      "observation": "The implementation correctly uses Drizzle ORM with SQLite. The schema has ON DELETE CASCADE on staffUserId in staff_date_override, so deleting a staff profile automatically removes overrides. This is documented in the schema but not mentioned in AGENTS.md or SCHEMA.md section on staff_date_override.",
+      "evidence": "schema.ts line 224-226: references(() => staffProfile.userId, { onDelete: "cascade" }). SCHEMA.md staff_date_override section mentions the fields but not the cascade behavior."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The staff-profile-and-date-override-contracts feature provides a functional implementation with proper auth guards and basic CRUD operations. However, it fails review due to a blocking issue: the weeklyAvailability validator doesn't enforce start/end time ordering within morning or afternoon windows, allowing contradictory configurations. Additionally, several non-blocking issues exist including: timezone handling ambiguity for date parsing, lack of true SQL upsert (race condition window), missing integration tests for actual CRUD + business logic, and incomplete shared state documentation for cascade delete behavior. The auth guard implementation is solid and properly tested. Given the blocking validation gap, this feature should not be merged without fixing the weeklyAvailability ordering check."
+}

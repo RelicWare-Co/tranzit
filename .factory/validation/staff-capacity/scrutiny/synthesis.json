@@ -1,0 +1,83 @@
+{
+  "milestone": "staff-capacity",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
+    "typecheck": { "passed": true, "command": "cd server && bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 2,
+    "failedFeatures": [
+      "staff-profile-and-date-override-contracts",
+      "combined-capacity-accounting-engine"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "staff-profile-and-date-override-contracts",
+      "severity": "blocking",
+      "description": "validateWeeklyAvailability() does NOT validate that morningEnd > morningStart or afternoonEnd > afternoonStart. Invalid configurations like { \"morningStart\": \"14:00\", \"morningEnd\": \"08:00\" } pass validation and could be persisted.",
+      "location": "server/src/staff.ts:115"
+    },
+    {
+      "featureId": "combined-capacity-accounting-engine",
+      "severity": "blocking",
+      "description": "checkCapacity() staff date filtering uses outer `slot.slotDate === date` instead of looking up each booking's actual slot date, causing ALL staff bookings to be counted regardless of date. This causes staffUsed to always equal staffDateBookings.length.",
+      "location": "server/src/capacity.ts:178-185"
+    },
+    {
+      "featureId": "combined-capacity-accounting-engine",
+      "severity": "blocking",
+      "description": "Test suite uses inline mock HTTP handlers that duplicate capacity logic, rather than importing and testing actual capacity.ts functions directly against a test database. The actual implementation with its bugs is never validated.",
+      "location": "server/src/bookings-capacity.test.ts"
+    },
+    {
+      "featureId": "combined-capacity-accounting-engine",
+      "severity": "blocking",
+      "description": "reassignBooking() capacity check has incomplete logic - doesn't properly account for original slot/staff capacity release during reassignment, potentially allowing double-booking.",
+      "location": "server/src/capacity.ts:512-530"
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document the JSON field naming convention to follow (camelCase vs snake_case). The codebase uses both inconsistently. Pick one and document it.",
+      "evidence": "staff_date_override uses snake_case (availableStartTime), SCHEMA.md documents them as availableStartTime/availableEndTime. Other parts use camelCase. No convention documented.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add section on Turso/libsql concurrency limitations: SELECT FOR UPDATE not supported, mitigation strategies needed for capacity-critical code paths, and 'single-instance' caveat for transactions.",
+      "evidence": "capacity.ts comment notes SQLite/Drizzle doesn't support SELECT FOR UPDATE. This is critical domain knowledge that should be explicitly documented in AGENTS.md or architecture.md.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Clarify timezone handling convention for date parsing. The system uses new Date(`${date}T00:00:00`) which interprets in local timezone, not necessarily Colombia timezone. Document the assumption or require explicit timezone handling.",
+      "evidence": "staff.ts:618 uses local timezone. SCHEMA.md mentions 'America/Bogota' but no explicit timezone enforcement. Off-by-one errors possible at timezone boundaries.",
+      "isSystemic": false
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document cascade delete behavior for staff_date_override. The schema has ON DELETE CASCADE on staffUserId but SCHEMA.md doesn't mention this, leaving workers unaware that deleting a staff profile automatically removes overrides.",
+      "evidence": "schema.ts line 224-226: references(() => staffProfile.userId, { onDelete: 'cascade' }). Not documented in SCHEMA.md staff_date_override section.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Worker reported followedProcedure: true in skillFeedback but review evidence shows extensive inline mocking (900+ lines) instead of testing actual implementation. Should be flagged as deviation.",
+      "reason": "Ambiguous - skillFeedback claims procedure was followed, but the 'mocking instead of real code testing' pattern could be a deliberate testing strategy choice rather than a deviation. Rejecting as ambiguous."
+    },
+    {
+      "observation": "weeklyAvailability JSON structure validation should be enforced by a shared utility, not in-component.",
+      "reason": "Already suggested in suggestedGuidanceUpdates. Duplicate."
+    }
+  ],
+  "previousRound": null
+}
