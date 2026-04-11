@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { auth } from "./auth";
+import { scheduleApp } from "./schedule";
 
 type AppVariables = {
 	user: typeof auth.$Infer.Session.user | null;
@@ -321,6 +322,13 @@ app.post("/api/auth/email-otp/send-verification-otp", async (c) => {
 app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) => {
 	return auth.handler(c.req.raw);
 });
+
+/**
+ * Mount schedule CRUD routes under /api/admin/schedule/*
+ * The admin auth guard is applied to /api/admin/* before this mount,
+ * so all schedule routes are protected.
+ */
+app.route("/api/admin/schedule", scheduleApp);
 
 export default {
 	port: 3001,
