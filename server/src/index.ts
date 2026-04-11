@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { auth } from "./auth";
 
 type AppVariables = {
@@ -12,26 +11,79 @@ const app = new Hono<{ Variables: AppVariables }>();
 /**
  * CORS configuration for auth endpoints.
  *
- * - Only the explicitly allowed origin(s) receive Access-Control-Allow-Origin
- *   and Access-Control-Allow-Credentials: true.
- * - Disallowed origins get no CORS headers, which prevents credential-bearing
- *   cross-origin requests from browsers.
+ * - origin: validates the incoming Origin header before setting credentials.
+ *   Returns the validated origin string only for allowed origins, null otherwise.
+ *   This prevents browsers from sending credentials to disallowed origins.
  * - Default is corrected to http://localhost:3000 (frontend port).
  */
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
 
-app.use(
-	"/api/auth/*",
-	cors({
-		origin: corsOrigin,
-		allowHeaders: ["Content-Type", "Authorization"],
-		allowMethods: ["POST", "GET", "OPTIONS"],
-		exposeHeaders: ["Content-Length"],
-		maxAge: 600,
-		credentials: true,
-	}),
-);
+/**
+ * Origin checker function for CORS with credentials.
+ * Only allows the exact configured origin to receive Access-Control-Allow-Credentials.
+ * Returns the origin string if allowed, null otherwise.
+ */
+const originChecker = (origin: string | null | undefined): string | null => {
+	if (!origin) return null;
+	// Only allow the exact configured origin (no wildcards, no partial matches)
+	if (origin === corsOrigin) return origin;
+	return null;
+};
 
+/**
+ * Validate origin and apply CORS for /api/auth/* routes.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: Hono middleware context types
+app.use("/api/auth/*", async (c: any, next: any) => {
+	const origin = c.req.raw.headers.get("Origin");
+	const validatedOrigin = originChecker(origin);
+
+	if (validatedOrigin) {
+		c.header("Access-Control-Allow-Origin", validatedOrigin);
+		c.header("Access-Control-Allow-Credentials", "true");
+		c.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+		c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+		c.header("Access-Control-Expose-Headers", "Content-Length");
+		c.header("Access-Control-Max-Age", "600");
+	}
+
+	// Handle preflight OPTIONS
+	if (c.req.method === "OPTIONS") {
+		return c.body(null, validatedOrigin ? 204 : 403);
+	}
+
+	await next();
+});
+
+/**
+ * Validate origin and apply CORS for /api/admin/* routes.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: Hono middleware context types
+app.use("/api/admin/*", async (c: any, next: any) => {
+	const origin = c.req.raw.headers.get("Origin");
+	const validatedOrigin = originChecker(origin);
+
+	if (validatedOrigin) {
+		c.header("Access-Control-Allow-Origin", validatedOrigin);
+		c.header("Access-Control-Allow-Credentials", "true");
+		c.header(
+			"Access-Control-Allow-Methods",
+			"POST, GET, PATCH, DELETE, OPTIONS",
+		);
+		c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+		c.header("Access-Control-Expose-Headers", "Content-Length");
+		c.header("Access-Control-Max-Age", "600");
+	}
+
+	// Handle preflight OPTIONS
+	if (c.req.method === "OPTIONS") {
+		return c.body(null, validatedOrigin ? 204 : 403);
+	}
+
+	await next();
+});
+
+/** Resolve session for every request and store in context. */
 app.use("*", async (c, next) => {
 	const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
@@ -47,6 +99,79 @@ app.use("*", async (c, next) => {
 	await next();
 });
 
+/**
+ * Admin authorization guard.
+ *
+ * Applied to both Better Auth admin provider endpoints (/api/auth/admin/*)
+ * and future domain admin endpoints (/api/admin/*).
+ *
+ * - No session → 401 UNAUTHENTICATED
+ * - Session present but user.role !== "admin" → 403 FORBIDDEN
+ * - Admin session → pass through (the auth handler or domain handler
+ *   handles the request normally)
+ *
+ * This is defense-in-depth on top of the Better Auth admin plugin's own
+ * middleware, ensuring consistent 401/403 semantics at the Hono layer.
+ */
+const ADMIN_ROLE = "admin";
+
+app.use("/api/auth/admin/*", async (c, next) => {
+	const user = c.get("user");
+
+	if (!user) {
+		return c.json(
+			{ code: "UNAUTHENTICATED", message: "Authentication required" },
+			401,
+		);
+	}
+
+	if (user.role !== ADMIN_ROLE) {
+		return c.json(
+			{
+				code: "FORBIDDEN",
+				message: "Admin privileges required for this operation",
+			},
+			403,
+		);
+	}
+
+	await next();
+});
+
+app.use("/api/admin/*", async (c, next) => {
+	const user = c.get("user");
+
+	if (!user) {
+		return c.json(
+			{ code: "UNAUTHENTICATED", message: "Authentication required" },
+			401,
+		);
+	}
+
+	if (user.role !== ADMIN_ROLE) {
+		return c.json(
+			{
+				code: "FORBIDDEN",
+				message: "Admin privileges required for this operation",
+			},
+			403,
+		);
+	}
+
+	await next();
+});
+
+/**
+ * Application-level session endpoint.
+ *
+ * Contract: returns 401 with null body when no session is present,
+ * and 200 with { user, session } when authenticated.
+ *
+ * This differs from the auth provider's /api/auth/get-session which
+ * returns 200 with null body when no session is present. The app-level
+ * endpoint uses 401 to make the unauthenticated state explicit for
+ * frontend route guards.
+ */
 app.get("/session", (c) => {
 	const user = c.get("user");
 	const session = c.get("session");
