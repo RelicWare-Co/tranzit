@@ -27,3 +27,25 @@ For each validated flow, capture:
 
 ## Known constraints
 - **No browser testing in this mission** (agent-browser excluded by mission decision).
+
+## Admin Auth Workaround (schedule-overrides validation)
+The Better Auth password sign-in doesn't work with seeded admin users due to hash format mismatch in the seed script. Workaround to create a working admin session:
+
+1. Create user via API: `POST /api/auth/sign-up/email` with email and password
+2. Update role to admin in DB:
+   ```bash
+   cd server && bun -e "
+   import { db, schema } from './src/db';
+   import { eq } from 'drizzle-orm';
+   const user = await db.query.user.findFirst({ where: eq(schema.user.email, 'your-email') });
+   await db.update(schema.user).set({ role: 'admin' }).where(eq(schema.user.id, user.id));
+   "
+   ```
+3. Sign in to get admin session cookie: `POST /api/auth/sign-in/email`
+4. Save cookie for subsequent requests
+
+Admin session cookie location: `/tmp/admin_cookies.txt`
+
+## Service Start Issues
+- Root `bun run dev:server` fails with bun --cwd error. Use: `cd server && bun run dev`
+- Backend health check: `curl http://localhost:3001` should return "Hello Hono + Better Auth"
