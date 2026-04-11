@@ -17,15 +17,18 @@
 
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { db, schema } from "./db";
 import {
+	type CapacityConflict,
 	checkCapacity,
 	confirmBooking,
 	consumeCapacity,
-	releaseCapacity,
+	executeBulkReassignments,
+	previewReassignment,
+	previewReassignments,
 	reassignBooking,
-	type CapacityConflict,
+	releaseCapacity,
 } from "./capacity";
+import { db, schema } from "./db";
 
 type AppVariables = {
 	user: { id: string; role: string | null; [key: string]: unknown } | null;
@@ -459,6 +462,45 @@ app.post("/:id/reassign", async (c) => {
 				404,
 			);
 		}
+		if (
+			result.error === "STALE_ACTIVE_BOOKING" ||
+			result.error === "Cannot reassign inactive booking"
+		) {
+			// Get current active booking for the request to provide reference
+			const booking = await db.query.booking.findFirst({
+				where: eq(schema.booking.id, id),
+			});
+			let currentActiveBookingId: string | null = null;
+			if (booking?.requestId) {
+				const serviceRequest = await db.query.serviceRequest.findFirst({
+					where: eq(schema.serviceRequest.id, booking.requestId),
+				});
+				currentActiveBookingId = serviceRequest?.activeBookingId ?? null;
+			}
+			return c.json(
+				{
+					code: "STALE_ACTIVE_BOOKING",
+					message: result.error,
+					currentActiveBookingId,
+				},
+				409,
+			);
+		}
+		if (
+			result.error === "Target staff is not active or not assignable" ||
+			result.error === "Target staff is unavailable on this date" ||
+			result.error === "STAFF_NOT_ASSIGNABLE" ||
+			result.error === "STAFF_UNAVAILABLE"
+		) {
+			return c.json(
+				{
+					code: "STAFF_NOT_ASSIGNABLE",
+					message: result.error,
+					conflicts: result.conflicts,
+				},
+				409,
+			);
+		}
 		if (result.error === "Target staff lacks capacity") {
 			return conflictResponse(result.conflicts);
 		}
@@ -474,6 +516,180 @@ app.post("/:id/reassign", async (c) => {
 	});
 
 	return c.json(booking);
+});
+
+/**
+ * POST /api/admin/bookings/:id/reassign/preview
+ * Preview a reassignment without applying it.
+ *
+ * Request body:
+ * - targetStaffUserId: required, ID of the target staff user
+ *
+ * Returns dry run result with conflicts and warnings, no side effects.
+ */
+app.post("/:id/reassign/preview", async (c) => {
+	const { id } = c.req.param();
+	const body = await c.req.json();
+
+	if (!body.targetStaffUserId) {
+		return errorResponse(
+			"MISSING_REQUIRED_FIELDS",
+			"targetStaffUserId is required",
+			422,
+		);
+	}
+
+	const preview = await previewReassignment(id, body.targetStaffUserId);
+
+	return c.json({
+		dryRun: true,
+		...preview,
+	});
+});
+
+/**
+ * POST /api/admin/bookings/reassignments/preview
+ * Preview bulk reassignments without applying them.
+ *
+ * Request body:
+ * - reassignments: required, array of { bookingId, targetStaffUserId }
+ *
+ * Returns eligible, excluded, and conflicts per booking.
+ */
+app.post("/reassignments/preview", async (c) => {
+	const body = await c.req.json();
+
+	if (!body.reassignments || !Array.isArray(body.reassignments)) {
+		return errorResponse(
+			"MISSING_REQUIRED_FIELDS",
+			"reassignments array is required",
+			422,
+		);
+	}
+
+	if (body.reassignments.length === 0) {
+		return errorResponse(
+			"BATCH_SCOPE_REQUIRED",
+			"At least one reassignment is required",
+			422,
+		);
+	}
+
+	// Limit batch size
+	const MAX_BATCH_SIZE = 100;
+	if (body.reassignments.length > MAX_BATCH_SIZE) {
+		return errorResponse(
+			"BATCH_LIMIT_EXCEEDED",
+			`Maximum batch size is ${MAX_BATCH_SIZE}`,
+			422,
+		);
+	}
+
+	// Validate no duplicate booking IDs
+	const bookingIds = body.reassignments.map(
+		(r: { bookingId: string }) => r.bookingId,
+	);
+	const uniqueBookingIds = new Set(bookingIds);
+	if (bookingIds.length !== uniqueBookingIds.size) {
+		return errorResponse(
+			"INVALID_SCOPE",
+			"Duplicate bookingId values in batch",
+			422,
+		);
+	}
+
+	const preview = await previewReassignments(
+		body.reassignments.map(
+			(r: { bookingId: string; targetStaffUserId: string }) => ({
+				bookingId: r.bookingId,
+				targetStaffUserId: r.targetStaffUserId,
+			}),
+		),
+	);
+
+	return c.json({
+		dryRun: true,
+		...preview,
+	});
+});
+
+/**
+ * POST /api/admin/bookings/reassignments
+ * Execute bulk reassignments.
+ *
+ * Request body:
+ * - reassignments: required, array of { bookingId, targetStaffUserId }
+ * - executionMode: optional, "best_effort" (default) or "atomic"
+ *
+ * best_effort: applies each item, fails don't affect others
+ * atomic: all succeed or all fail
+ */
+app.post("/reassignments", async (c) => {
+	const body = await c.req.json();
+
+	if (!body.reassignments || !Array.isArray(body.reassignments)) {
+		return errorResponse(
+			"MISSING_REQUIRED_FIELDS",
+			"reassignments array is required",
+			422,
+		);
+	}
+
+	if (body.reassignments.length === 0) {
+		return errorResponse(
+			"BATCH_SCOPE_REQUIRED",
+			"At least one reassignment is required",
+			422,
+		);
+	}
+
+	// Limit batch size
+	const MAX_BATCH_SIZE = 100;
+	if (body.reassignments.length > MAX_BATCH_SIZE) {
+		return errorResponse(
+			"BATCH_LIMIT_EXCEEDED",
+			`Maximum batch size is ${MAX_BATCH_SIZE}`,
+			422,
+		);
+	}
+
+	// Validate no duplicate booking IDs
+	const bookingIds = body.reassignments.map(
+		(r: { bookingId: string }) => r.bookingId,
+	);
+	const uniqueBookingIds = new Set(bookingIds);
+	if (bookingIds.length !== uniqueBookingIds.size) {
+		return errorResponse(
+			"INVALID_SCOPE",
+			"Duplicate bookingId values in batch",
+			422,
+		);
+	}
+
+	const executionMode = body.executionMode ?? "best_effort";
+	if (!["best_effort", "atomic"].includes(executionMode)) {
+		return errorResponse(
+			"INVALID_EXECUTION_MODE",
+			"executionMode must be 'best_effort' or 'atomic'",
+			422,
+		);
+	}
+
+	const result = await executeBulkReassignments(
+		body.reassignments.map(
+			(r: { bookingId: string; targetStaffUserId: string }) => ({
+				bookingId: r.bookingId,
+				targetStaffUserId: r.targetStaffUserId,
+			}),
+		),
+		executionMode,
+	);
+
+	// Determine appropriate HTTP status
+	const status =
+		result.failedCount === 0 ? 200 : result.appliedCount === 0 ? 409 : 207; // Multi-status for partial success
+
+	return c.json(result, status);
 });
 
 // =============================================================================
