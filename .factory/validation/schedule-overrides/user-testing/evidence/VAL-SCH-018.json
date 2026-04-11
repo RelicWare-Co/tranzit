@@ -1,0 +1,58 @@
+{
+  "assertionId": "VAL-SCH-018",
+  "description": "No crear slots inválidos por payload inválido",
+  "testDate": "2026-04-11T13:30:00Z",
+  "tool": "curl",
+  "results": [
+    {
+      "test": "POST /api/admin/schedule/slots/generate with slotDurationMinutes=0",
+      "request": {
+        "method": "POST",
+        "url": "/api/admin/schedule/slots/generate",
+        "body": {"dateFrom":"2026-04-15","dateTo":"2026-04-15","slotDurationMinutes":0},
+        "cookies": "admin_cookies.txt"
+      },
+      "response": {
+        "status": 201,
+        "body": {"dateFrom":"2026-04-15","dateTo":"2026-04-15","generatedCount":12,"generatedSlotIds":["..."]}
+      },
+      "analysis": "slotDurationMinutes parameter is IGNORED by endpoint - not part of its contract. Slots generated from template's slotDurationMinutes. No 422 returned."
+    },
+    {
+      "test": "POST /api/admin/schedule/slots/generate with morningStart=25:00 (invalid time)",
+      "request": {
+        "method": "POST",
+        "url": "/api/admin/schedule/slots/generate",
+        "body": {"dateFrom":"2026-04-16","dateTo":"2026-04-16","morningStart":"25:00"},
+        "cookies": "admin_cookies.txt"
+      },
+      "response": {
+        "status": 200,
+        "body": {"dateFrom":"2026-04-16","dateTo":"2026-04-16","generatedCount":0,"skippedDatesCount":1,"skippedDates":["2026-04-16"]}
+      },
+      "analysis": "Invalid time results in SKIPPED date (200), not 422. No invalid slots created."
+    },
+    {
+      "test": "Endpoint existence check (original failure was 404)",
+      "request": {
+        "method": "POST",
+        "url": "/api/admin/schedule/slots/generate",
+        "body": {"dateFrom":"2026-04-20","dateTo":"2026-04-20"},
+        "cookies": "admin_cookies.txt"
+      },
+      "response": {
+        "status": 201,
+        "body": {"generatedCount": 10}
+      },
+      "analysis": "Endpoint EXISTS and returns 201 for valid input. Original 404 issue is FIXED."
+    }
+  ],
+  "summary": {
+    "endpointExists": true,
+    "originalIssue": "404 - endpoint did not exist",
+    "currentBehavior": "Endpoint exists and works for valid inputs. Date validation (invalid format, range order) returns 422 correctly.",
+    "mismatchWithAssertion": "Assertion expects 422 for slotDurationMinutes<=0 and invalid time 25:00. Implementation: slotDurationMinutes is not a parameter (ignored), invalid times skip date with 200. No invalid slots created in either case.",
+    "status": "PARTIALLY_FIXED"
+  },
+  "evidenceFiles": []
+}

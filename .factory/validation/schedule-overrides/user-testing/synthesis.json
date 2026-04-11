@@ -1,0 +1,27 @@
+{
+  "milestone": "schedule-overrides",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "blocked": 0
+  },
+  "passedAssertions": ["VAL-SCH-024"],
+  "failedAssertions": [
+    {
+      "id": "VAL-SCH-018",
+      "reason": "Endpoint now exists (returns 201/200 instead of 404). However, assertion expects 422 for slotDurationMinutes<=0 or invalid time 25:00. Implementation: slotDurationMinutes is not a parameter (ignored), invalid times skip date with 200 not 422. Design mismatch between assertion and implementation contract."
+    }
+  ],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null,
+  "testedAssertions": [
+    "VAL-SCH-018",
+    "VAL-SCH-024"
+  ],
+  "summary": "Tested 2 assertions from schedule-overrides milestone. VAL-SCH-024 (partial override slotCapacityLimit) is now PASSING - fix verified. VAL-SCH-018 (POST /slots/generate validation) has a design mismatch: endpoint exists and returns 201/200 (original 404 fixed), but the assertion's specific validation requirements (422 for invalid slotDurationMinutes or time) don't match the implementation's contract (endpoint uses template-derived slotDurationMinutes, invalid times skip dates with 200). No invalid slots are created, but 422 is not returned as assertion specifies.",
+  "evidenceDir": ".factory/validation/schedule-overrides/user-testing/evidence"
+}
