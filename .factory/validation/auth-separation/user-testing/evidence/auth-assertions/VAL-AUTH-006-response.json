@@ -1,0 +1,4 @@
+Attempt 4 (4th wrong): {"message":"Too many attempts","code":"TOO_MANY_ATTEMPTS"}
+
+Now attempting with correct OTP (952201) after lockout:
+{"message":"Invalid OTP","code":"INVALID_OTP"}

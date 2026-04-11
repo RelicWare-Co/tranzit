@@ -1,0 +1,23 @@
+=== Preflight with allowed origin ===
+> Access-Control-Request-Method: POST
+> Access-Control-Request-Headers: Content-Type
+< Access-Control-Allow-Origin: http://localhost:3000
+< Access-Control-Allow-Credentials: true
+< Access-Control-Expose-Headers: Content-Length
+< Vary: Origin, Access-Control-Request-Headers
+< Access-Control-Max-Age: 600
+< Access-Control-Allow-Methods: POST,GET,OPTIONS
+< Access-Control-Allow-Headers: Content-Type,Authorization
+
+=== Preflight with disallowed origin ===
+> Access-Control-Request-Method: POST
+> Access-Control-Request-Headers: Content-Type
+< Access-Control-Allow-Credentials: true
+< Access-Control-Expose-Headers: Content-Length
+< Vary: Origin, Access-Control-Request-Headers
+< Access-Control-Max-Age: 600
+< Access-Control-Allow-Methods: POST,GET,OPTIONS
+< Access-Control-Allow-Headers: Content-Type,Authorization
+
+=== Note: Access-Control-Allow-Origin is missing when origin not allowed ===
+=== Access-Control-Allow-Credentials is still present in disallowed case (potential issue) ===

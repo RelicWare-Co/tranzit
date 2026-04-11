@@ -1,0 +1,4 @@
+First OTP sign-in: SUCCESS, session created
+Replay attempt: {"message":"Invalid OTP","code":"INVALID_OTP"}
+Session check: session still valid from first sign-in
+Result: PASS - OTP is single-use, cannot create new session via replay

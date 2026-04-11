@@ -1,0 +1,4 @@
+POST /api/auth/sign-out: {"success":true}
+GET /session after signout: null (no session)
+GET /api/auth/admin/list-users after signout: 401 UNAUTHENTICATED
+Result: PASS - Session is invalidated and subsequent requests are rejected
