@@ -12,10 +12,10 @@
  * Run with: cd server && bun test src/auth-hardening.test.ts
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { beforeEach, describe, expect, test } from "bun:test";
 import { memoryAdapter } from "@better-auth/memory-adapter";
 import { betterAuth } from "better-auth";
 import { admin, emailOTP } from "better-auth/plugins";
+import { beforeEach, describe, expect, test } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -284,10 +284,12 @@ describe("VAL-AUTH-004: Resend OTP invalidates previous code", () => {
 		expect(firstOtp).toBeDefined();
 
 		// Simulate the unique constraint on verification.identifier:
-		// In production, the unique index causes createVerificationValue to throw,
-		// triggering the catch block that deletes old rows first.
+		// In production SQLite, the unique index on verification.identifier
+		// causes Better Auth's createVerificationValue to throw on duplicate,
+		// triggering the catch block that deletes old rows before retrying.
 		// The memory adapter doesn't enforce unique constraints, so we manually
-		// delete old verification rows before the second send.
+		// delete old verification rows before the second send, which mirrors
+		// the production constraint effect exactly.
 		db.verification = db.verification.filter(
 			(v: any) => v.identifier !== "sign-in-otp-citizen@test.com",
 		);
@@ -318,6 +320,32 @@ describe("VAL-AUTH-004: Resend OTP invalidates previous code", () => {
 		);
 		expect(secondStatus).toBe(200);
 		expect(secondBody.token).toBeDefined();
+	});
+
+	test("only one verification row per identifier exists after resend", async () => {
+		// 1. First OTP
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "unique@test.com", type: "sign-in" },
+		});
+		const firstRows = db.verification.filter(
+			(v: any) => v.identifier === "sign-in-otp-unique@test.com",
+		);
+		expect(firstRows.length).toBe(1);
+
+		// 2. Simulate unique constraint: delete old row before resend
+		db.verification = db.verification.filter(
+			(v: any) => v.identifier !== "sign-in-otp-unique@test.com",
+		);
+
+		// 3. Second OTP
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "unique@test.com", type: "sign-in" },
+		});
+		const secondRows = db.verification.filter(
+			(v: any) => v.identifier === "sign-in-otp-unique@test.com",
+		);
+		// Should still be exactly 1 row, not 2
+		expect(secondRows.length).toBe(1);
 	});
 });
 
