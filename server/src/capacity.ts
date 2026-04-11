@@ -165,10 +165,22 @@ export async function checkCapacity(
 		),
 	});
 
+	// Get slot dates for each booking to filter by target date
+	const bookingSlotIds = staffDateBookings.map((b) => b.slotId);
+	const bookingSlots =
+		bookingSlotIds.length > 0
+			? await db.query.appointmentSlot.findMany({
+					where: sql`${schema.appointmentSlot.id} IN ${bookingSlotIds}`,
+				})
+			: [];
+	const bookingSlotDateMap = new Map(
+		bookingSlots.map((s) => [s.id, s.slotDate]),
+	);
+
 	// Filter to bookings on the same date
-	const staffBookingsForDate = staffDateBookings.filter(() => {
-		const bookingSlot = slot; // We already fetched the slot
-		return bookingSlot.slotDate === date;
+	const staffBookingsForDate = staffDateBookings.filter((b) => {
+		const bSlotDate = bookingSlotDateMap.get(b.slotId);
+		return bSlotDate === date;
 	});
 
 	const staffUsed = staffBookingsForDate.length;
@@ -641,9 +653,14 @@ export async function reassignBooking(
 			c.type === "STAFF_OVER_CAPACITY" &&
 			booking.staffUserId !== newStaffUserId
 		) {
-			// This would be a real conflict only if staff is at capacity without this booking
-			const otherStaffBookings = capacityCheck.staffUsed - 1;
-			if (otherStaffBookings >= capacityCheck.staffCapacity) {
+			// capacityCheck.staffUsed is the count for newStaffUserId on this date.
+			// The current booking has staffUserId === booking.staffUserId (the OLD staff),
+			// NOT newStaffUserId, so it is NOT counted in staffUsed.
+			// The -1 was incorrect because it assumed the booking was already counted
+			// for newStaffUserId, but that's only true if oldStaffUserId === newStaffUserId,
+			// which we already handled as a no-op above.
+			// So we simply check if newStaffUserId has capacity:
+			if (capacityCheck.staffUsed >= capacityCheck.staffCapacity) {
 				return true;
 			}
 			return false;

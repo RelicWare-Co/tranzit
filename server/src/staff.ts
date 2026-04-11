@@ -71,7 +71,9 @@ const errorResponse = (code: string, message: string, status: number) =>
  */
 const validateWeeklyAvailability = (
 	wa: unknown,
-): { valid: true; parsed: Record<string, unknown> } | { valid: false; error: string } => {
+):
+	| { valid: true; parsed: Record<string, unknown> }
+	| { valid: false; error: string } => {
 	if (wa === undefined || wa === null) {
 		return { valid: true, parsed: {} };
 	}
@@ -134,6 +136,30 @@ const validateWeeklyAvailability = (
 				}
 			}
 		}
+
+		// Validate morning time window: morningEnd > morningStart
+		const morningStart = config.morningStart as string | undefined;
+		const morningEnd = config.morningEnd as string | undefined;
+		if (morningStart && morningEnd) {
+			if (!isValidTimeWindow(morningStart, morningEnd)) {
+				return {
+					valid: false,
+					error: `weeklyAvailability.${day}.morningEnd must be after morningStart`,
+				};
+			}
+		}
+
+		// Validate afternoon time window: afternoonEnd > afternoonStart
+		const afternoonStart = config.afternoonStart as string | undefined;
+		const afternoonEnd = config.afternoonEnd as string | undefined;
+		if (afternoonStart && afternoonEnd) {
+			if (!isValidTimeWindow(afternoonStart, afternoonEnd)) {
+				return {
+					valid: false,
+					error: `weeklyAvailability.${day}.afternoonEnd must be after afternoonStart`,
+				};
+			}
+		}
 	}
 
 	return { valid: true, parsed };
@@ -159,11 +185,7 @@ app.post("/", async (c) => {
 
 	// Validate required fields
 	if (!body.userId) {
-		return errorResponse(
-			"MISSING_REQUIRED_FIELDS",
-			"userId is required",
-			422,
-		);
+		return errorResponse("MISSING_REQUIRED_FIELDS", "userId is required", 422);
 	}
 
 	// Check if user exists
@@ -205,7 +227,11 @@ app.post("/", async (c) => {
 	// Validate weeklyAvailability structure
 	const weeklyAvResult = validateWeeklyAvailability(body.weeklyAvailability);
 	if (!weeklyAvResult.valid) {
-		return errorResponse("INVALID_WEEKLY_AVAILABILITY", weeklyAvResult.error, 422);
+		return errorResponse(
+			"INVALID_WEEKLY_AVAILABILITY",
+			weeklyAvResult.error,
+			422,
+		);
 	}
 
 	const now = new Date();
@@ -373,7 +399,10 @@ app.patch("/:userId", async (c) => {
 			422,
 		);
 	}
-	if (body.isAssignable !== undefined && typeof body.isAssignable !== "boolean") {
+	if (
+		body.isAssignable !== undefined &&
+		typeof body.isAssignable !== "boolean"
+	) {
 		return errorResponse(
 			"INVALID_FIELD_TYPE",
 			"isAssignable must be a boolean",
@@ -394,7 +423,10 @@ app.patch("/:userId", async (c) => {
 		const weeklyAvResult = validateWeeklyAvailability(body.weeklyAvailability);
 		// Already validated above, so we know it's valid
 		if (weeklyAvResult.valid) {
-			updates.weeklyAvailability = weeklyAvResult.parsed as Record<string, unknown>;
+			updates.weeklyAvailability = weeklyAvResult.parsed as Record<
+				string,
+				unknown
+			>;
 		}
 	}
 	if (body.notes !== undefined) updates.notes = body.notes;
@@ -580,8 +612,7 @@ app.post("/:userId/date-overrides", async (c) => {
 			updatedAt: now,
 		};
 
-		if (body.isAvailable !== undefined)
-			updates.isAvailable = body.isAvailable;
+		if (body.isAvailable !== undefined) updates.isAvailable = body.isAvailable;
 		if (body.capacityOverride !== undefined)
 			updates.capacityOverride = body.capacityOverride;
 		if (body.availableStartTime !== undefined)
@@ -642,7 +673,9 @@ app.get("/:userId/date-overrides", async (c) => {
 		return errorResponse("NOT_FOUND", "Staff profile not found", 404);
 	}
 
-	let overrides: Awaited<ReturnType<typeof db.query.staffDateOverride.findMany>>;
+	let overrides: Awaited<
+		ReturnType<typeof db.query.staffDateOverride.findMany>
+	>;
 	if (date) {
 		if (!isValidDateFormat(date)) {
 			return errorResponse(
@@ -763,7 +796,8 @@ app.patch("/:userId/date-overrides/:overrideId", async (c) => {
 	}
 
 	// Validate time formats
-	const availableStartTime = body.availableStartTime ?? existing.availableStartTime;
+	const availableStartTime =
+		body.availableStartTime ?? existing.availableStartTime;
 	const availableEndTime = body.availableEndTime ?? existing.availableEndTime;
 
 	if (!isValidTimeFormat(body.availableStartTime ?? null)) {
@@ -968,8 +1002,16 @@ app.get("/:userId/effective-availability", async (c) => {
 
 	// Step 4: Fall back to weeklyAvailability
 	const weekday = new Date(`${date}T00:00:00`).getDay();
-	const weeklyAv = (staffProfile.weeklyAvailability ??
-		{}) as Record<string, { enabled?: boolean; morningStart?: string; morningEnd?: string; afternoonStart?: string; afternoonEnd?: string }>;
+	const weeklyAv = (staffProfile.weeklyAvailability ?? {}) as Record<
+		string,
+		{
+			enabled?: boolean;
+			morningStart?: string;
+			morningEnd?: string;
+			afternoonStart?: string;
+			afternoonEnd?: string;
+		}
+	>;
 	const dayConfig = weeklyAv[String(weekday)];
 
 	// Default: fully available with defaultDailyCapacity
@@ -998,7 +1040,7 @@ app.get("/:userId/effective-availability", async (c) => {
 
 	// Day has specific windows configured
 	const window =
-		(dayConfig.morningStart &&
+		dayConfig.morningStart &&
 		dayConfig.morningEnd &&
 		dayConfig.afternoonStart &&
 		dayConfig.afternoonEnd
@@ -1011,7 +1053,7 @@ app.get("/:userId/effective-availability", async (c) => {
 				}
 			: dayConfig.morningStart && dayConfig.morningEnd
 				? { start: dayConfig.morningStart, end: dayConfig.morningEnd }
-				: null);
+				: null;
 
 	return c.json({
 		userId,
@@ -1081,8 +1123,16 @@ export const isSlotWithinStaffAvailability = async (
 
 	// Check weekly availability
 	const weekday = new Date(`${date}T00:00:00`).getDay();
-	const weeklyAv = (result.weeklyAvailability ??
-		{}) as Record<string, { enabled?: boolean; morningStart?: string; morningEnd?: string; afternoonStart?: string; afternoonEnd?: string }>;
+	const weeklyAv = (result.weeklyAvailability ?? {}) as Record<
+		string,
+		{
+			enabled?: boolean;
+			morningStart?: string;
+			morningEnd?: string;
+			afternoonStart?: string;
+			afternoonEnd?: string;
+		}
+	>;
 	const dayConfig = weeklyAv[String(weekday)];
 
 	if (dayConfig && dayConfig.enabled === false) {
@@ -1150,8 +1200,10 @@ export const getEffectiveDailyCapacity = async (
 
 	// Check weekly availability
 	const weekday = new Date(`${date}T00:00:00`).getDay();
-	const weeklyAv = (profile.weeklyAvailability ??
-		{}) as Record<string, { enabled?: boolean }>;
+	const weeklyAv = (profile.weeklyAvailability ?? {}) as Record<
+		string,
+		{ enabled?: boolean }
+	>;
 	const dayConfig = weeklyAv[String(weekday)];
 
 	if (dayConfig && dayConfig.enabled === false) {
