@@ -9,6 +9,41 @@ type AppVariables = {
 const app = new Hono<{ Variables: AppVariables }>();
 
 /**
+ * Per-email OTP send rate limiting.
+ *
+ * Tracks OTP send attempts by email address (not IP) to prevent abuse
+ * where an attacker could exhaust the global IP-based rate limit by
+ * varying email addresses.
+ *
+ * Limit: 3 OTP send requests per email per 60-second window.
+ *
+ * This is in addition to Better Auth's global IP-based rate limit.
+ */
+
+// In-memory store for per-email OTP rate limiting
+// Structure: Map<email, { count: number, windowStart: number }>
+const emailOtpRateLimitStore = new Map<
+	string,
+	{ count: number; windowStart: number }
+>();
+
+const EMAIL_OTP_RATE_LIMIT_MAX = 3;
+const EMAIL_OTP_RATE_LIMIT_WINDOW_MS = 60_000; // 60 seconds
+
+// Cleanup old entries periodically (every 5 minutes)
+setInterval(
+	() => {
+		const now = Date.now();
+		for (const [email, entry] of emailOtpRateLimitStore.entries()) {
+			if (now - entry.windowStart >= EMAIL_OTP_RATE_LIMIT_WINDOW_MS) {
+				emailOtpRateLimitStore.delete(email);
+			}
+		}
+	},
+	5 * 60 * 1000,
+);
+
+/**
  * CORS configuration for auth endpoints.
  *
  * - origin: validates the incoming Origin header before setting credentials.
@@ -183,6 +218,104 @@ app.get("/session", (c) => {
 
 app.get("/", (c) => {
 	return c.text("Hello Hono + Better Auth");
+});
+
+/**
+ * Per-email OTP rate limit handler for send-verification-otp.
+ *
+ * This is registered BEFORE the generic /api/auth/* handler to intercept
+ * the specific send-verification-otp endpoint. It:
+ * 1. Reads and parses the request body to extract email
+ * 2. Checks rate limit for that email
+ * 3. Either returns 429 OR creates a new Request with the body and passes to auth.handler
+ *
+ * We can't use app.use() with body modification because Request.body is readonly,
+ * so we use a specific route registration instead.
+ */
+app.post("/api/auth/email-otp/send-verification-otp", async (c) => {
+	// Read the body
+	let bodyText: string;
+	try {
+		bodyText = await c.req.raw.text();
+	} catch {
+		// If we can't read the body, delegate to auth handler
+		return auth.handler(c.req.raw);
+	}
+
+	let email: string | null = null;
+	try {
+		const body = JSON.parse(bodyText);
+		email = body?.email?.toLowerCase() ?? null;
+	} catch {
+		// If we can't parse the body, delegate to auth handler
+		return auth.handler(c.req.raw);
+	}
+
+	if (!email) {
+		// No email in body - delegate to auth handler for validation
+		return auth.handler(c.req.raw);
+	}
+
+	// Check rate limit for this email
+	const now = Date.now();
+	const entry = emailOtpRateLimitStore.get(email);
+
+	if (!entry) {
+		// First request from this email in the window - create new request and proceed
+		emailOtpRateLimitStore.set(email, { count: 1, windowStart: now });
+		const newRequest = new Request(c.req.raw, {
+			body: bodyText,
+			headers: c.req.raw.headers,
+		});
+		return auth.handler(newRequest);
+	}
+
+	// Check if the window has expired
+	const windowElapsed = now - entry.windowStart;
+
+	if (windowElapsed >= EMAIL_OTP_RATE_LIMIT_WINDOW_MS) {
+		// Window expired - reset and proceed
+		emailOtpRateLimitStore.set(email, { count: 1, windowStart: now });
+		const newRequest = new Request(c.req.raw, {
+			body: bodyText,
+			headers: c.req.raw.headers,
+		});
+		return auth.handler(newRequest);
+	}
+
+	// Window still active - check count
+	if (entry.count >= EMAIL_OTP_RATE_LIMIT_MAX) {
+		// Rate limit exceeded
+		const retryAfter = Math.ceil(
+			(EMAIL_OTP_RATE_LIMIT_WINDOW_MS - windowElapsed) / 1000,
+		);
+		c.header("Retry-After", String(retryAfter));
+		c.header("X-RateLimit-Limit", String(EMAIL_OTP_RATE_LIMIT_MAX));
+		c.header("X-RateLimit-Remaining", String(0));
+		c.header(
+			"X-RateLimit-Reset",
+			String(
+				Math.ceil((entry.windowStart + EMAIL_OTP_RATE_LIMIT_WINDOW_MS) / 1000),
+			),
+		);
+		return c.json(
+			{
+				code: "RATE_LIMIT_EXCEEDED",
+				message: `Too many OTP requests for this email. Please try again in ${retryAfter} seconds.`,
+			},
+			429,
+		);
+	}
+
+	// Increment count and proceed
+	entry.count += 1;
+	emailOtpRateLimitStore.set(email, entry);
+
+	const newRequest = new Request(c.req.raw, {
+		body: bodyText,
+		headers: c.req.raw.headers,
+	});
+	return auth.handler(newRequest);
 });
 
 app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) => {
