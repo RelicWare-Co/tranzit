@@ -109,10 +109,19 @@ function createTestApp(auth: any) {
 	app.use("/api/admin/*", async (c, next) => {
 		const user = c.get("user");
 		if (!user) {
-			return c.json({ code: "UNAUTHENTICATED", message: "Authentication required" }, 401);
+			return c.json(
+				{ code: "UNAUTHENTICATED", message: "Authentication required" },
+				401,
+			);
 		}
 		if (user.role !== ADMIN_ROLE) {
-			return c.json({ code: "FORBIDDEN", message: "Admin privileges required for this operation" }, 403);
+			return c.json(
+				{
+					code: "FORBIDDEN",
+					message: "Admin privileges required for this operation",
+				},
+				403,
+			);
 		}
 		await next();
 	});
@@ -122,7 +131,13 @@ function createTestApp(auth: any) {
 		const body = await c.req.json();
 
 		if (!body.dateFrom || !body.dateTo) {
-			return c.json({ code: "MISSING_REQUIRED_FIELDS", message: "dateFrom and dateTo are required" }, 422);
+			return c.json(
+				{
+					code: "MISSING_REQUIRED_FIELDS",
+					message: "dateFrom and dateTo are required",
+				},
+				422,
+			);
 		}
 
 		const isValidDateFormat = (d: string): boolean => {
@@ -142,36 +157,73 @@ function createTestApp(auth: any) {
 		};
 
 		if (!isValidDateFormat(body.dateFrom)) {
-			return c.json({ code: "INVALID_DATE", message: "dateFrom must be a valid date in YYYY-MM-DD format" }, 422);
+			return c.json(
+				{
+					code: "INVALID_DATE",
+					message: "dateFrom must be a valid date in YYYY-MM-DD format",
+				},
+				422,
+			);
 		}
 		if (!isValidDateFormat(body.dateTo)) {
-			return c.json({ code: "INVALID_DATE", message: "dateTo must be a valid date in YYYY-MM-DD format" }, 422);
+			return c.json(
+				{
+					code: "INVALID_DATE",
+					message: "dateTo must be a valid date in YYYY-MM-DD format",
+				},
+				422,
+			);
 		}
 
 		const fromDate = new Date(`${body.dateFrom}T00:00:00`);
 		const toDate = new Date(`${body.dateTo}T00:00:00`);
 
 		if (toDate < fromDate) {
-			return c.json({ code: "INVALID_DATE_RANGE", message: "dateTo must be greater than or equal to dateFrom" }, 422);
+			return c.json(
+				{
+					code: "INVALID_DATE_RANGE",
+					message: "dateTo must be greater than or equal to dateFrom",
+				},
+				422,
+			);
 		}
 
-		const diffDays = Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+		const diffDays =
+			Math.round(
+				(toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24),
+			) + 1;
 		const maxDays = Math.min(body.maxDays ?? 31, 90);
 
 		if (diffDays > maxDays) {
-			return c.json({ code: "DATE_RANGE_TOO_LARGE", message: `Date range exceeds maximum of ${maxDays} days` }, 422);
+			return c.json(
+				{
+					code: "DATE_RANGE_TOO_LARGE",
+					message: `Date range exceeds maximum of ${maxDays} days`,
+				},
+				422,
+			);
 		}
 
 		// With valid auth, return success (actual DB work would happen in production)
-		return c.json({ generated: true, dateFrom: body.dateFrom, dateTo: body.dateTo }, 200);
+		return c.json(
+			{ generated: true, dateFrom: body.dateFrom, dateTo: body.dateTo },
+			200,
+		);
 	});
 
-	app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+	app.on(["POST", "GET", "OPTIONS"], "/api/auth/*", (c) =>
+		auth.handler(c.req.raw),
+	);
 
 	return app;
 }
 
-async function callApp(app: any, path: string, options: RequestInit = {}, cookie?: string) {
+async function callApp(
+	app: any,
+	path: string,
+	options: RequestInit = {},
+	cookie?: string,
+) {
 	const url = `http://localhost:3001${path}`;
 	const headers: Record<string, string> = {
 		"Content-Type": "application/json",
@@ -193,12 +245,20 @@ async function createAdminSession(auth: any, db: any, _otpStore: any) {
 	const signUpRes = await auth.handler(
 		new Request("http://localhost:3000/api/auth/sign-up/email", {
 			method: "POST",
-			headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
-			body: JSON.stringify({ name: "Admin", email: "admin@test.com", password: "admin123456" }),
+			headers: {
+				"Content-Type": "application/json",
+				Origin: "http://localhost:3000",
+			},
+			body: JSON.stringify({
+				name: "Admin",
+				email: "admin@test.com",
+				password: "admin123456",
+			}),
 		}),
 	);
 	const signUpBody = await signUpRes.json();
-	if (!signUpBody.user?.id) throw new Error(`Sign-up failed: ${JSON.stringify(signUpBody)}`);
+	if (!signUpBody.user?.id)
+		throw new Error(`Sign-up failed: ${JSON.stringify(signUpBody)}`);
 
 	const userRecord = db.user.find((u: any) => u.id === signUpBody.user.id);
 	if (userRecord) userRecord.role = "admin";
@@ -207,7 +267,10 @@ async function createAdminSession(auth: any, db: any, _otpStore: any) {
 		new Request("http://localhost:3000/api/auth/sign-in/email", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ email: "admin@test.com", password: "admin123456" }),
+			body: JSON.stringify({
+				email: "admin@test.com",
+				password: "admin123456",
+			}),
 		}),
 	);
 	return getSessionCookieFromResponse(signInRes);
@@ -234,21 +297,28 @@ describe("VAL-SCH-018: POST /api/admin/schedule/slots/generate auth", () => {
 	});
 
 	test("without session returns 401 UNAUTHENTICATED", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2026-04-13", dateTo: "2026-04-13" }),
-		});
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2026-04-13", dateTo: "2026-04-13" }),
+			},
+		);
 		expect(status).toBe(401);
 		expect(body.code).toBe("UNAUTHENTICATED");
 	});
 
 	test("with non-admin session returns 403 FORBIDDEN", async () => {
 		await auth.handler(
-			new Request("http://localhost:3000/api/auth/email-otp/send-verification-otp", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email: "citizen@test.com", type: "sign-in" }),
-			}),
+			new Request(
+				"http://localhost:3000/api/auth/email-otp/send-verification-otp",
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ email: "citizen@test.com", type: "sign-in" }),
+				},
+			),
 		);
 		const otp = otpStore["sign-in"]["citizen@test.com"];
 
@@ -261,22 +331,32 @@ describe("VAL-SCH-018: POST /api/admin/schedule/slots/generate auth", () => {
 		);
 		const citizenCookie = getSessionCookieFromResponse(signInRes);
 
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2026-04-13", dateTo: "2026-04-13" }),
-			headers: {},
-		}, citizenCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2026-04-13", dateTo: "2026-04-13" }),
+				headers: {},
+			},
+			citizenCookie,
+		);
 
 		expect(status).toBe(403);
 		expect(body.code).toBe("FORBIDDEN");
 	});
 
 	test("with admin session returns 200 (stub passes auth and returns OK)", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2026-04-13", dateTo: "2026-04-13" }),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2026-04-13", dateTo: "2026-04-13" }),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		expect(status).toBe(200);
 		expect(body.generated).toBe(true);
@@ -300,77 +380,112 @@ describe("POST /api/admin/schedule/slots/generate validation", () => {
 	});
 
 	test("missing dateFrom and dateTo returns 422", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({}),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({}),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		expect(status).toBe(422);
 		expect(body.code).toBe("MISSING_REQUIRED_FIELDS");
 	});
 
 	test("missing dateTo returns 422", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2026-04-13" }),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2026-04-13" }),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		expect(status).toBe(422);
 		expect(body.code).toBe("MISSING_REQUIRED_FIELDS");
 	});
 
 	test("invalid dateFrom format returns 422", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "not-a-date", dateTo: "2026-04-13" }),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "not-a-date", dateTo: "2026-04-13" }),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		expect(status).toBe(422);
 		expect(body.code).toBe("INVALID_DATE");
 	});
 
 	test("invalid dateTo format returns 422", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2026-04-13", dateTo: "invalid" }),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2026-04-13", dateTo: "invalid" }),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		expect(status).toBe(422);
 		expect(body.code).toBe("INVALID_DATE");
 	});
 
 	test("dateTo before dateFrom returns 422", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2026-04-15", dateTo: "2026-04-13" }),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2026-04-15", dateTo: "2026-04-13" }),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		expect(status).toBe(422);
 		expect(body.code).toBe("INVALID_DATE_RANGE");
 	});
 
 	test("date range too large returns 422", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2026-04-01", dateTo: "2026-07-01" }),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2026-04-01", dateTo: "2026-07-01" }),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		expect(status).toBe(422);
 		expect(body.code).toBe("DATE_RANGE_TOO_LARGE");
 	});
 
 	test("leap year Feb 29 is valid on valid year", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2024-02-29", dateTo: "2024-02-29" }),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2024-02-29", dateTo: "2024-02-29" }),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		if (status === 422) {
 			expect(body.code).not.toBe("INVALID_DATE");
@@ -380,11 +495,16 @@ describe("POST /api/admin/schedule/slots/generate validation", () => {
 	});
 
 	test("non-leap year Feb 29 returns 422", async () => {
-		const { status, body } = await callApp(app, "/api/admin/schedule/slots/generate", {
-			method: "POST",
-			body: JSON.stringify({ dateFrom: "2025-02-29", dateTo: "2025-02-29" }),
-			headers: {},
-		}, adminCookie);
+		const { status, body } = await callApp(
+			app,
+			"/api/admin/schedule/slots/generate",
+			{
+				method: "POST",
+				body: JSON.stringify({ dateFrom: "2025-02-29", dateTo: "2025-02-29" }),
+				headers: {},
+			},
+			adminCookie,
+		);
 
 		expect(status).toBe(422);
 		expect(body.code).toBe("INVALID_DATE");

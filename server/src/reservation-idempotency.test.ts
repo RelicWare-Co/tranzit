@@ -26,7 +26,7 @@ import { randomUUID } from "node:crypto";
 import { memoryAdapter } from "@better-auth/memory-adapter";
 import { betterAuth } from "better-auth";
 import { admin, emailOTP } from "better-auth/plugins";
-import { and, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -237,13 +237,13 @@ async function callApp(
 // Test Data Setup Helpers - use unique IDs per test
 // ---------------------------------------------------------------------------
 
-const TEST_SLOT_DATE = "2031-12-31";
+const TEST_SLOT_DATE = "2032-12-31";
 
 async function cleanupTestData(
 	staffUserId: string,
-	slotId: string,
+	_slotId: string,
 	bookingIds: string[],
-	slotId2?: string,
+	_slotId2?: string,
 ) {
 	for (const id of bookingIds) {
 		try {
@@ -251,6 +251,18 @@ async function cleanupTestData(
 		} catch {
 			/* ignore */
 		}
+	}
+
+	// Best-effort cleanup for bookings created during failed assertions
+	// that were not recorded in bookingIds.
+	try {
+		await db
+			.delete(schema.booking)
+			.where(
+				sql`${schema.booking.slotId} IN (SELECT id FROM appointment_slot WHERE slot_date = ${TEST_SLOT_DATE})`,
+			);
+	} catch {
+		/* ignore */
 	}
 
 	// Clean up all slots matching the test date (UNIQUE constraint is on slot_date + start_time)
@@ -801,7 +813,7 @@ describe("VAL-ADM-011: Concurrency on last slot allows only one winner", () => {
 
 	test("capacity check shows 0 remaining after slot is full", async () => {
 		// Book the only slot
-		await consumeCapacity(
+		const result = await consumeCapacity(
 			slotId,
 			staffUserId,
 			"administrative",
@@ -811,6 +823,8 @@ describe("VAL-ADM-011: Concurrency on last slot allows only one winner", () => {
 			null,
 			null,
 		);
+		expect(result.success).toBe(true);
+		if (result.bookingId) bookingIds.push(result.bookingId);
 
 		// Check capacity
 		const capacity = await checkCapacity(slotId, staffUserId);

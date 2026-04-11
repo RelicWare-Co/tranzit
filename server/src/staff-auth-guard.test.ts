@@ -113,14 +113,11 @@ function createTestApp(auth: any) {
 	const app = new Hono<{ Variables: AppVariables }>();
 
 	// CORS for admin endpoints
-	app.use(
-		"/api/admin/*",
-		async (c: any, next: any) => {
-			c.header("Access-Control-Allow-Origin", "http://localhost:3000");
-			c.header("Access-Control-Allow-Credentials", "true");
-			await next();
-		},
-	);
+	app.use("/api/admin/*", async (c: any, next: any) => {
+		c.header("Access-Control-Allow-Origin", "http://localhost:3000");
+		c.header("Access-Control-Allow-Credentials", "true");
+		await next();
+	});
 
 	// Session resolution middleware
 	app.use("*", async (c: any, next: any) => {
@@ -142,10 +139,16 @@ function createTestApp(auth: any) {
 	app.use("/api/admin/*", async (c: any, next: any) => {
 		const user = c.get("user");
 		if (!user) {
-			return c.json({ code: "UNAUTHENTICATED", message: "Authentication required" }, 401);
+			return c.json(
+				{ code: "UNAUTHENTICATED", message: "Authentication required" },
+				401,
+			);
 		}
 		if (user.role !== ADMIN_ROLE) {
-			return c.json({ code: "FORBIDDEN", message: "Admin privileges required" }, 403);
+			return c.json(
+				{ code: "FORBIDDEN", message: "Admin privileges required" },
+				403,
+			);
 		}
 		await next();
 	});
@@ -159,10 +162,21 @@ function createTestApp(auth: any) {
 	app.post("/api/admin/staff", async (c) => {
 		const body = await c.req.json();
 		if (!body.userId) {
-			return c.json({ code: "MISSING_REQUIRED_FIELDS", message: "userId is required" }, 422);
+			return c.json(
+				{ code: "MISSING_REQUIRED_FIELDS", message: "userId is required" },
+				422,
+			);
 		}
 		// Simulate created response
-		return c.json({ userId: body.userId, isActive: true, isAssignable: true, defaultDailyCapacity: 25 }, 201);
+		return c.json(
+			{
+				userId: body.userId,
+				isActive: true,
+				isAssignable: true,
+				defaultDailyCapacity: 25,
+			},
+			201,
+		);
 	});
 
 	app.get("/api/admin/staff", async (c) => {
@@ -172,7 +186,10 @@ function createTestApp(auth: any) {
 	app.get("/api/admin/staff/:userId", async (c) => {
 		const { userId } = c.req.param();
 		if (userId === "nonexistent") {
-			return c.json({ code: "NOT_FOUND", message: "Staff profile not found" }, 404);
+			return c.json(
+				{ code: "NOT_FOUND", message: "Staff profile not found" },
+				404,
+			);
 		}
 		return c.json({ userId, isActive: true });
 	});
@@ -180,8 +197,17 @@ function createTestApp(auth: any) {
 	app.patch("/api/admin/staff/:userId", async (c) => {
 		const { userId } = c.req.param();
 		const body = await c.req.json();
-		if (body.defaultDailyCapacity !== undefined && body.defaultDailyCapacity <= 0) {
-			return c.json({ code: "INVALID_CAPACITY", message: "defaultDailyCapacity must be positive" }, 422);
+		if (
+			body.defaultDailyCapacity !== undefined &&
+			body.defaultDailyCapacity <= 0
+		) {
+			return c.json(
+				{
+					code: "INVALID_CAPACITY",
+					message: "defaultDailyCapacity must be positive",
+				},
+				422,
+			);
 		}
 		return c.json({ userId, ...body });
 	});
@@ -193,18 +219,53 @@ function createTestApp(auth: any) {
 	app.post("/api/admin/staff/:userId/date-overrides", async (c) => {
 		const body = await c.req.json();
 		if (!body.overrideDate) {
-			return c.json({ code: "MISSING_REQUIRED_FIELDS", message: "overrideDate is required" }, 422);
+			return c.json(
+				{
+					code: "MISSING_REQUIRED_FIELDS",
+					message: "overrideDate is required",
+				},
+				422,
+			);
 		}
 		if (body.overrideDate === "invalid") {
-			return c.json({ code: "INVALID_DATE", message: "Invalid date format" }, 422);
+			return c.json(
+				{ code: "INVALID_DATE", message: "Invalid date format" },
+				422,
+			);
 		}
-		if (body.availableStartTime && body.availableEndTime && body.availableStartTime >= body.availableEndTime) {
-			return c.json({ code: "INVALID_TIME_WINDOW", message: "availableEndTime must be after availableStartTime" }, 422);
+		if (
+			body.availableStartTime &&
+			body.availableEndTime &&
+			body.availableStartTime >= body.availableEndTime
+		) {
+			return c.json(
+				{
+					code: "INVALID_TIME_WINDOW",
+					message: "availableEndTime must be after availableStartTime",
+				},
+				422,
+			);
 		}
-		if (body.isAvailable === false && (body.availableStartTime || body.availableEndTime)) {
-			return c.json({ code: "INVALID_OVERRIDE_STATE", message: "Cannot set time windows when isAvailable=false" }, 422);
+		if (
+			body.isAvailable === false &&
+			(body.availableStartTime || body.availableEndTime)
+		) {
+			return c.json(
+				{
+					code: "INVALID_OVERRIDE_STATE",
+					message: "Cannot set time windows when isAvailable=false",
+				},
+				422,
+			);
 		}
-		return c.json({ staffUserId: c.req.param().userId, overrideDate: body.overrideDate, isAvailable: body.isAvailable ?? true }, 201);
+		return c.json(
+			{
+				staffUserId: c.req.param().userId,
+				overrideDate: body.overrideDate,
+				isAvailable: body.isAvailable ?? true,
+			},
+			201,
+		);
 	});
 
 	app.get("/api/admin/staff/:userId/date-overrides", async (c) => {
@@ -212,27 +273,51 @@ function createTestApp(auth: any) {
 	});
 
 	app.get("/api/admin/staff/:userId/date-overrides/:overrideId", async (c) => {
-		return c.json({ id: c.req.param().overrideId, staffUserId: c.req.param().userId });
+		return c.json({
+			id: c.req.param().overrideId,
+			staffUserId: c.req.param().userId,
+		});
 	});
 
-	app.patch("/api/admin/staff/:userId/date-overrides/:overrideId", async (c) => {
-		return c.json({ id: c.req.param().overrideId, staffUserId: c.req.param().userId });
-	});
+	app.patch(
+		"/api/admin/staff/:userId/date-overrides/:overrideId",
+		async (c) => {
+			return c.json({
+				id: c.req.param().overrideId,
+				staffUserId: c.req.param().userId,
+			});
+		},
+	);
 
-	app.delete("/api/admin/staff/:userId/date-overrides/:overrideId", async (c) => {
-		return c.body(null, 204);
-	});
+	app.delete(
+		"/api/admin/staff/:userId/date-overrides/:overrideId",
+		async (c) => {
+			return c.body(null, 204);
+		},
+	);
 
 	app.get("/api/admin/staff/:userId/effective-availability", async (c) => {
 		const { userId } = c.req.param();
 		const date = c.req.query("date");
 		if (!date) {
-			return c.json({ code: "MISSING_REQUIRED_FIELDS", message: "date is required" }, 422);
+			return c.json(
+				{ code: "MISSING_REQUIRED_FIELDS", message: "date is required" },
+				422,
+			);
 		}
 		if (userId === "nonexistent") {
-			return c.json({ code: "NOT_FOUND", message: "Staff profile not found" }, 404);
+			return c.json(
+				{ code: "NOT_FOUND", message: "Staff profile not found" },
+				404,
+			);
 		}
-		return c.json({ userId, date, isAvailable: true, reason: "DEFAULT", dailyCapacity: 25 });
+		return c.json({
+			userId,
+			date,
+			isAvailable: true,
+			reason: "DEFAULT",
+			dailyCapacity: 25,
+		});
 	});
 
 	return app;
@@ -266,7 +351,11 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	/** Sign up and sign in a user, returning the session cookie. */
-	async function signInUser(email: string, password: string, isAdmin = false): Promise<string> {
+	async function signInUser(
+		email: string,
+		password: string,
+		isAdmin = false,
+	): Promise<string> {
 		// Sign up
 		const signUpReq = makeRequest("/api/auth/sign-up/email", {
 			method: "POST",
@@ -354,7 +443,9 @@ describe("Staff API Auth Guards", () => {
 	test("GET /staff/:userId with non-admin session returns 403", async () => {
 		const cookie = await signInUser(userEmail, userPassword, false);
 
-		const { status } = await callApp(app, "/api/admin/staff/some-user", { cookie });
+		const { status } = await callApp(app, "/api/admin/staff/some-user", {
+			cookie,
+		});
 		expect(status).toBe(403);
 	});
 
@@ -378,7 +469,9 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	test("DELETE /staff/:userId without session returns 401", async () => {
-		const { status } = await callApp(app, "/api/admin/staff/some-user", { method: "DELETE" });
+		const { status } = await callApp(app, "/api/admin/staff/some-user", {
+			method: "DELETE",
+		});
 		expect(status).toBe(401);
 	});
 
@@ -394,10 +487,14 @@ describe("Staff API Auth Guards", () => {
 
 	describe("Staff Date Override Auth", () => {
 		test("POST /staff/:userId/date-overrides without session returns 401", async () => {
-			const { status } = await callApp(app, "/api/admin/staff/some-user/date-overrides", {
-				method: "POST",
-				body: { overrideDate: "2026-04-15" },
-			});
+			const { status } = await callApp(
+				app,
+				"/api/admin/staff/some-user/date-overrides",
+				{
+					method: "POST",
+					body: { overrideDate: "2026-04-15" },
+				},
+			);
 			expect(status).toBe(401);
 		});
 
@@ -425,7 +522,10 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("GET /staff/:userId/date-overrides without session returns 401", async () => {
-			const { status } = await callApp(app, "/api/admin/staff/some-user/date-overrides");
+			const { status } = await callApp(
+				app,
+				"/api/admin/staff/some-user/date-overrides",
+			);
 			expect(status).toBe(401);
 		});
 

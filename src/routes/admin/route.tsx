@@ -320,6 +320,7 @@ function AdminLayout() {
 	const [scroll] = useWindowScroll();
 	const isScrolled = scroll.y > 20;
 	const location = useLocation();
+	const isAdminLoginRoute = location.pathname === "/admin/login";
 
 	const activeSection = useMemo(() => {
 		const path = location.pathname;
@@ -332,14 +333,14 @@ function AdminLayout() {
 		return "dashboard";
 	}, [location.pathname]);
 
-	// Redirect to login if not authenticated
+	// Redirect to admin login if not authenticated
 	useEffect(() => {
-		if (!isLoading && !isAuthenticated) {
-			navigate({ to: "/login" });
+		if (!isLoading && !isAuthenticated && !isAdminLoginRoute) {
+			navigate({ to: "/admin/login" });
 		}
-	}, [isAuthenticated, isLoading, navigate]);
+	}, [isAuthenticated, isLoading, isAdminLoginRoute, navigate]);
 
-	if (isLoading || !isAuthenticated) {
+	if (isLoading || (!isAuthenticated && !isAdminLoginRoute)) {
 		return (
 			<Box bg="#f8f9fa" mih="100vh" py={60}>
 				<Container size="lg">
@@ -378,6 +379,10 @@ function AdminLayout() {
 				</Container>
 			</Box>
 		);
+	}
+
+	if (!isAuthenticated && isAdminLoginRoute) {
+		return <Outlet />;
 	}
 
 	return (

@@ -484,6 +484,33 @@ export const bookingSeries = sqliteTable(
 	(table) => [index("booking_series_active_idx").on(table.isActive)],
 );
 
+/**
+ * Idempotency keys for preventing duplicate mutations.
+ * Stores the hash of the request payload and the response to return on replay.
+ */
+export const idempotencyKey = sqliteTable(
+	"idempotency_key",
+	{
+		id: text("id").primaryKey(),
+		key: text("key").notNull().unique(),
+		operation: text("operation").notNull(), // "create_series", "move", "release", "patch"
+		targetId: text("target_id"), // series ID or booking ID
+		payloadHash: text("payload_hash").notNull(),
+		responseStatus: integer("response_status").notNull(),
+		responseBody: text("response_body", { mode: "json" })
+			.$type<JsonValue>()
+			.notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.default(now)
+			.notNull(),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("idempotency_key_key_idx").on(table.key),
+		index("idempotency_key_expires_idx").on(table.expiresAt),
+	],
+);
+
 export const booking = sqliteTable(
 	"booking",
 	{

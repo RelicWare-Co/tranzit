@@ -448,16 +448,12 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 		});
 
 		// 2. Sign in as the admin user
-		const { body: signInBody } = await callAuth(
-			auth,
-			"/sign-in/email",
-			{
-				body: {
-					email: "admin@test.com",
-					password: "adminpassword123",
-				},
+		const { body: signInBody } = await callAuth(auth, "/sign-in/email", {
+			body: {
+				email: "admin@test.com",
+				password: "adminpassword123",
 			},
-		);
+		});
 		// 3. Set the user's role to admin using the admin API.
 		// Since we don't have an admin session yet to call the endpoint,
 		// we directly manipulate the in-memory db to set the role,
@@ -529,16 +525,12 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 			headers: { Origin: "http://localhost:3000" },
 		});
 
-		const { body: signInBody } = await callAuth(
-			auth,
-			"/sign-in/email",
-			{
-				body: {
-					email: "admin2@test.com",
-					password: "admin2password123",
-				},
+		const { body: signInBody } = await callAuth(auth, "/sign-in/email", {
+			body: {
+				email: "admin2@test.com",
+				password: "admin2password123",
 			},
-		);
+		});
 		// Directly set role in the in-memory db (simulates setRole API)
 		const userRecord = db.user.find(
 			(u: Record<string, unknown>) => u.id === signInBody.user.id,

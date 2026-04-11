@@ -54,6 +54,16 @@ Las reservas administrativas recurrentes ya no dependen solo de un `seriesKey` s
 
 No es un motor avanzado de recurrencias; es solo el mínimo para editar series completas sin perder origen.
 
+`idempotency_key`
+Las mutaciones críticas usan una tabla de llaves de idempotencia para evitar duplicados por reintentos de red o reenvíos de la misma operación.
+
+Cada registro guarda:
+- `key`: identificador idempotente único por operación cliente.
+- `operation` y `targetId`: contexto funcional de la mutación.
+- `payloadHash`: hash del payload para detectar replay con cuerpo distinto.
+- `responseStatus` y `responseBody`: respuesta canonizada para devolver exactamente el mismo resultado en replay válido.
+- `expiresAt`: ventana de vigencia para limpieza y para limitar crecimiento.
+
 `staff_profile` + `staff_date_override`
 El auxiliar comparte identidad con `user`. Solo se agrega un perfil operativo con capacidad diaria y disponibilidad semanal en JSON.
 
@@ -74,6 +84,7 @@ Son tablas genéricas. No hace falta una bitácora por módulo ni una tabla por 
 - Solo una fila `booking` ciudadana por solicitud puede permanecer con `isActive = true`.
 - Cuando una cita/reserva deja de ser vigente por cancelación, expiración, atención o reprogramación, marcar `isActive = false`.
 - Las reservas administrativas recurrentes deben colgar de `booking_series`; `seriesKey` no debe usarse como string libre.
+- Para una misma `idempotency_key`, el `payloadHash` debe mantenerse estable; si cambia, debe tratarse como conflicto y no como replay exitoso.
 - Si un documento reemplaza otro, crear nueva fila y enlazarla con `replacesDocumentId` en lugar de sobrescribir evidencia histórica.
 - Si un auxiliar solo atiende una parte del día en una fecha puntual, usar `availableStartTime` y `availableEndTime` antes de crear otra abstracción.
 

@@ -12,6 +12,11 @@ const config = defineConfig({
 				changeOrigin: true,
 				secure: false,
 			},
+			"/api/admin": {
+				target: "http://localhost:3001",
+				changeOrigin: true,
+				secure: false,
+			},
 		},
 	},
 	plugins: [

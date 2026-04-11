@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import { memoryAdapter } from "@better-auth/memory-adapter";
 import { betterAuth } from "better-auth";
 import { admin, emailOTP } from "better-auth/plugins";
-import { and, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -299,7 +299,7 @@ const TEST_SLOT_DATE = "2030-12-31";
 
 async function cleanupTestData(
 	staffUserId: string,
-	slotId: string,
+	_slotId: string,
 	bookingIds: string[],
 ) {
 	// Clean up bookings first (depends on slot_id and staff_user_id)
@@ -309,6 +309,18 @@ async function cleanupTestData(
 		} catch {
 			// Ignore cleanup errors
 		}
+	}
+
+	// Best-effort cleanup for bookings created during failed assertions
+	// that were not recorded in bookingIds.
+	try {
+		await db
+			.delete(schema.booking)
+			.where(
+				sql`${schema.booking.slotId} IN (SELECT id FROM appointment_slot WHERE slot_date = ${TEST_SLOT_DATE})`,
+			);
+	} catch {
+		// Ignore
 	}
 
 	// Clean up all slots matching the test date (UNIQUE constraint is on slot_date + start_time)

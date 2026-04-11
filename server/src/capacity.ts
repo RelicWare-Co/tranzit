@@ -865,7 +865,16 @@ const previewTokenStore = new Map<
  */
 function generatePreviewToken(
 	requests: Array<{ bookingId: string; targetStaffUserId: string }>,
-	bookings: Map<string, { staffUserId: string | null; isActive: boolean; slotId: string; requestId: string | null; kind: string }>,
+	bookings: Map<
+		string,
+		{
+			staffUserId: string | null;
+			isActive: boolean;
+			slotId: string;
+			requestId: string | null;
+			kind: string;
+		}
+	>,
 ): string {
 	const token = crypto.randomUUID();
 
@@ -883,9 +892,12 @@ function generatePreviewToken(
 	});
 
 	// Store with 15-minute expiration
-	const timeout = setTimeout(() => {
-		previewTokenStore.delete(token);
-	}, 15 * 60 * 1000);
+	const timeout = setTimeout(
+		() => {
+			previewTokenStore.delete(token);
+		},
+		15 * 60 * 1000,
+	);
 
 	previewTokenStore.set(token, {
 		state: { token, createdAt: new Date(), items },
@@ -902,7 +914,9 @@ function generatePreviewToken(
 function validatePreviewToken(
 	token: string,
 	requests: Array<{ bookingId: string; targetStaffUserId: string }>,
-): { valid: true; state: PreviewTokenState } | { valid: false; reason: string } {
+):
+	| { valid: true; state: PreviewTokenState }
+	| { valid: false; reason: string } {
 	const entry = previewTokenStore.get(token);
 
 	if (!entry) {
@@ -1369,7 +1383,12 @@ export async function executeBulkReassignments(
 					}
 
 					// Execute the reassignment
-					await executeReassignmentWithTx(tx, bookingId, targetStaffUserId, now);
+					await executeReassignmentWithTx(
+						tx,
+						bookingId,
+						targetStaffUserId,
+						now,
+					);
 
 					// Note: audit events would be created here by the caller
 					// For atomic mode, we track and rollback any created audit events
@@ -1405,9 +1424,7 @@ export async function executeBulkReassignments(
 					try {
 						await db
 							.delete(schema.auditEvent)
-							.where(
-								sql`${schema.auditEvent.id} IN ${createdAuditEventIds}`,
-							);
+							.where(sql`${schema.auditEvent.id} IN ${createdAuditEventIds}`);
 					} catch {
 						// Best effort cleanup
 					}

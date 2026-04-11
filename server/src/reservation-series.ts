@@ -1831,7 +1831,8 @@ app.post("/:id/move", async (c) => {
 		const originSlotId = booking.slotId;
 		const originStaffUserId = booking.staffUserId;
 		const destinationSlotId = body.targetSlotId;
-		const destinationStaffUserId = body.targetStaffUserId || booking.staffUserId;
+		const destinationStaffUserId =
+			body.targetStaffUserId || booking.staffUserId;
 
 		// Release capacity from origin (prevents double-capacity during move)
 		await releaseCapacity(booking.id, "cancelled");

@@ -17,7 +17,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
@@ -37,9 +37,36 @@ import { db, schema } from "./db";
 
 const TEST_SLOT_DATE = "2031-12-31"; // Far future to avoid conflicts
 
+function slotWindowForId(slotId: string): {
+	startTime: string;
+	endTime: string;
+} {
+	let hash = 0;
+	for (let i = 0; i < slotId.length; i++) {
+		hash = (hash * 31 + slotId.charCodeAt(i)) >>> 0;
+	}
+
+	const startMinutesOffset = hash % (10 * 60); // 10-hour window
+	const startTotalMinutes = 8 * 60 + startMinutesOffset; // starts at 08:00
+	const endTotalMinutes = startTotalMinutes + 60;
+
+	const toTime = (totalMinutes: number) => {
+		const hours = Math.floor(totalMinutes / 60)
+			.toString()
+			.padStart(2, "0");
+		const minutes = (totalMinutes % 60).toString().padStart(2, "0");
+		return `${hours}:${minutes}`;
+	};
+
+	return {
+		startTime: toTime(startTotalMinutes),
+		endTime: toTime(endTotalMinutes),
+	};
+}
+
 async function cleanupTestData(
 	staffUserId: string,
-	slotId: string,
+	_slotId: string,
 	bookingIds: string[],
 ) {
 	for (const id of bookingIds) {
@@ -48,6 +75,18 @@ async function cleanupTestData(
 		} catch {
 			// Ignore cleanup errors
 		}
+	}
+
+	// Best-effort cleanup for any untracked booking that still references
+	// slots on the synthetic test date.
+	try {
+		await db
+			.delete(schema.booking)
+			.where(
+				sql`${schema.booking.slotId} IN (SELECT id FROM appointment_slot WHERE slot_date = ${TEST_SLOT_DATE})`,
+			);
+	} catch {
+		// Ignore
 	}
 
 	// Clean up all slots matching the test date (UNIQUE constraint is on slot_date + start_time)
@@ -104,13 +143,16 @@ async function createTestSlot(
 	slotId: string,
 	date: string = TEST_SLOT_DATE,
 	capacityLimit: number = 2,
+	startTime?: string,
+	endTime?: string,
 ) {
 	const now = new Date();
+	const defaultWindow = slotWindowForId(slotId);
 	await db.insert(schema.appointmentSlot).values({
 		id: slotId,
 		slotDate: date,
-		startTime: "09:00",
-		endTime: "10:00",
+		startTime: startTime ?? defaultWindow.startTime,
+		endTime: endTime ?? defaultWindow.endTime,
 		status: "open",
 		capacityLimit,
 		generatedFrom: "base",
@@ -131,8 +173,8 @@ describe("VAL-RAS-001: Successful reassignment preserves single active booking",
 	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		await createTestStaff(testPrefix + "-1");
-		await createTestStaff(testPrefix + "-2");
+		await createTestStaff(`${testPrefix}-1`);
+		await createTestStaff(`${testPrefix}-2`);
 		await createTestSlot(slotId);
 	});
 
@@ -210,8 +252,8 @@ describe("VAL-RAS-002: Reassignment blocked for inactive/unassignable staff", ()
 	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		await createTestStaff(testPrefix + "-1");
-		await createTestStaff(testPrefix + "-2");
+		await createTestStaff(`${testPrefix}-1`);
+		await createTestStaff(`${testPrefix}-2`);
 		await createTestSlot(slotId);
 	});
 
@@ -310,8 +352,8 @@ describe("VAL-RAS-003: Reassignment blocked for unavailable staff (override)", (
 	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		await createTestStaff(testPrefix + "-1");
-		await createTestStaff(testPrefix + "-2");
+		await createTestStaff(`${testPrefix}-1`);
+		await createTestStaff(`${testPrefix}-2`);
 		await createTestSlot(slotId);
 	});
 
@@ -388,8 +430,8 @@ describe("VAL-RAS-004: Preview without side effects", () => {
 	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		await createTestStaff(testPrefix + "-1");
-		await createTestStaff(testPrefix + "-2");
+		await createTestStaff(`${testPrefix}-1`);
+		await createTestStaff(`${testPrefix}-2`);
 		await createTestSlot(slotId);
 	});
 
@@ -508,6 +550,8 @@ describe("VAL-RAS-013: Reject stale source not matching activeBookingId", () => 
 	const staffUserId1 = `staff-${testPrefix}-1`;
 	const staffUserId2 = `staff-${testPrefix}-2`;
 	const citizenUserId = `citizen-${testPrefix}`;
+	const procedureTypeId = `procedure-${testPrefix}`;
+	const requestId = `request-${testPrefix}`;
 	const slotId1 = `slot1-${testPrefix}`;
 	const slotId2 = `slot2-${testPrefix}`;
 	const bookingIds: string[] = [];
@@ -525,10 +569,10 @@ describe("VAL-RAS-013: Reject stale source not matching activeBookingId", () => 
 			updatedAt: now,
 		});
 
-		await createTestStaff(testPrefix + "-1");
-		await createTestStaff(testPrefix + "-2");
+		await createTestStaff(`${testPrefix}-1`);
+		await createTestStaff(`${testPrefix}-2`);
 		await createTestSlot(slotId1);
-		await createTestSlot(slotId2);
+		await createTestSlot(slotId2, TEST_SLOT_DATE, 2, "10:00", "11:00");
 	});
 
 	afterEach(async () => {
@@ -557,11 +601,23 @@ describe("VAL-RAS-013: Reject stale source not matching activeBookingId", () => 
 		} catch {
 			/* ignore */
 		}
+		try {
+			await db
+				.delete(schema.serviceRequest)
+				.where(eq(schema.serviceRequest.id, requestId));
+		} catch {
+			/* ignore */
+		}
+		try {
+			await db
+				.delete(schema.procedureType)
+				.where(eq(schema.procedureType.id, procedureTypeId));
+		} catch {
+			/* ignore */
+		}
 	});
 
 	test("reassignBooking fails when source booking is not activeBookingId", async () => {
-		// Create procedure type
-		const procedureTypeId = `procedure-${testPrefix}`;
 		await db.insert(schema.procedureType).values({
 			id: procedureTypeId,
 			slug: `test-${testPrefix}`,
@@ -571,8 +627,6 @@ describe("VAL-RAS-013: Reject stale source not matching activeBookingId", () => 
 			updatedAt: new Date(),
 		});
 
-		// Create service request
-		const requestId = `request-${testPrefix}`;
 		await db.insert(schema.serviceRequest).values({
 			id: requestId,
 			procedureTypeId,
@@ -598,41 +652,38 @@ describe("VAL-RAS-013: Reject stale source not matching activeBookingId", () => 
 		bookingIds.push(result1.bookingId);
 		const bookingId1 = result1.bookingId;
 
-		// Create second booking (also for same request, but this one will be orphaned)
-		const result2 = await consumeCapacity(
-			slotId2,
-			staffUserId1,
-			"citizen",
+		// Create an alternate booking row for the same request but inactive.
+		// This simulates drift where service_request.activeBookingId moved away
+		// from bookingId1 while bookingId1 remained active.
+		const bookingId2 = randomUUID();
+		await db.insert(schema.booking).values({
+			id: bookingId2,
+			slotId: slotId2,
 			requestId,
 			citizenUserId,
-			null,
-			null,
-			null,
-		);
-		expect(result2.success).toBe(true);
-		if (!result2.bookingId) throw new Error("bookingId2 should exist");
-		bookingIds.push(result2.bookingId);
+			staffUserId: staffUserId1,
+			kind: "citizen",
+			status: "held",
+			isActive: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		bookingIds.push(bookingId2);
 
-		// Note: due to the unique index, only one can be active, so this setup
-		// would have failed - let's adjust our test
+		await db
+			.update(schema.serviceRequest)
+			.set({
+				activeBookingId: bookingId2,
+				updatedAt: new Date(),
+			})
+			.where(eq(schema.serviceRequest.id, requestId));
 
-		// Actually, we need a different approach - let's test with inactive booking
-		// First, release booking1
-		await releaseCapacity(bookingId1, "cancelled");
-
-		// Now booking2 should be the active one
-		// Try to reassign booking1 (which is now inactive/stale)
+		// bookingId1 is active but no longer matches activeBookingId -> stale source
 		const reassignResult = await reassignBooking(bookingId1, staffUserId2);
 		expect(reassignResult.success).toBe(false);
-		expect(reassignResult.error).toBe("Cannot reassign inactive booking");
-
-		// Clean up
-		await db
-			.delete(schema.serviceRequest)
-			.where(eq(schema.serviceRequest.id, requestId));
-		await db
-			.delete(schema.procedureType)
-			.where(eq(schema.procedureType.id, procedureTypeId));
+		expect(reassignResult.error).toBe(
+			"Booking is not the active booking for this request",
+		);
 	});
 });
 
@@ -648,8 +699,8 @@ describe("VAL-RAS-018: Reject stale source and return reference to current activ
 	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		await createTestStaff(testPrefix + "-1");
-		await createTestStaff(testPrefix + "-2");
+		await createTestStaff(`${testPrefix}-1`);
+		await createTestStaff(`${testPrefix}-2`);
 		await createTestSlot(slotId);
 	});
 
@@ -708,8 +759,8 @@ describe("Bulk reassignment operations", () => {
 	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		await createTestStaff(testPrefix + "-1");
-		await createTestStaff(testPrefix + "-2");
+		await createTestStaff(`${testPrefix}-1`);
+		await createTestStaff(`${testPrefix}-2`);
 		await createTestSlot(slotId);
 	});
 
@@ -747,7 +798,7 @@ describe("Bulk reassignment operations", () => {
 
 		// Create second slot and booking
 		const slotId2 = `slot2-${testPrefix}`;
-		await createTestSlot(slotId2);
+		await createTestSlot(slotId2, TEST_SLOT_DATE, 2, "10:00", "11:00");
 		const result2 = await consumeCapacity(
 			slotId2,
 			staffUserId1,
@@ -801,7 +852,7 @@ describe("Bulk reassignment operations", () => {
 
 		// Create second slot and booking
 		const slotId2 = `slot2-${testPrefix}`;
-		await createTestSlot(slotId2);
+		await createTestSlot(slotId2, TEST_SLOT_DATE, 2, "10:00", "11:00");
 		const result2 = await consumeCapacity(
 			slotId2,
 			staffUserId1,
@@ -856,7 +907,7 @@ describe("Bulk reassignment operations", () => {
 
 		// Create second slot and booking
 		const slotId2 = `slot2-${testPrefix}`;
-		await createTestSlot(slotId2);
+		await createTestSlot(slotId2, TEST_SLOT_DATE, 2, "10:00", "11:00");
 		const result2 = await consumeCapacity(
 			slotId2,
 			staffUserId1,
@@ -1011,8 +1062,8 @@ describe("Reassignment preserves booking metadata", () => {
 	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
-		await createTestStaff(testPrefix + "-1");
-		await createTestStaff(testPrefix + "-2");
+		await createTestStaff(`${testPrefix}-1`);
+		await createTestStaff(`${testPrefix}-2`);
 		await createTestSlot(slotId);
 	});
 

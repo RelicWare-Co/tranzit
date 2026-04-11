@@ -11,7 +11,7 @@
     "build": "vite build",
     "maildev": "bun --cwd server run maildev",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check"

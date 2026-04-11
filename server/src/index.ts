@@ -109,7 +109,10 @@ app.use("/api/admin/*", async (c: any, next: any) => {
 			"Access-Control-Allow-Methods",
 			"POST, GET, PATCH, DELETE, OPTIONS",
 		);
-		c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+		c.header(
+			"Access-Control-Allow-Headers",
+			"Content-Type, Authorization, Idempotency-Key, If-Match, If-None-Match",
+		);
 		c.header("Access-Control-Expose-Headers", "Content-Length");
 		c.header("Access-Control-Max-Age", "600");
 	}
