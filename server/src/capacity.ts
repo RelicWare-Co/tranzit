@@ -129,8 +129,6 @@ export async function checkCapacity(
 	});
 
 	let staffCapacity = staffProfile.defaultDailyCapacity;
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	let _staffReason = "DEFAULT";
 
 	if (dateOverride) {
 		if (!dateOverride.isAvailable) {
@@ -153,7 +151,6 @@ export async function checkCapacity(
 		}
 		if (dateOverride.capacityOverride !== null) {
 			staffCapacity = dateOverride.capacityOverride;
-			_staffReason = "DATE_OVERRIDE";
 		}
 	}
 

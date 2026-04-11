@@ -1,0 +1,34 @@
+{
+  "featureId": "admin-reservations-idempotency-conflicts-integrity",
+  "reviewedAt": "2026-04-11T17:55:00.000Z",
+  "commitId": "c6676ca",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The implementation covers all required behaviors: idempotency via Idempotency-Key header (VAL-ADM-009, VAL-ADM-010, VAL-ADM-016, VAL-ADM-017, VAL-ADM-024), optimistic concurrency via If-Match header (VAL-ADM-013), booking kind guards for admin-only mutations (VAL-ADM-025), non-mutable state validation (VAL-ADM-022), capacity release/free on cancel (VAL-ADM-006, VAL-ADM-021), capacity recalculation on move (VAL-ADM-005), and concurrency handling on last slot (VAL-ADM-011). The idempotency_key table was added to schema.ts. All 99 tests pass. TypeScript compiles cleanly. Lint passes.",
+    "issues": [
+      {
+        "file": "server/src/reservation-series.ts",
+        "line": 850,
+        "severity": "non_blocking",
+        "description": "Series creation (POST /) is not wrapped in a database transaction. If the process crashes after inserting the booking_series record but before all bookings are created, the series would exist with no instances. Per the architecture doc section 8, series create should be best-effort controlled with per-instance reporting, but atomicity at the series level would be safer. Consider wrapping in a transaction."
+      },
+      {
+        "file": "server/src/reservation-series.ts",
+        "line": 450,
+        "severity": "non_blocking",
+        "description": "In the series create rollback path, only the bookingSeries record is deleted but individual booking records that may have been created are not rolled back. If some bookings succeeded before a conflict, those bookings remain in the database even though the series is rolled back. This is consistent with 'best-effort controlled' policy per architecture, but could leave orphaned bookings."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The handoff references commitId 'c6676ca' but that commit only implements the base reservation-series API. The idempotency/conflicts/integrity work is in the working tree (not committed). This creates a mismatch between the handoff's commitId and the actual implementation. The skill documentation doesn't specify that changes should be committed before handoff.",
+      "evidence": "git log shows c6676ca is 'feat: implement reservation series API with scope operations'. The idempotency_key table, idempotency helpers, and tests are in working tree modifications."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Implementation is solid and covers all required assertions (VAL-ADM-005, 006, 009, 010, 011, 013, 016, 017, 021, 022, 023, 025). Idempotency is properly implemented with payload hashing and conflict detection. Optimistic concurrency uses If-Match/updatedAt pattern correctly. Kind guards and state validation guards are correctly placed. 99 tests pass. One minor observation: the handoff references commit c6676ca but the actual work is in working tree."
+}

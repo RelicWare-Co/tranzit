@@ -448,7 +448,7 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 		});
 
 		// 2. Sign in as the admin user
-		const { body: signInBody, response: signInRes } = await callAuth(
+		const { body: signInBody } = await callAuth(
 			auth,
 			"/sign-in/email",
 			{
@@ -529,7 +529,7 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 			headers: { Origin: "http://localhost:3000" },
 		});
 
-		const { body: signInBody, response: signInRes } = await callAuth(
+		const { body: signInBody } = await callAuth(
 			auth,
 			"/sign-in/email",
 			{
