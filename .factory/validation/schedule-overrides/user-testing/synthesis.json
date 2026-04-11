@@ -1,27 +1,46 @@
 {
   "milestone": "schedule-overrides",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "assertionsSummary": {
-    "total": 2,
-    "passed": 1,
+    "total": 27,
+    "passed": 26,
     "failed": 1,
     "blocked": 0
   },
-  "passedAssertions": ["VAL-SCH-024"],
+  "passedAssertions": [
+    "VAL-SCH-001", "VAL-SCH-002", "VAL-SCH-003", "VAL-SCH-004", "VAL-SCH-005",
+    "VAL-SCH-006", "VAL-SCH-007", "VAL-SCH-008", "VAL-SCH-009", "VAL-SCH-010",
+    "VAL-SCH-011", "VAL-SCH-012", "VAL-SCH-013", "VAL-SCH-014", "VAL-SCH-015",
+    "VAL-SCH-016", "VAL-SCH-017", "VAL-SCH-019", "VAL-SCH-020", "VAL-SCH-021",
+    "VAL-SCH-022", "VAL-SCH-023", "VAL-SCH-024", "VAL-SCH-025", "VAL-SCH-026",
+    "VAL-SCH-027"
+  ],
   "failedAssertions": [
     {
       "id": "VAL-SCH-018",
-      "reason": "Endpoint now exists (returns 201/200 instead of 404). However, assertion expects 422 for slotDurationMinutes<=0 or invalid time 25:00. Implementation: slotDurationMinutes is not a parameter (ignored), invalid times skip date with 200 not 422. Design mismatch between assertion and implementation contract."
+      "reason": "Design mismatch: assertion expects 422 for invalid slotDurationMinutes (≤0) and invalid time (25:00), but implementation ignores slotDurationMinutes parameter entirely and returns 200 (not 422) for invalid times. Implementation is functionally correct: no invalid slots are created (slots derive duration from schedule template). This is a contract/API design mismatch, not an implementation bug."
     }
   ],
   "blockedAssertions": [],
-  "appliedUpdates": [],
-  "previousRound": null,
-  "testedAssertions": [
-    "VAL-SCH-018",
-    "VAL-SCH-024"
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Confirmed schedule-overrides test environment working: backend starts with 'cd server && bun run dev', admin auth workaround (sign-up then update role via DB) still works, MailDev running on port 1080, cookie file at /tmp/admin_cookies.txt",
+      "source": "setup"
+    }
   ],
-  "summary": "Tested 2 assertions from schedule-overrides milestone. VAL-SCH-024 (partial override slotCapacityLimit) is now PASSING - fix verified. VAL-SCH-018 (POST /slots/generate validation) has a design mismatch: endpoint exists and returns 201/200 (original 404 fixed), but the assertion's specific validation requirements (422 for invalid slotDurationMinutes or time) don't match the implementation's contract (endpoint uses template-derived slotDurationMinutes, invalid times skip dates with 200). No invalid slots are created, but 422 is not returned as assertion specifies.",
-  "evidenceDir": ".factory/validation/schedule-overrides/user-testing/evidence"
+  "previousRound": ".factory/validation/schedule-overrides/user-testing/synthesis.json",
+  "testedAssertions": ["VAL-SCH-018"],
+  "summary": "Re-ran validation for schedule-overrides milestone. VAL-SCH-018 remains failed with the same design mismatch: the assertion expects 422 for invalid slotDurationMinutes or time, but the implementation ignores slotDurationMinutes entirely and returns 200 for invalid times (no invalid slots are created). All other 26 assertions (including VAL-SCH-024 from fix feature) remain passed. No new assertions to test.",
+  "evidenceDir": ".factory/validation/schedule-overrides/user-testing/evidence",
+  "keyFindings": {
+    "VAL-SCH-018": {
+      "description": "No crear slots inválidos por payload inválido",
+      "assertionExpects": "422 for slotDurationMinutes<=0 or invalid time 25:00",
+      "implementationContract": "slotDurationMinutes is NOT a parameter (ignored), invalid times skip date with 200",
+      "functionalCorrectness": "No invalid slots are ever created - slots always derive duration from schedule template (via getEffectiveSchedule)",
+      "assessment": "Design mismatch between assertion spec and implementation contract. Implementation is correct for the actual API design (slot generation derives params from templates/overrides, not request body). Assertion spec needs updating to match actual API design."
+    }
+  }
 }
