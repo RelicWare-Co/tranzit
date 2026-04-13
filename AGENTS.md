@@ -45,6 +45,7 @@ No asumas que el sistema ya esta completo. Hoy el repo esta en una fase intermed
 - El frontend ya tiene landing, login, perfil y una experiencia visual de agendamiento.
 - El backend ya tiene auth, esquema del dominio y una capa administrativa funcional.
 - Ya existen endpoints reales para schedule, staff, bookings y reservation-series, con capacidad y reasignacion en backend.
+- El backend expone la capa administrativa por oRPC en `/api/rpc/*`; `/api/admin/*` ya no se expone como superficie publica.
 - Todavia faltan APIs ciudadanas completas para service request/documentos/flujo OTP de punta a punta.
 
 Hoy hay varias piezas mock o incompletas:
@@ -85,7 +86,7 @@ Calidad:
 
 Raiz:
 - `package.json`: scripts del frontend y comandos generales
-- `vite.config.ts`: proxy local para `/api/auth`
+- `vite.config.ts`: proxy local para `/api/auth` y `/api/rpc`
 - `src/`: app frontend
 - `server/`: backend, auth, schema y migraciones
 
@@ -150,14 +151,14 @@ Puntos importantes:
 - `TURSO_DATABASE_URL=file:./sqlite.db` desde `server/` apunta a `server/sqlite.db`.
 - el frontend corre en `http://localhost:3000`.
 - el backend corre en `http://localhost:3001`.
-- `vite.config.ts` hace proxy solo para `/api/auth`.
+- `vite.config.ts` hace proxy para `/api/auth` y `/api/rpc`.
 
 Ojo con esto:
 - `server/src/features/auth/auth.config.ts` usa `BETTER_AUTH_URL` con default `http://localhost:3000`.
 - `server/src/lib/env.ts` usa `CORS_ORIGIN` con default `http://localhost:3000`.
 - por eso conviene mantener `CORS_ORIGIN=http://localhost:3000` en `.env`.
 
-Si agregas endpoints de dominio fuera de `/api/auth`:
+Si agregas endpoints de dominio fuera de `/api/auth` y `/api/rpc`:
 - agrega proxy en `vite.config.ts`, o
 - usa URL explicita al backend desde el cliente.
 
@@ -278,11 +279,11 @@ Si vas a implementar algo real:
 ## Estado real de backend
 
 Hoy el backend ya expone:
-- `GET /`, `GET /session`, `/api/auth/*` (Better Auth + OTP),
-- `/api/admin/schedule/*` (templates, overrides, generacion y consulta de slots),
-- `/api/admin/staff/*` (perfil operativo, overrides por fecha, disponibilidad efectiva),
-- `/api/admin/bookings/*` (creacion/confirmacion/liberacion/reasignacion y bulk reassign),
-- `/api/admin/reservation-series/*` y `/api/admin/reservations/*` (series administrativas, mutaciones por instancia, move/release con idempotencia).
+- `GET /`, `/api/auth/*` (Better Auth + OTP),
+- `/api/rpc/*` como superficie administrativa principal (session, onboarding, schedule, staff, bookings, reservation-series y reservations).
+
+Nota:
+- `/api/admin/*` ya no se expone como API publica ni como capa interna del runtime; la capa administrativa corre en handlers oRPC nativos.
 
 El detalle endpoint por endpoint vive en `server/src/BACKEND_STATUS.md`.
 

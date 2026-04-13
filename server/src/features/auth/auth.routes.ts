@@ -1,13 +1,8 @@
-import { sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { db, schema } from "../../lib/db";
 import type { AppVariables } from "../../shared/types/app-context";
 import { auth } from "./auth.config";
 
-const { user } = schema;
-
 export const authApp = new Hono<{ Variables: AppVariables }>();
-export const adminOnboardingApp = new Hono<{ Variables: AppVariables }>();
 
 const emailOtpRateLimitStore = new Map<
 	string,
@@ -107,46 +102,4 @@ authApp.post("/email-otp/send-verification-otp", async (c) => {
 
 authApp.on(["POST", "GET", "OPTIONS"], "/*", (c) => {
 	return auth.handler(c.req.raw);
-});
-
-adminOnboardingApp.post("/", async (c) => {
-	const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-	if (!session) {
-		return c.json(
-			{ code: "UNAUTHENTICATED", message: "Debes iniciar sesion" },
-			401,
-		);
-	}
-
-	const existingAdmins = await db
-		.select({ id: user.id })
-		.from(user)
-		.where(sql`${user.role} LIKE '%admin%'`);
-
-	if (existingAdmins.length > 0) {
-		return c.json(
-			{
-				code: "ADMIN_ALREADY_EXISTS",
-				message: "El onboarding de admin ya fue completado",
-			},
-			403,
-		);
-	}
-
-	await db
-		.update(user)
-		.set({ role: "admin" })
-		.where(sql`${user.id} = ${session.user.id}`);
-
-	return c.json({ success: true, role: "admin" });
-});
-
-adminOnboardingApp.get("/status", async (c) => {
-	const existingAdmins = await db
-		.select({ id: user.id })
-		.from(user)
-		.where(sql`${user.role} LIKE '%admin%'`);
-
-	return c.json({ adminExists: existingAdmins.length > 0 });
 });

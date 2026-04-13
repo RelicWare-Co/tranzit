@@ -16,32 +16,32 @@ This file complements (not replaces):
 - HTTP framework: Hono
 - ORM/DB: Drizzle + libsql/sqlite
 - Auth provider: Better Auth
+- Primary business API transport: oRPC at `/api/rpc/*`
+- `/api/admin/*` is no longer exposed as a public HTTP surface
 
 ### Auth and session
-- Session is resolved on every request via `server/src/middlewares/session.ts` (wired in `server/src/app.ts`).
-- `GET /session`:
-  - `401` + `null` when unauthenticated
-  - `200` + `{ user, session }` when authenticated
 - Better Auth endpoint is mounted on `/api/auth/*`.
+- `session.get` is a native oRPC procedure that resolves session via `auth.api.getSession` using request headers.
+- `session.get` is available through oRPC (`/api/rpc/session/get`).
 
 ### Authorization
 - Role-based access control with three roles: `admin`, `staff`, `auditor`.
 - Roles and permissions are defined in `server/src/features/auth/auth.permissions.ts` using Better Auth's Access Control system.
 - `/api/auth/admin/*` requires `admin` role.
-- `/api/admin/*` requires at least one of: `admin`, `staff`, `auditor`.
+- Admin domain access via oRPC requires at least one of: `admin`, `staff`, `auditor`.
 - Each domain module has granular permission guards:
-  - `/api/admin/schedule/*` requires `schedule: ["read"]`
-  - `/api/admin/staff/*` requires `staff: ["read"]`
-  - `/api/admin/bookings/*` requires `booking: ["read"]`
-  - `/api/admin/reservation-series/*` requires `reservation-series: ["read"]`
-  - `/api/admin/reservations/*` requires `reservation-series: ["read"]`
+  - schedule requires `schedule: ["read"]`
+  - staff requires `staff: ["read"]`
+  - bookings requires `booking: ["read"]`
+  - reservation-series requires `reservation-series: ["read"]`
+  - reservations requires `reservation-series: ["read"]`
 - Permission verification uses `auth.api.userHasPermission` server-side.
 - Middleware helpers in `server/src/middlewares/authorization.ts`:
   - `requirePermissions(permissions)` — checks granular permissions
   - `requireRole(...roles)` — checks user has at least one role
 
 ### CORS
-- CORS is applied for `/api/auth/*` and `/api/admin/*`.
+- CORS is applied for `/api/auth/*` and `/api/rpc/*`.
 - Allowed origin comes from `CORS_ORIGIN` (default `http://localhost:3000`).
 - Credentials are only allowed for the exact configured origin.
 
@@ -56,15 +56,25 @@ This file complements (not replaces):
   - limit: 3 requests per 60s window per email (in-memory)
 
 ### Admin onboarding
-- `POST /api/admin/onboard`: eleva el usuario autenticado a admin solo si no existe ningun admin en el sistema. No requiere rol previo.
-- `GET /api/admin/onboard/status`: devuelve `{ adminExists: boolean }` para que el frontend sepa si debe mostrar el flujo de onboarding. No requiere rol previo.
+- Available via oRPC:
+  - `admin.onboarding.bootstrap`
+  - `admin.onboarding.status`
+- Business rule is unchanged:
+  - elevates authenticated user to `admin` only when no admins exist yet
+  - status returns `{ adminExists: boolean }`
+
+### oRPC surface
+- The backend exposes admin/session capabilities through an oRPC router mounted at `/api/rpc/*`.
+- oRPC is now the only public transport for admin domain APIs.
+- Session and admin onboarding are implemented as native oRPC procedures.
+- Schedule, staff, bookings, reservation-series and reservations operations are implemented as native oRPC procedures.
 
 ## 2) Domain modules and active routes
 
-All routes below are admin-protected unless explicitly under `/api/auth/*`.
+All domain operations below are reachable through oRPC procedures and remain admin-protected unless explicitly under `/api/auth/*`.
 
 ### 2.1 Schedule module (`server/src/features/schedule/schedule.routes.ts`)
-Mounted at `/api/admin/schedule`.
+Implemented as native oRPC procedures in `server/src/orpc/router.ts` (the legacy routes file remains as migration reference).
 
 - `POST /templates`
 - `GET /templates`
@@ -86,7 +96,7 @@ Key behavior already implemented:
 - guarded handling of invalid schedule configuration during generation
 
 ### 2.2 Staff module (`server/src/features/staff/staff.routes.ts`)
-Mounted at `/api/admin/staff`.
+Implemented as native oRPC procedures in `server/src/orpc/router.ts` (the legacy routes file remains as migration reference).
 
 - `POST /`
 - `GET /`
@@ -107,7 +117,7 @@ Key behavior already implemented:
 - effective availability/capacity resolution by profile + date overrides
 
 ### 2.3 Bookings module (`server/src/features/bookings/bookings.routes.ts`)
-Mounted at `/api/admin/bookings`.
+Implemented as native oRPC procedures (the legacy HTTP routes file remains as migration reference).
 
 - `POST /`
 - `GET /` (filters include `dateFrom` and `dateTo`)
@@ -130,8 +140,7 @@ Key behavior already implemented:
 - preview token and drift detection for bulk reassignment apply
 
 ### 2.4 Reservation series module (`server/src/features/reservations/reservation-series.routes.ts`)
-- Series router mounted at `/api/admin/reservation-series`
-- Instance router mounted at `/api/admin/reservations`
+Implemented as native oRPC procedures in `server/src/orpc/router.ts` (the legacy routes file remains as migration reference).
 
 Series routes:
 - `POST /api/admin/reservation-series`
