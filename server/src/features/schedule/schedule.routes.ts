@@ -1,76 +1,25 @@
 import { and, eq, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../../lib/db";
-
-type AppVariables = {
-	user: { id: string; role: string | null; [key: string]: unknown } | null;
-	session: { id: string; [key: string]: unknown } | null;
-};
+import type { AppVariables } from "../../shared/types/app-context";
+import {
+	errorResponse,
+	isValidDateFormat,
+	isValidTimeFormat,
+	isValidTimeWindow,
+	isValidWeekday,
+	parseNonNegativeInteger,
+	parsePositiveInteger,
+	WEEKDAY_MAX,
+	WEEKDAY_MIN,
+} from "./schedule.schemas";
+import {
+	formatDateLocal,
+	generateSlotsForWindow,
+	getEffectiveSchedule,
+} from "./schedule.service";
 
 const app = new Hono<{ Variables: AppVariables }>();
-
-// =============================================================================
-// SHARED TYPES & ERROR HELPERS
-// =============================================================================
-
-const WEEKDAY_MIN = 0;
-const WEEKDAY_MAX = 6;
-
-const isValidWeekday = (w: number) =>
-	Number.isInteger(w) && w >= WEEKDAY_MIN && w <= WEEKDAY_MAX;
-
-const isValidTimeFormat = (t: string | null | undefined): boolean => {
-	if (!t) return true; // nullable fields are valid
-	// HH:MM format (24-hour)
-	return /^\d{2}:\d{2}$/.test(t) && t >= "00:00" && t <= "23:59";
-};
-
-const isValidDateFormat = (d: string): boolean => {
-	// YYYY-MM-DD format
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
-	// Parse components to avoid timezone issues
-	const year = parseInt(d.substring(0, 4), 10);
-	const month = parseInt(d.substring(5, 7), 10);
-	const day = parseInt(d.substring(8, 10), 10);
-	// Validate ranges
-	if (year < 1 || year > 9999) return false;
-	if (month < 1 || month > 12) return false;
-	// Check day is valid for the month (handles leap years via Date logic)
-	const daysInMonth = new Date(year, month, 0).getDate();
-	if (day < 1 || day > daysInMonth) return false;
-	// Explicit leap year check for Feb 29
-	if (month === 2 && day === 29) {
-		const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-		if (!isLeap) return false;
-	}
-	return true;
-};
-
-const isValidTimeWindow = (
-	start: string | null | undefined,
-	end: string | null | undefined,
-): boolean => {
-	if (!start || !end) return true;
-	return start < end;
-};
-
-const errorResponse = (code: string, message: string, status: number) =>
-	new Response(JSON.stringify({ code, message }), {
-		status,
-		headers: { "Content-Type": "application/json" },
-	});
-
-const parsePositiveInteger = (value: unknown): number | null => {
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed) || parsed <= 0) return null;
-	return parsed;
-};
-
-const parseNonNegativeInteger = (value: unknown): number | null => {
-	const parsed = Number(value);
-	if (!Number.isInteger(parsed) || parsed < 0) return null;
-	return parsed;
-};
 
 // =============================================================================
 // SCHEDULE TEMPLATES CRUD
@@ -834,221 +783,6 @@ app.delete("/overrides/:id", async (c) => {
 // =============================================================================
 // SLOT GENERATION
 // =============================================================================
-
-interface TimeWindow {
-	start: string; // "HH:MM"
-	end: string; // "HH:MM"
-}
-
-interface EffectiveSchedule {
-	slotDurationMinutes: number;
-	bufferMinutes: number;
-	slotCapacityLimit: number | null;
-	windows: TimeWindow[];
-	generatedFrom: "override" | "base";
-}
-
-/**
- * Parse a time string "HH:MM" to minutes since midnight.
- */
-const timeToMinutes = (t: string): number => {
-	const [h, m] = t.split(":").map(Number);
-	return h * 60 + m;
-};
-
-/**
- * Format minutes since midnight to "HH:MM".
- */
-const minutesToTime = (minutes: number): string => {
-	const h = Math.floor(minutes / 60) % 24;
-	const m = minutes % 60;
-	return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-};
-
-const formatDateLocal = (date: Date): string => {
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	const day = String(date.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
-};
-
-/**
- * Compute effective schedule for a given date:
- * - Override takes precedence over base template
- * - Partial override fields inherit from base template
- */
-const getEffectiveSchedule = async (
-	date: string,
-): Promise<{
-	schedule: EffectiveSchedule | null;
-	override: typeof schema.calendarOverride.$inferSelect | null;
-}> => {
-	// Get weekday from date
-	const dateObj = new Date(`${date}T00:00:00`);
-	const weekday = dateObj.getDay(); // 0=Sunday, 6=Saturday
-
-	// Check for calendar override first (override > base precedence)
-	const override = await db.query.calendarOverride.findFirst({
-		where: eq(schema.calendarOverride.overrideDate, date),
-	});
-
-	if (override) {
-		// Override exists - check if closed
-		if (override.isClosed) {
-			return { schedule: null, override };
-		}
-
-		// Get base template for inheritance
-		const template = await db.query.scheduleTemplate.findFirst({
-			where: and(
-				eq(schema.scheduleTemplate.weekday, weekday),
-				eq(schema.scheduleTemplate.isEnabled, true),
-			),
-		});
-
-		// Build effective schedule with partial inheritance
-		const slotDurationMinutes =
-			override.slotDurationMinutes ?? template?.slotDurationMinutes ?? 30;
-		const bufferMinutes =
-			override.bufferMinutes ?? template?.bufferMinutes ?? 0;
-		const slotCapacityLimit =
-			override.slotCapacityLimit ?? template?.slotCapacityLimit ?? null;
-
-		const windows: TimeWindow[] = [];
-
-		// Morning window
-		if (
-			override.morningEnabled &&
-			override.morningStart &&
-			override.morningEnd
-		) {
-			windows.push({ start: override.morningStart, end: override.morningEnd });
-		} else if (!override.morningStart && !override.morningEnd && template) {
-			// Partial override: inherit from template if morning is still enabled
-			if (
-				override.morningEnabled !== false &&
-				template.morningStart &&
-				template.morningEnd
-			) {
-				windows.push({
-					start: template.morningStart,
-					end: template.morningEnd,
-				});
-			}
-		}
-
-		// Afternoon window
-		if (
-			override.afternoonEnabled &&
-			override.afternoonStart &&
-			override.afternoonEnd
-		) {
-			windows.push({
-				start: override.afternoonStart,
-				end: override.afternoonEnd,
-			});
-		} else if (!override.afternoonStart && !override.afternoonEnd && template) {
-			// Partial override: inherit from template if afternoon is still enabled
-			if (
-				override.afternoonEnabled !== false &&
-				template.afternoonStart &&
-				template.afternoonEnd
-			) {
-				windows.push({
-					start: template.afternoonStart,
-					end: template.afternoonEnd,
-				});
-			}
-		}
-
-		return {
-			schedule: {
-				slotDurationMinutes,
-				bufferMinutes,
-				slotCapacityLimit,
-				windows,
-				generatedFrom: "override",
-			},
-			override,
-		};
-	}
-
-	// No override - use base template
-	const template = await db.query.scheduleTemplate.findFirst({
-		where: and(
-			eq(schema.scheduleTemplate.weekday, weekday),
-			eq(schema.scheduleTemplate.isEnabled, true),
-		),
-	});
-
-	if (!template) {
-		return { schedule: null, override: null };
-	}
-
-	const windows: TimeWindow[] = [];
-	if (template.morningStart && template.morningEnd) {
-		windows.push({ start: template.morningStart, end: template.morningEnd });
-	}
-	if (template.afternoonStart && template.afternoonEnd) {
-		windows.push({
-			start: template.afternoonStart,
-			end: template.afternoonEnd,
-		});
-	}
-
-	return {
-		schedule: {
-			slotDurationMinutes: template.slotDurationMinutes,
-			bufferMinutes: template.bufferMinutes,
-			slotCapacityLimit: template.slotCapacityLimit,
-			windows,
-			generatedFrom: "base",
-		},
-		override: null,
-	};
-};
-
-/**
- * Generate slots for a single time window.
- * Respects slotDurationMinutes + bufferMinutes.
- * End is exclusive (slot starting at end time is not included).
- */
-const generateSlotsForWindow = (
-	window: TimeWindow,
-	slotDurationMinutes: number,
-	bufferMinutes: number,
-): { startTime: string; endTime: string }[] => {
-	const slots: { startTime: string; endTime: string }[] = [];
-	const windowStartMin = timeToMinutes(window.start);
-	const windowEndMin = timeToMinutes(window.end);
-	const slotWithBuffer = slotDurationMinutes + bufferMinutes;
-
-	if (slotDurationMinutes <= 0) {
-		throw new Error("slotDurationMinutes must be > 0");
-	}
-
-	if (bufferMinutes < 0) {
-		throw new Error("bufferMinutes must be >= 0");
-	}
-
-	if (slotWithBuffer <= 0) {
-		throw new Error(
-			"slotDurationMinutes + bufferMinutes must be > 0 for slot generation",
-		);
-	}
-
-	let currentMin = windowStartMin;
-	while (currentMin + slotDurationMinutes <= windowEndMin) {
-		const slotEndMin = currentMin + slotDurationMinutes;
-		slots.push({
-			startTime: minutesToTime(currentMin),
-			endTime: minutesToTime(slotEndMin),
-		});
-		currentMin += slotWithBuffer;
-	}
-
-	return slots;
-};
 
 /**
  * POST /api/admin/schedule/slots/generate
