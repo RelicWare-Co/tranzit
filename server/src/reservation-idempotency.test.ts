@@ -31,8 +31,12 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import { checkCapacity, consumeCapacity, releaseCapacity } from "./capacity";
-import { db, schema } from "./db";
+import {
+	checkCapacity,
+	consumeCapacity,
+	releaseCapacity,
+} from "./features/bookings/capacity.service";
+import { db, schema } from "./lib/db";
 
 // ---------------------------------------------------------------------------
 // Test Auth Setup (uses memory adapter for auth testing)
@@ -715,7 +719,9 @@ describe("VAL-ADM-005: Move recalculates capacity origin/destination", () => {
 
 	test("reassignBooking moves capacity from origin to destination staff", async () => {
 		// Import reassignBooking
-		const { reassignBooking } = await import("./capacity");
+		const { reassignBooking } = await import(
+			"./features/bookings/capacity.service"
+		);
 
 		// Create booking with staff 1
 		const createResult = await consumeCapacity(

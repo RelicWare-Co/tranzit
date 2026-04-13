@@ -11,7 +11,7 @@
 import "dotenv/config";
 import { hashPassword } from "@better-auth/utils/password";
 import { eq } from "drizzle-orm";
-import { db, schema } from "../src/db";
+import { db, schema } from "../src/lib/db";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;

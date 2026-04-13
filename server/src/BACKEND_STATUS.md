@@ -1,6 +1,6 @@
 # Backend Status (Current Implementation)
 
-Last updated: 2026-04-11
+Last updated: 2026-04-13
 
 This document describes what the backend **really has implemented today**.
 Use it as an operational map before adding or changing backend behavior.
@@ -18,7 +18,7 @@ This file complements (not replaces):
 - Auth provider: Better Auth
 
 ### Auth and session
-- Session is resolved on every request in `server/src/index.ts`.
+- Session is resolved on every request via `server/src/middlewares/session.ts` (wired in `server/src/app.ts`).
 - `GET /session`:
   - `401` + `null` when unauthenticated
   - `200` + `{ user, session }` when authenticated
@@ -26,7 +26,7 @@ This file complements (not replaces):
 
 ### Authorization
 - Role-based access control with three roles: `admin`, `staff`, `auditor`.
-- Roles and permissions are defined in `server/src/permissions.ts` using Better Auth's Access Control system.
+- Roles and permissions are defined in `server/src/features/auth/auth.permissions.ts` using Better Auth's Access Control system.
 - `/api/auth/admin/*` requires `admin` role.
 - `/api/admin/*` requires at least one of: `admin`, `staff`, `auditor`.
 - Each domain module has granular permission guards:
@@ -36,7 +36,7 @@ This file complements (not replaces):
   - `/api/admin/reservation-series/*` requires `reservation-series: ["read"]`
   - `/api/admin/reservations/*` requires `reservation-series: ["read"]`
 - Permission verification uses `auth.api.userHasPermission` server-side.
-- Middleware helpers in `server/src/permission-guard.ts`:
+- Middleware helpers in `server/src/middlewares/authorization.ts`:
   - `requirePermissions(permissions)` — checks granular permissions
   - `requireRole(...roles)` — checks user has at least one role
 
@@ -63,7 +63,7 @@ This file complements (not replaces):
 
 All routes below are admin-protected unless explicitly under `/api/auth/*`.
 
-### 2.1 Schedule module (`server/src/schedule.ts`)
+### 2.1 Schedule module (`server/src/features/schedule/schedule.routes.ts`)
 Mounted at `/api/admin/schedule`.
 
 - `POST /templates`
@@ -85,7 +85,7 @@ Key behavior already implemented:
 - slot generation by window with buffer support
 - guarded handling of invalid schedule configuration during generation
 
-### 2.2 Staff module (`server/src/staff.ts`)
+### 2.2 Staff module (`server/src/features/staff/staff.routes.ts`)
 Mounted at `/api/admin/staff`.
 
 - `POST /`
@@ -106,7 +106,7 @@ Key behavior already implemented:
 - deletion guard when staff has active bookings
 - effective availability/capacity resolution by profile + date overrides
 
-### 2.3 Bookings module (`server/src/bookings.ts`)
+### 2.3 Bookings module (`server/src/features/bookings/bookings.routes.ts`)
 Mounted at `/api/admin/bookings`.
 
 - `POST /`
@@ -129,7 +129,7 @@ Key behavior already implemented:
 - batch mode support: `best_effort` and `atomic`
 - preview token and drift detection for bulk reassignment apply
 
-### 2.4 Reservation series module (`server/src/reservation-series.ts`)
+### 2.4 Reservation series module (`server/src/features/reservations/reservation-series.routes.ts`)
 - Series router mounted at `/api/admin/reservation-series`
 - Instance router mounted at `/api/admin/reservations`
 
@@ -159,7 +159,7 @@ Key behavior already implemented:
 
 ## 3) Capacity engine (core business logic)
 
-Implemented in `server/src/capacity.ts`.
+Implemented in `server/src/features/bookings/capacity.service.ts`.
 
 Main exported operations:
 - `checkCapacity(slotId, staffUserId)`
@@ -215,4 +215,3 @@ When adding/changing backend behavior:
 1. update this file (`server/src/BACKEND_STATUS.md`)
 2. update `AGENTS.md` if the change impacts onboarding assumptions
 3. keep `server/src/db/SCHEMA.md` aligned when domain invariants change
-

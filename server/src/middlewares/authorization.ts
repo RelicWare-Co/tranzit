@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { auth } from "./auth";
+import { auth } from "../features/auth/auth.config";
 
 type PermissionMap = Record<string, string[]>;
 

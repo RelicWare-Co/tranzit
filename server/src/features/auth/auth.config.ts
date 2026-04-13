@@ -1,9 +1,9 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
 import { admin as adminPlugin, emailOTP } from "better-auth/plugins";
-import { db, schema } from "./db";
-import { sendVerificationOtpEmail } from "./mailer";
-import { ac, admin, auditor, staff } from "./permissions";
+import { db, schema } from "../../lib/db";
+import { sendVerificationOtpEmail } from "./auth.mailer";
+import { ac, admin, auditor, staff } from "./auth.permissions";
 
 const secret = process.env.BETTER_AUTH_SECRET;
 

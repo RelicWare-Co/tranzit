@@ -97,9 +97,11 @@ Frontend:
 - `src/routeTree.gen.ts`: archivo generado, no lo edites manualmente
 
 Backend:
-- `server/src/index.ts`: entrypoint Hono
-- `server/src/auth.ts`: configuracion Better Auth
-- `server/src/mailer.ts`: envio de OTP por correo
+- `server/src/index.ts`: entrypoint de runtime (exporta `fetch` del app)
+- `server/src/app.ts`: composicion principal de middlewares y rutas Hono
+- `server/src/features/auth/auth.config.ts`: configuracion Better Auth
+- `server/src/features/auth/auth.mailer.ts`: envio de OTP por correo
+- `server/src/lib/db.ts`: inicializacion de cliente libsql + Drizzle
 - `server/src/db/schema.ts`: schema Drizzle
 - `server/src/db/SCHEMA.md`: explicacion del modelo e invariantes
 - `server/src/BACKEND_STATUS.md`: inventario funcional real del backend (rutas/servicios/estado)
@@ -151,9 +153,8 @@ Puntos importantes:
 - `vite.config.ts` hace proxy solo para `/api/auth`.
 
 Ojo con esto:
-- `server/src/auth.ts` usa `BETTER_AUTH_URL` con default `http://localhost:3000`.
-- `server/src/index.ts` usa `CORS_ORIGIN` con default `http://localhost:3001`.
-- ese default de CORS no coincide con el puerto del frontend.
+- `server/src/features/auth/auth.config.ts` usa `BETTER_AUTH_URL` con default `http://localhost:3000`.
+- `server/src/lib/env.ts` usa `CORS_ORIGIN` con default `http://localhost:3000`.
 - por eso conviene mantener `CORS_ORIGIN=http://localhost:3000` en `.env`.
 
 Si agregas endpoints de dominio fuera de `/api/auth`:
@@ -243,7 +244,7 @@ Lee tambien `server/src/db/SCHEMA.md` para el detalle. Los puntos mas delicados 
 Backend hoy:
 - Better Auth con plugins `admin()` y `emailOTP()`
 - OTP configurable por env
-- envio de correo via `server/src/mailer.ts`
+- envio de correo via `server/src/features/auth/auth.mailer.ts`
 
 Frontend hoy:
 - `AuthContext` usa `signIn.email` y `signUp.email`

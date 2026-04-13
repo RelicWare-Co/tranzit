@@ -39,6 +39,7 @@
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { db, schema } from "../../lib/db";
 import {
 	type CapacityConflict,
 	checkCapacity,
@@ -47,8 +48,7 @@ import {
 	countActiveStaffBookingsOnDate,
 	releaseCapacity,
 	resolveStaffAvailabilityAndCapacity,
-} from "./capacity";
-import { db, schema } from "./db";
+} from "../bookings/capacity.service";
 
 type AppVariables = {
 	user: { id: string; role: string | null; [key: string]: unknown } | null;

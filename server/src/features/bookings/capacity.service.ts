@@ -18,7 +18,7 @@
  */
 
 import { and, eq, ne, sql } from "drizzle-orm";
-import { db, schema } from "./db";
+import { db, schema } from "../../lib/db";
 
 /**
  * Result of a capacity check.

@@ -1,6 +1,6 @@
 import { and, eq, ne } from "drizzle-orm";
 import { Hono } from "hono";
-import { db, schema } from "./db";
+import { db, schema } from "../../lib/db";
 
 type AppVariables = {
 	user: { id: string; role: string | null; [key: string]: unknown } | null;
