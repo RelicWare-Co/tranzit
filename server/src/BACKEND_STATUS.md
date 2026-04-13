@@ -69,25 +69,24 @@ This file complements (not replaces):
 - Session and admin onboarding are implemented as native oRPC procedures.
 - Schedule, staff, bookings, reservation-series and reservations operations are implemented as native oRPC procedures.
 
-## 2) Domain modules and active routes
+## 2) Domain modules and active procedures
 
-All domain operations below are reachable through oRPC procedures and remain admin-protected unless explicitly under `/api/auth/*`.
+All domain operations below are reachable through oRPC procedures (served under `/api/rpc/*`) and remain admin-protected unless explicitly under `/api/auth/*`.
 
-### 2.1 Schedule module (`server/src/features/schedule/schedule.routes.ts`)
-Implemented as native oRPC procedures in `server/src/orpc/router.ts` (the legacy routes file remains as migration reference).
+### 2.1 Schedule module (`server/src/orpc/modules/schedule.router.ts`)
 
-- `POST /templates`
-- `GET /templates`
-- `GET /templates/:id`
-- `PATCH /templates/:id`
-- `DELETE /templates/:id`
-- `POST /overrides`
-- `GET /overrides`
-- `GET /overrides/:id`
-- `PATCH /overrides/:id`
-- `DELETE /overrides/:id`
-- `POST /slots/generate`
-- `GET /slots?date=YYYY-MM-DD`
+- `admin.schedule.templates.list`
+- `admin.schedule.templates.create`
+- `admin.schedule.templates.get`
+- `admin.schedule.templates.update`
+- `admin.schedule.templates.remove`
+- `admin.schedule.overrides.list`
+- `admin.schedule.overrides.create`
+- `admin.schedule.overrides.get`
+- `admin.schedule.overrides.update`
+- `admin.schedule.overrides.remove`
+- `admin.schedule.slots.generate`
+- `admin.schedule.slots.list`
 
 Key behavior already implemented:
 - strict validation for dates, time windows, slot duration, buffers, and capacity
@@ -95,20 +94,19 @@ Key behavior already implemented:
 - slot generation by window with buffer support
 - guarded handling of invalid schedule configuration during generation
 
-### 2.2 Staff module (`server/src/features/staff/staff.routes.ts`)
-Implemented as native oRPC procedures in `server/src/orpc/router.ts` (the legacy routes file remains as migration reference).
+### 2.2 Staff module (`server/src/orpc/modules/staff.router.ts`)
 
-- `POST /`
-- `GET /`
-- `GET /:userId`
-- `PATCH /:userId`
-- `DELETE /:userId`
-- `POST /:userId/date-overrides` (upsert by staff+date)
-- `GET /:userId/date-overrides`
-- `GET /:userId/date-overrides/:overrideId`
-- `PATCH /:userId/date-overrides/:overrideId`
-- `DELETE /:userId/date-overrides/:overrideId`
-- `GET /:userId/effective-availability?date=YYYY-MM-DD`
+- `admin.staff.list`
+- `admin.staff.create`
+- `admin.staff.get`
+- `admin.staff.update`
+- `admin.staff.remove`
+- `admin.staff.dateOverrides.list`
+- `admin.staff.dateOverrides.create`
+- `admin.staff.dateOverrides.get`
+- `admin.staff.dateOverrides.update`
+- `admin.staff.dateOverrides.remove`
+- `admin.staff.effectiveAvailability`
 
 Key behavior already implemented:
 - validation of `weeklyAvailability` structure and windows
@@ -116,20 +114,19 @@ Key behavior already implemented:
 - deletion guard when staff has active bookings
 - effective availability/capacity resolution by profile + date overrides
 
-### 2.3 Bookings module (`server/src/features/bookings/bookings.routes.ts`)
-Implemented as native oRPC procedures (the legacy HTTP routes file remains as migration reference).
+### 2.3 Bookings module (`server/src/orpc/modules/bookings.router.ts`)
 
-- `POST /`
-- `GET /` (filters include `dateFrom` and `dateTo`)
-- `GET /:id`
-- `GET /:id/capacity`
-- `POST /:id/confirm`
-- `POST /:id/release`
-- `POST /:id/reassign`
-- `POST /:id/reassign/preview`
-- `POST /reassignments/preview`
-- `POST /reassignments`
-- `GET /availability/check?slotId=...&staffUserId=...`
+- `admin.bookings.create`
+- `admin.bookings.list` (filters include `dateFrom` and `dateTo`)
+- `admin.bookings.get`
+- `admin.bookings.capacity`
+- `admin.bookings.confirm`
+- `admin.bookings.release`
+- `admin.bookings.reassign`
+- `admin.bookings.reassignPreview`
+- `admin.bookings.reassignmentsPreview`
+- `admin.bookings.reassignmentsApply`
+- `admin.bookings.availabilityCheck`
 
 Key behavior already implemented:
 - booking create integrated with capacity engine
@@ -139,24 +136,23 @@ Key behavior already implemented:
 - batch mode support: `best_effort` and `atomic`
 - preview token and drift detection for bulk reassignment apply
 
-### 2.4 Reservation series module (`server/src/features/reservations/reservation-series.routes.ts`)
-Implemented as native oRPC procedures in `server/src/orpc/router.ts` (the legacy routes file remains as migration reference).
+### 2.4 Reservation series module (`server/src/orpc/modules/reservation-series.router.ts`, `server/src/orpc/modules/reservations.router.ts`)
 
-Series routes:
-- `POST /api/admin/reservation-series`
-- `GET /api/admin/reservation-series`
-- `GET /api/admin/reservation-series/:id`
-- `GET /api/admin/reservation-series/:id/instances`
-- `PATCH /api/admin/reservation-series/:id`
-- `PATCH /api/admin/reservation-series/:id/from-date`
-- `POST /api/admin/reservation-series/:id/release`
-- `POST /api/admin/reservation-series/:id/move`
+Series procedures:
+- `admin.reservationSeries.create`
+- `admin.reservationSeries.list`
+- `admin.reservationSeries.get`
+- `admin.reservationSeries.instances`
+- `admin.reservationSeries.update`
+- `admin.reservationSeries.updateFromDate`
+- `admin.reservationSeries.release`
+- `admin.reservationSeries.move`
 
-Instance routes:
-- `GET /api/admin/reservations/:bookingId`
-- `PATCH /api/admin/reservations/:bookingId`
-- `POST /api/admin/reservations/:bookingId/release`
-- `POST /api/admin/reservations/:bookingId/move`
+Instance procedures:
+- `admin.reservations.get`
+- `admin.reservations.update`
+- `admin.reservations.release`
+- `admin.reservations.move`
 
 Key behavior already implemented:
 - recurrence parsing (RRULE string and object support)
