@@ -1,29 +1,29 @@
 {
-  "name": "server",
-  "scripts": {
-    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
-    "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
-    "db:push": "drizzle-kit push --config drizzle.config.ts",
-    "dev": "bun run --env-file ../.env --hot src/index.ts",
-    "maildev": "maildev --smtp 1025 --web 1080 --ip 127.0.0.1 --web-ip 127.0.0.1"
-  },
-  "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.6.1",
-    "@libsql/client": "^0.17.2",
-    "bcryptjs": "^3.0.3",
-    "better-auth": "^1.6.1",
-    "dotenv": "^17.2.3",
-    "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.12",
-    "nodemailer": "^8.0.5"
-  },
-  "devDependencies": {
-    "@types/bcryptjs": "^3.0.0",
-    "@types/bun": "latest",
-    "@types/node": "^25.5.2",
-    "@types/nodemailer": "^8.0.0",
-    "drizzle-kit": "^0.31.10",
-    "maildev": "^2.2.1",
-    "tsx": "^4.20.6"
-  }
+	"name": "server",
+	"scripts": {
+		"db:generate": "drizzle-kit generate --config drizzle.config.ts",
+		"db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
+		"db:push": "drizzle-kit push --config drizzle.config.ts",
+		"dev": "bun run --env-file ../.env --hot src/index.ts",
+		"maildev": "maildev --smtp 1025 --web 1080 --ip 127.0.0.1 --web-ip 127.0.0.1"
+	},
+	"dependencies": {
+		"@better-auth/drizzle-adapter": "^1.6.1",
+		"@libsql/client": "^0.17.2",
+		"bcryptjs": "^3.0.3",
+		"better-auth": "^1.6.1",
+		"dotenv": "^17.2.3",
+		"drizzle-orm": "^0.45.2",
+		"hono": "^4.12.12",
+		"nodemailer": "^8.0.5"
+	},
+	"devDependencies": {
+		"@types/bcryptjs": "^3.0.0",
+		"@types/bun": "latest",
+		"@types/node": "^25.5.2",
+		"@types/nodemailer": "^8.0.0",
+		"drizzle-kit": "^0.31.10",
+		"maildev": "^2.2.1",
+		"tsx": "^4.20.6"
+	}
 }

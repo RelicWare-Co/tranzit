@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { auth } from "./auth";
 import { bookingsApp } from "./bookings";
@@ -9,8 +10,8 @@ import {
 } from "./reservation-series";
 import { scheduleApp } from "./schedule";
 import { staffApp } from "./staff";
+
 const { user } = schema;
-import { sql } from "drizzle-orm";
 
 type AppVariables = {
 	user: typeof auth.$Infer.Session.user | null;
