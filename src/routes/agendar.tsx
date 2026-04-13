@@ -16,14 +16,16 @@ import {
 	Title,
 } from "@mantine/core";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Car, Check, Clock } from "lucide-react";
+import { AlertTriangle, Car, Check, Clock, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAuth } from "../lib/AuthContext";
 
 export const Route = createFileRoute("/agendar")({
 	component: AgendarCita,
 });
 
 const STEPS = [
+	{ id: 0, label: "Verificar Correo" },
 	{ id: 1, label: "Validar Placa" },
 	{ id: 2, label: "Datos Solicitante" },
 	{ id: 3, label: "Fecha y Hora" },
@@ -31,7 +33,16 @@ const STEPS = [
 ];
 
 function AgendarCita() {
+	const { isAuthenticated, sendVerificationOtp, signInEmailOtp } = useAuth();
 	const [active, setActive] = useState(0);
+
+	// Step 0: OTP Authentication
+	const [otpEmail, setOtpEmail] = useState("");
+	const [otpCode, setOtpCode] = useState("");
+	const [otpSent, setOtpSent] = useState(false);
+	const [otpSending, setOtpSending] = useState(false);
+	const [otpVerifying, setOtpVerifying] = useState(false);
+	const [otpError, setOtpError] = useState("");
 
 	// Step 1: Placa
 	const [placa, setPlaca] = useState("");
@@ -52,20 +63,28 @@ function AgendarCita() {
 	const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
 	// Step 4: Confirmación
-	const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+	const [timeLeft, setTimeLeft] = useState(300);
 	const [codeSent, setCodeSent] = useState(false);
 	const [verificationCode, setVerificationCode] = useState("");
 	const [isConfirmed, setIsConfirmed] = useState(false);
 
+	// Auto-advance if already authenticated
 	useEffect(() => {
-		if (active === 3 && !isConfirmed && timeLeft > 0) {
+		if (isAuthenticated && active === 0) {
+			setActive(1);
+		}
+	}, [isAuthenticated, active]);
+
+	// Timer for confirmation step
+	useEffect(() => {
+		if (active === 4 && !isConfirmed && timeLeft > 0) {
 			const timer = setInterval(() => {
 				setTimeLeft((prev) => prev - 1);
 			}, 1000);
 			return () => clearInterval(timer);
 		}
 		if (timeLeft === 0 && !isConfirmed) {
-			setActive(2);
+			setActive(3);
 			setSelectedTime(null);
 			setTimeLeft(300);
 		}
@@ -77,6 +96,45 @@ function AgendarCita() {
 		return `${m}:${s.toString().padStart(2, "0")}`;
 	};
 
+	// OTP Handlers
+	const handleSendOtp = async () => {
+		setOtpError("");
+		if (!otpEmail?.includes("@")) {
+			setOtpError("Ingrese un correo electrónico válido.");
+			return;
+		}
+		setOtpSending(true);
+		try {
+			await sendVerificationOtp(otpEmail, "sign-in");
+			setOtpSent(true);
+		} catch (err) {
+			setOtpError(
+				err instanceof Error ? err.message : "Error al enviar el código.",
+			);
+		} finally {
+			setOtpSending(false);
+		}
+	};
+
+	const handleVerifyOtp = async () => {
+		setOtpError("");
+		if (otpCode.length < 6) {
+			setOtpError("El código debe tener 6 dígitos.");
+			return;
+		}
+		setOtpVerifying(true);
+		try {
+			await signInEmailOtp(otpEmail, otpCode);
+			setActive(1);
+		} catch (err) {
+			setOtpError(err instanceof Error ? err.message : "Código inválido.");
+			setOtpCode("");
+		} finally {
+			setOtpVerifying(false);
+		}
+	};
+
+	// Placa validation (mock)
 	const handleValidatePlaca = () => {
 		setPlacaError("");
 		if (placa.length < 5 || placa.length > 6) {
@@ -91,7 +149,7 @@ function AgendarCita() {
 					"El vehículo no se encuentra registrado en la ciudad de Tuluá.",
 				);
 			} else {
-				setActive(1);
+				setActive(2);
 			}
 		}, 1000);
 	};
@@ -239,7 +297,7 @@ function AgendarCita() {
 														justifyContent: "center",
 													}}
 												>
-													{step.id}
+													{index + 1}
 												</Text>
 											)}
 											<Text
@@ -248,7 +306,7 @@ function AgendarCita() {
 												style={{
 													letterSpacing: "-0.2px",
 													whiteSpace: "nowrap",
-													display: "none", // We'll show this on larger screens using CSS or inline logic
+													display: "none",
 												}}
 												className="step-label"
 											>
@@ -262,7 +320,156 @@ function AgendarCita() {
 
 						{/* Content Area */}
 						<Box>
+							{/* Step 0: OTP Authentication */}
 							{active === 0 && (
+								<Stack align="center" py="xl" maw={400} mx="auto">
+									<Box
+										style={{
+											width: 80,
+											height: 80,
+											borderRadius: "24px",
+											backgroundColor: "#fef2f2",
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											marginBottom: "16px",
+										}}
+									>
+										<Mail size={40} color="#e03131" />
+									</Box>
+									<Title
+										order={3}
+										c="#111827"
+										style={{ letterSpacing: "-0.5px" }}
+									>
+										Verificar Correo
+									</Title>
+									<Text c="#6b7280" ta="center" mb="lg" size="sm">
+										Ingrese su correo electrónico para recibir un código de
+										verificación y continuar con el trámite.
+									</Text>
+
+									{!otpSent ? (
+										<Stack w="100%" gap="md">
+											<TextInput
+												placeholder="correo@ejemplo.com"
+												size="lg"
+												radius="md"
+												w="100%"
+												value={otpEmail}
+												onChange={(e) =>
+													setOtpEmail(e.currentTarget.value.toLowerCase())
+												}
+												error={otpError}
+												type="email"
+												styles={{
+													input: {
+														backgroundColor: "#f9fafb",
+														textAlign: "center",
+														fontSize: "18px",
+														fontWeight: 500,
+														border: "1px solid #e5e7eb",
+														borderRadius: "12px",
+														color: "#111827",
+														"&:focus": {
+															borderColor: "#e03131",
+															boxShadow: "0 0 0 2px rgba(224, 49, 49, 0.1)",
+														},
+													},
+												}}
+											/>
+											<Button
+												fullWidth
+												size="lg"
+												onClick={handleSendOtp}
+												loading={otpSending}
+												style={{
+													backgroundColor: "#111827",
+													borderRadius: "12px",
+													fontWeight: 600,
+													transition: "transform 0.1s ease",
+												}}
+												className="sleek-btn"
+											>
+												Enviar Código
+											</Button>
+										</Stack>
+									) : (
+										<Stack w="100%" gap="lg" align="center">
+											<Text size="sm" c="#4b5563" ta="center">
+												Ingrese el código de 6 dígitos enviado a{" "}
+												<b style={{ color: "#111827" }}>{otpEmail}</b>
+											</Text>
+											<PinInput
+												length={6}
+												size="xl"
+												value={otpCode}
+												onChange={setOtpCode}
+												type="number"
+												styles={{
+													input: {
+														borderColor: "#e5e7eb",
+														backgroundColor: "#f9fafb",
+														color: "#111827",
+														fontWeight: 800,
+														fontSize: "24px",
+														borderRadius: "8px",
+														"&:focus": {
+															borderColor: "#e03131",
+														},
+													},
+												}}
+											/>
+											{otpError && (
+												<Alert
+													icon={<AlertTriangle size={16} />}
+													title="Error"
+													color="red"
+													variant="light"
+													w="100%"
+													radius="md"
+													style={{ border: "1px solid #fca5a5" }}
+												>
+													{otpError}
+												</Alert>
+											)}
+											<Button
+												size="lg"
+												onClick={handleVerifyOtp}
+												loading={otpVerifying}
+												disabled={otpCode.length < 6}
+												style={{
+													backgroundColor:
+														otpCode.length < 6 ? "#e5e7eb" : "#16a34a",
+													color: otpCode.length < 6 ? "#9ca3af" : "white",
+													borderRadius: "12px",
+													fontWeight: 600,
+													width: "200px",
+												}}
+												className={otpCode.length === 6 ? "sleek-btn" : ""}
+											>
+												Verificar
+											</Button>
+											<Button
+												variant="subtle"
+												color="gray"
+												size="sm"
+												onClick={() => {
+													setOtpSent(false);
+													setOtpCode("");
+													setOtpError("");
+												}}
+												style={{ fontWeight: 600 }}
+											>
+												Cambiar correo
+											</Button>
+										</Stack>
+									)}
+								</Stack>
+							)}
+
+							{/* Step 1: Placa */}
+							{active === 1 && (
 								<Stack align="center" py="xl" maw={400} mx="auto">
 									<Box
 										style={{
@@ -320,7 +527,6 @@ function AgendarCita() {
 									<Button
 										fullWidth
 										size="lg"
-										mt="md"
 										onClick={handleValidatePlaca}
 										loading={isValidating}
 										style={{
@@ -350,7 +556,8 @@ function AgendarCita() {
 								</Stack>
 							)}
 
-							{active === 1 && (
+							{/* Step 2: Datos Solicitante */}
+							{active === 2 && (
 								<Stack maw={650} mx="auto" gap="xl">
 									<Box>
 										<Title
@@ -475,7 +682,7 @@ function AgendarCita() {
 										<Button
 											variant="subtle"
 											color="gray"
-											onClick={() => setActive(0)}
+											onClick={() => setActive(1)}
 											size="md"
 											style={{ fontWeight: 600, color: "#6b7280" }}
 										>
@@ -483,7 +690,7 @@ function AgendarCita() {
 										</Button>
 										<Button
 											size="md"
-											onClick={() => setActive(2)}
+											onClick={() => setActive(3)}
 											disabled={
 												!formData.nombre ||
 												!formData.identificacion ||
@@ -504,7 +711,8 @@ function AgendarCita() {
 								</Stack>
 							)}
 
-							{active === 2 && (
+							{/* Step 3: Fecha y Hora */}
+							{active === 3 && (
 								<Stack maw={650} mx="auto" gap="xl">
 									<Box>
 										<Title
@@ -624,7 +832,7 @@ function AgendarCita() {
 										<Button
 											variant="subtle"
 											color="gray"
-											onClick={() => setActive(1)}
+											onClick={() => setActive(2)}
 											size="md"
 											style={{ fontWeight: 600, color: "#6b7280" }}
 										>
@@ -633,7 +841,7 @@ function AgendarCita() {
 										<Button
 											size="md"
 											onClick={() => {
-												setActive(3);
+												setActive(4);
 												setTimeLeft(300);
 											}}
 											disabled={!selectedDate || !selectedTime}
@@ -650,7 +858,8 @@ function AgendarCita() {
 								</Stack>
 							)}
 
-							{active === 3 && (
+							{/* Step 4: Confirmación */}
+							{active === 4 && (
 								<Stack maw={650} mx="auto" gap="xl">
 									{!isConfirmed ? (
 										<>
@@ -856,7 +1065,7 @@ function AgendarCita() {
 												<Button
 													variant="subtle"
 													color="gray"
-													onClick={() => setActive(2)}
+													onClick={() => setActive(3)}
 													size="sm"
 												>
 													Cancelar
@@ -885,13 +1094,13 @@ function AgendarCita() {
 											>
 												¡Cita Confirmada!
 											</Title>
-										<Text
-											ta="center"
-											c="#4b5563"
-											maw={450}
-											size="md"
-											style={{ lineHeight: 1.5 }}
-										>
+											<Text
+												ta="center"
+												c="#4b5563"
+												maw={450}
+												size="md"
+												style={{ lineHeight: 1.5 }}
+											>
 												Su cita ha sido agendada exitosamente. Le esperamos el
 												día{" "}
 												<Text span fw={700} c="#111827">
@@ -904,16 +1113,16 @@ function AgendarCita() {
 												.
 											</Text>
 
-										<Card
-											withBorder
-											bg="#f9fafb"
-											w="100%"
-											maw={400}
-											mt="md"
-											p="xl"
-											radius="xl"
-											style={{ border: "1px dashed #d1d5db" }}
-										>
+											<Card
+												withBorder
+												bg="#f9fafb"
+												w="100%"
+												maw={400}
+												mt="md"
+												p="xl"
+												radius="xl"
+												style={{ border: "1px dashed #d1d5db" }}
+											>
 												<Stack align="center" gap={8}>
 													<Text
 														size="xs"

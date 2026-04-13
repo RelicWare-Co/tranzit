@@ -1,0 +1,3 @@
+First OTP (629028) rejected: {"message":"Invalid OTP","code":"INVALID_OTP"}
+Second OTP (984983) accepted: SUCCESS
+Result: PASS - Previous OTP was invalidated by new OTP request

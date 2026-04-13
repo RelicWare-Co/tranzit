@@ -1,0 +1,34 @@
+{
+  "featureId": "schedule-overrides-and-slot-materialization",
+  "reviewedAt": "2026-04-11T12:00:00.000Z",
+  "commitId": "d3e51b1",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation covers all VAL-SCH assertions (011-026). Override precedence, partial inheritance, date/timezone validation, slot generation boundaries, buffer handling, idempotency, and contradiction detection are all correctly implemented. No blocking issues found.",
+    "issues": [
+      {
+        "file": "server/src/schedule.ts",
+        "line": 950,
+        "severity": "non_blocking",
+        "description": "Booking capacity tracking fetches ALL active bookings system-wide and filters in memory. Could be optimized by filtering at DB level with slotId IN (...) clause. Functional correctness is not affected."
+      },
+      {
+        "file": "server/src/schedule.ts",
+        "line": 560,
+        "severity": "non_blocking",
+        "description": "PATCH /overrides uniqueness check uses fetch-then-check approach (conflict.id !== id) instead of using 'ne' in the query like PATCH /templates does. Both approaches work correctly but are inconsistent. The PATCH templates correctly uses 'ne' after the working directory fix."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The backend-domain-worker skill procedure specifies 'Manually verify API behavior with curl' but the worker's verification only tested GET /api/admin/schedule/templates for auth coverage. The slots endpoint (GET /api/admin/schedule/slots?date=...) was not explicitly curl-verified. Auth guard coverage is inferred from mount structure (/api/admin/*) but not confirmed for the specific slots endpoint.",
+      "evidence": "Handoff verification section shows only: curl -s http://localhost:3001/api/admin/schedule/templates (without auth). Transcript skeleton shows no explicit test of /slots endpoint."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Implementation passes review. All 16 validation contract assertions (VAL-SCH-011 through VAL-SCH-026) are correctly implemented: override > base precedence, total/partial closure, slot boundaries (inclusive start/exclusive end), buffer handling, date validation (including leap year), timezone stability, partial inheritance, contradiction detection, and overlapping window rejection. Auth guards are applied via /api/admin/* middleware mount. Working directory contains fixes for initial commit bugs (ne import, isValidDateFormat leap year). No blocking issues identified."
+}

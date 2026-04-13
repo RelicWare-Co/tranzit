@@ -1,0 +1,60 @@
+{
+  "featureId": "auth-citizen-otp-hardening",
+  "reviewedAt": "2026-04-11T00:00:00.000Z",
+  "commitId": "26241d7",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The auth-citizen-otp-hardening feature implements all required hardening measures for citizen OTP auth: rate limiting explicitly enabled, CORS default origin corrected from :3001 to :3000, unique index added on verification.identifier for OTP resend invalidation, anti-escalation protection via admin plugin field restrictions, and comprehensive integration test coverage (17 cases) for VAL-AUTH-001 through VAL-AUTH-014. Manual curl verification confirmed behavior against live server and MailDev. All assertions verified.",
+    "issues": [
+      {
+        "file": "server/src/auth.ts",
+        "line": 41,
+        "severity": "non_blocking",
+        "description": "Rate limiting window=10 and max=100 configured. emailOTP plugin has its own internal rate limits (3 per 60s for send-verification-otp and sign-in/email-otp). The global rate limit (100/10s = 10 req/s) is more permissive than the plugin's per-endpoint limits, so the plugin's limits take precedence. This is fine but the documentation in auth-hardening.md only mentions the plugin limits. No functional issue."
+      },
+      {
+        "file": "server/src/auth.ts",
+        "line": 38,
+        "severity": "suggestion",
+        "description": "Better Auth rate limiting is disabled by default in development mode. Enabling it explicitly with { enabled: true, storage: 'memory' } is correct. Note that the in-memory storage persists across hot-reload in development. Documented in library/auth-hardening.md. Not a bug."
+      },
+      {
+        "file": "server/src/index.ts",
+        "line": 23,
+        "severity": "non_blocking",
+        "description": "CORS origin is a single string. Hono's cors middleware with a string origin only matches that exact origin, not patterns or multiple origins. For multi-origin support (e.g., localhost:3000 + production domain), would need to use Hono's origin function. Currently fine for single-origin deployment. Documented as a suggestion in discovered issues."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The backend-domain-worker skill (SKILL.md) instructs to verify email/OTP with Maildev via SMTP checks. The worker successfully ran Maildev, sent OTP, and confirmed receipt via MailDev API. This is correctly documented in the handoff and no skill gap exists.",
+      "evidence": "Handoff interactiveChecks confirms MailDev SMTP verification was performed."
+    },
+    {
+      "area": "conventions",
+      "observation": "AGENTS.md documents the auth architecture and that Better Auth emailOTP plugin is the correct direction for citizen OTP auth. The feature aligns with this: rate limiting, unique index, CORS fix, anti-escalation all documented in AGENTS.md's auth context. No convention violations.",
+      "evidence": "AGENTS.md section 'Estado real de auth' describes Better Auth emailOTP as the target for citizens. Implementation aligns."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Better Auth's rate limiting is disabled by default in development mode. The worker discovered this and enabled it explicitly. The fix is documented in .factory/library/auth-hardening.md. This is useful knowledge that was correctly captured.",
+      "evidence": "auth-hardening.md documents: 'Better Auth rate limiting is disabled by default in development (enabled: options.rateLimit?.enabled ?? isProduction). Must explicitly set rateLimit: { enabled: true } in config.'"
+    },
+    {
+      "area": "knowledge",
+      "observation": "Better Auth's emailOTP plugin uses a create-then-catch pattern in resolveOTP that depends on a UNIQUE index on verification.identifier to delete old OTP rows before inserting new ones on resend. Without the unique index, the catch never fires and both OTPs coexist. This is a non-obvious behavior documented in auth-hardening.md and SCHEMA.md.",
+      "evidence": "SCHEMA.md: 'verification.identifier tiene un índice UNIQUE para garantizar que solo exista un código vigente por identificador'. auth-hardening.md documents the pattern in detail."
+    },
+    {
+      "area": "services",
+      "observation": "The worker used MailDev for SMTP verification. MailDev is listed in services.yaml (port 1080, healthcheck on 1080). Correct usage confirmed.",
+      "evidence": "services.yaml lists maildev service. Worker used curl POST /api/auth/email-otp/send-verification-otp and confirmed MailDev captured the OTP."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature auth-citizen-otp-hardening passes scrutiny. The implementation correctly hardens citizen OTP auth with: (1) explicit rate limiting enabled in Better Auth config, (2) CORS default origin fixed to frontend port :3000 with credentials support, (3) UNIQUE index on verification.identifier enabling OTP resend invalidation via Better Auth's create-then-catch pattern, (4) anti-escalation protection via admin plugin's input:false fields, (5) 17 integration tests covering all VAL-AUTH-001 through VAL-AUTH-014 assertions. Manual curl verification confirmed all critical paths. Worker followed backend-domain-worker skill procedure correctly. One non-blocking test limitation: the memory adapter used in tests doesn't enforce DB-level unique constraints, so VAL-AUTH-004 tests manually delete old verification rows to simulate the constraint — this is documented and understood. No blocking issues found."
+}

@@ -7,13 +7,14 @@
   },
   "scripts": {
     "dev": "vite dev --port 3000",
+    "dev:server": "bun --cwd server run dev",
     "build": "vite build",
+    "maildev": "bun --cwd server run maildev",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check",
-    "pb": "bun run pocketbase/pb.ts"
+    "check": "biome check"
   },
   "dependencies": {
     "@fontsource/geist-sans": "^5.2.5",
@@ -28,6 +29,7 @@
     "@mantine/modals": "9.0.1",
     "@mantine/notifications": "9.0.1",
     "@mantine/nprogress": "9.0.1",
+    "@mantine/schedule": "9.0.1",
     "@mantine/spotlight": "9.0.1",
     "@mantine/tiptap": "9.0.1",
     "@tailwindcss/vite": "^4.2.2",
@@ -38,11 +40,11 @@
     "@tiptap/pm": "^3.22.3",
     "@tiptap/react": "^3.22.3",
     "@tiptap/starter-kit": "^3.22.3",
+    "better-auth": "^1.6.1",
     "dayjs": "^1.11.20",
     "embla-carousel": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^1.7.0",
-    "pocketbase": "^0.26.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^3.8.1",

@@ -1,0 +1,118 @@
+{
+  "groupId": "auth-retry",
+  "testedAt": "2026-04-11T05:56:00.000Z",
+  "isolation": {
+    "backendUrl": "http://localhost:3001",
+    "maildevSmtp": "localhost:1025",
+    "maildevWeb": "http://localhost:1080",
+    "adminCredentials": "admin@simut.test / Admin123! (seeded via seed-admin.ts)"
+  },
+  "toolsUsed": ["curl"],
+  "assertions": [
+    {
+      "id": "VAL-AUTH-007",
+      "title": "Rate limit in envío OTP frena reenvíos masivos",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "POST /api/auth/email-otp/send-verification-otp (request 1/5)",
+          "expected": "200",
+          "observed": "200"
+        },
+        {
+          "action": "POST /api/auth/email-otp/send-verification-otp (request 2/5)",
+          "expected": "200",
+          "observed": "200"
+        },
+        {
+          "action": "POST /api/auth/email-otp/send-verification-otp (request 3/5)",
+          "expected": "200",
+          "observed": "200"
+        },
+        {
+          "action": "POST /api/auth/email-otp/send-verification-otp (request 4/5)",
+          "expected": "429 (rate limit exceeded)",
+          "observed": "200"
+        },
+        {
+          "action": "POST /api/auth/email-otp/send-verification-otp (request 5/5)",
+          "expected": "429 (rate limit exceeded)",
+          "observed": "200"
+        }
+      ],
+      "evidence": {
+        "screenshots": null,
+        "consoleErrors": null,
+        "network": "5x POST /api/auth/email-otp/send-verification-otp with email test-rate@example.com -> all returned 200"
+      },
+      "issues": "Rate limiting is not enforced on the OTP send endpoint. All 5 requests returned 200 instead of 429 after request 3. The backend uses Better Auth's global rate limit (100 requests / 10 seconds) but does not have a per-endpoint or per-email rate limit specifically for OTP sending."
+    },
+    {
+      "id": "VAL-AUTH-010",
+      "title": "Login staff/admin separado habilita APIs admin solo para rol autorizado",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Seed admin user via ADMIN_EMAIL=admin@simut.test ADMIN_PASSWORD=Admin123! bun run scripts/seed-admin.ts",
+          "expected": "Admin user created or confirmed",
+          "observed": "User admin@simut.test already exists with admin role"
+        },
+        {
+          "action": "POST /api/auth/sign-in/email with admin credentials",
+          "expected": "200 with session cookie",
+          "observed": "401 {\"message\":\"Invalid email or password\",\"code\":\"INVALID_EMAIL_OR_PASSWORD\"}"
+        },
+        {
+          "action": "GET /api/auth/admin/list-users without session",
+          "expected": "401 (expected)",
+          "observed": "401"
+        }
+      ],
+      "evidence": {
+        "screenshots": null,
+        "consoleErrors": null,
+        "network": "POST /api/auth/sign-in/email -> 401 INVALID_EMAIL_OR_PASSWORD"
+      },
+      "issues": "The seeded admin user exists in the database (confirmed via sqlite3 query) but sign-in fails with INVALID_EMAIL_OR_PASSWORD. The seed-admin script creates a user record with bcrypt-hashed password, but the hash may be corrupted or the password may not have been set correctly. Cannot establish admin session to test list-users access. This assertion is blocked pending resolution of the password authentication issue for seeded admin users."
+    },
+    {
+      "id": "VAL-AUTH-014",
+      "title": "Política CORS de auth con credenciales aplica solo a orígenes permitidos",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "POST /api/auth/email-otp/send-verification-otp with Origin: http://evil.local",
+          "expected": "No Access-Control-Allow-Credentials header or false",
+          "observed": "Access-Control-Allow-Credentials: true (present)"
+        },
+        {
+          "action": "OPTIONS /api/auth/email-otp/send-verification-otp preflight with Origin: http://evil.local",
+          "expected": "No CORS credentials header",
+          "observed": "204 No Content (no CORS headers visible on preflight)"
+        }
+      ],
+      "evidence": {
+        "screenshots": null,
+        "consoleErrors": null,
+        "network": "POST with Origin: http://evil.local -> HTTP 200 with Access-Control-Allow-Credentials: true; The disallowed origin 'http://evil.local' still receives credentials-enabled CORS headers"
+      },
+      "issues": "The Hono cors() middleware is configured with origin: corsOrigin (from CORS_ORIGIN env var, default http://localhost:3000). However, when a request comes from a disallowed origin, Hono's cors middleware still responds and the CORS headers (including Access-Control-Allow-Credentials: true) are still being sent. The correct behavior for Hono's cors with a disallowed origin is to deny the request or omit CORS headers entirely, but the response still includes Access-Control-Allow-Credentials: true which is a security issue for credential-bearing cross-origin requests."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Admin user seeded but password authentication fails - seed script creates user but hash may be invalid",
+      "resolved": false,
+      "resolution": "Could not resolve - password-based admin login is not working for seeded admin. Requires investigation of bcrypt hash in database vs expected hash.",
+      "affectedAssertions": ["VAL-AUTH-010"]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Admin sign-in (/api/auth/sign-in/email) fails with INVALID_EMAIL_OR_PASSWORD even after seeding admin user with seed-admin.ts. Cannot establish admin session to test VAL-AUTH-010.",
+      "affectedAssertions": ["VAL-AUTH-010"],
+      "quickFixAttempted": "Re-ran seed-admin.ts, checked sqlite3 for user and account records, but password auth still fails. The seeded account uses bcrypt hash but the sign-in flow may not be using bcrypt correctly."
+    }
+  ],
+  "summary": "Tested 3 assertions (VAL-AUTH-007, VAL-AUTH-010, VAL-AUTH-014): 2 failed (VAL-AUTH-007 rate limit not enforced, VAL-AUTH-014 CORS credentials leak to disallowed origins), 1 blocked (VAL-AUTH-010 admin login fails - password auth issue). VAL-AUTH-014 fails because Hono's cors middleware sends Access-Control-Allow-Credentials: true even for disallowed origins. VAL-AUTH-007 fails because Better Auth's global rate limit (100/10s) is too permissive for the per-endpoint OTP rate limit requirement."
+}

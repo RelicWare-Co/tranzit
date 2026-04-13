@@ -1,0 +1,84 @@
+{
+  "featureId": "combined-capacity-accounting-engine",
+  "reviewedAt": "2026-04-11T15:30:00.000Z",
+  "commitId": "23b73ee",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation creates capacity.ts, bookings.ts, and test files. TypeScript compiles and tests pass. However, there are blocking bugs in capacity accounting logic and the test suite does not validate the actual implementation.",
+    "issues": [
+      {
+        "severity": "blocking",
+        "description": "Bug in checkCapacity() - staff date filtering is incorrect. The filter on staffBookingsForDate uses `slot.slotDate === date` where `slot` is the outer slot being checked, not the slot associated with each booking. This means the filter returns ALL staff bookings regardless of their actual date, making staffUsed always equal to staffDateBookings.length.",
+        "location": "server/src/capacity.ts:178-185",
+        "suggestedFix": "Replace the filter logic with proper slot date lookup. The correct approach is to map booking slotIds to slotDates and filter correctly:\n\nconst staffDateBookings = staffDateBookingsRaw.filter(b => {\n  const bSlot = slotDateMap.get(b.slotId);\n  return bSlot === date;\n});\n\nBut first, staffDateBookings must be populated from db.query.booking.findMany with a filter for staffUserId AND isActive."
+      },
+      {
+        "severity": "blocking",
+        "description": "consumeCapacity() transaction re-checks capacity but doesn't use proper locking. The code states 'SQLite/Drizzle doesn't support SELECT FOR UPDATE' but the transaction re-checks within a non-atomic read-then-write. Under high concurrency on the last unit of capacity, multiple transactions could both read 'available', proceed to insert, and exceed capacity.",
+        "location": "server/src/capacity.ts:232-310",
+        "suggestedFix": "Either (a) use Drizzle's transaction with serialized writes (not currently possible with libsql), or (b) add a unique constraint on (slotId, isActive) combined with a capacity check, or (c) add an application-level distributed lock. For now, document this as a known limitation for Turso/libsql multi-statement atomicity."
+      },
+      {
+        "severity": "blocking",
+        "description": "Test suite (bookings-capacity.test.ts) uses inline mock/stub implementations of capacity logic rather than the actual capacity.ts module. The tests validate HTTP endpoint behavior against mock handlers that duplicate the logic. This means the actual capacity.ts implementation with its bugs is never tested.",
+        "location": "server/src/bookings-capacity.test.ts",
+        "suggestedFix": "Import and test the actual capacity.ts functions (checkCapacity, consumeCapacity, releaseCapacity) directly against a test database. Use a real in-memory SQLite database via better-sqlite3 or the same libsql adapter used elsewhere."
+      },
+      {
+        "severity": "blocking",
+        "description": "reassignBooking() capacity check filtering has incorrect logic. When checking if target staff has capacity, the code filters conflicts with `staffUsed - 1` comparison, but this doesn't account for the fact that the booking's original slot/staff combination will release capacity. The logic is incomplete and could allow double-booking during reassignment.",
+        "location": "server/src/capacity.ts:512-530",
+        "suggestedFix": "The reassignment capacity check should: (1) verify the new staff has capacity for the slot's date, excluding this booking's current consumption, AND (2) verify the original staff is properly freed. The current filtering approach is opaque and may miss edge cases."
+      },
+      {
+        "severity": "non_blocking",
+        "description": "releaseCapacity() is not idempotent for concurrent calls. While the single-release case is idempotent (alreadyReleased flag), two concurrent release calls on the same booking could both pass the isActive check before either marks it inactive, causing potential double-release or inconsistent state.",
+        "location": "server/src/capacity.ts:340-395",
+        "suggestedFix": "Wrap the release operation in a transaction and use an atomic UPDATE with WHERE isActive=true to ensure only one call succeeds."
+      },
+      {
+        "severity": "non_blocking",
+        "description": "The expected behavior states 'Concurrencia por última unidad de capacidad staff en distintos slots tiene un único ganador' but there are no concurrent tests. The test file declares coverage for VAL-CAP-004 but only contains sequential tests.",
+        "location": "server/src/bookings-capacity.test.ts (no concurrent tests present)",
+        "suggestedFix": "Add concurrent test: spawn multiple Promise.all([booking1, booking2]) for the last unit of staff capacity on different slots. Verify only one succeeds with 201, the other gets 409."
+      },
+      {
+        "severity": "non_blocking",
+        "description": "checkCapacity() makes N+3 database queries for a single check (1 slot + 1 staff + 1 dateOverride + N staffBookings + N slots for date filtering). This is inefficient and could cause issues under high load.",
+        "location": "server/src/capacity.ts:58-168",
+        "suggestedFix": "Optimize by fetching staff bookings and their associated slots in a single query with a JOIN, or cache slot date information."
+      },
+      {
+        "severity": "suggestion",
+        "description": "verifyAvailability() is called confirmAvailability() in bookings.ts but expectedBehavior mentions 'terminales' (terminal states). The release reason 'attended' exists but there's no explicit test for the attended terminal state transition flow.",
+        "location": "server/src/bookings.ts:303-310, server/src/capacity.ts:397-440",
+        "suggestedFix": "Add test case for the attended terminal state: create booking -> confirm -> release with 'attended' reason, verify attendedAt timestamp is set."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Worker used inline mock implementations in tests rather than testing actual implementation. This pattern is inefficient - tests should import and validate real modules. The AGENTS.md mentions 'Verify step: Manual: ejecutar secuencias...' but doesn't mandate inline mocking over real code testing.",
+      "evidence": "bookings-capacity.test.ts creates createTestApp() with mock handlers that duplicate capacity logic, instead of importing actual capacity.ts functions and testing them directly against a test DB."
+    },
+    {
+      "area": "skills",
+      "observation": "The backend-domain-worker skill procedure wasn't followed for testing - the transcript shows extensive time spent creating mock implementations (600+ lines of mock HTTP handlers) rather than using the actual capacity.ts module. skillFeedback reports 'followedProcedure: true' but the evidence shows significant deviation.",
+      "evidence": "Transcript shows 'Create test file' with 900+ lines of mock HTTP handlers. Real implementation tests should be 50-100 lines calling capacity.ts functions directly."
+    },
+    {
+      "area": "services",
+      "observation": "No services gaps detected - all commands used (bunx tsc --noEmit, bun run test) are documented in services.yaml."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Worker discovered that Turso/libsql doesn't support SELECT FOR UPDATE but didn't document this limitation or the mitigation strategy needed. This is critical domain knowledge for capacity-critical code paths.",
+      "evidence": "capacity.ts comments state 'SQLite/Drizzle doesn't support SELECT FOR UPDATE, but transactions still provide isolation. For Turso/libsql, this is sufficient for single-instance consistency.' The comment is technically correct but the caveat about 'single-instance' vs distributed should be explicit in AGENTS.md or architecture.md."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The combined-capacity-accounting-engine feature implements dual-capacity checking (global slot + staff daily) with idempotent release and transactional booking creation. The code compiles and tests pass, but there are blocking bugs in the capacity check logic (staff date filtering is incorrect), the test suite doesn't validate the actual implementation (uses inline mocks), and concurrent booking scenarios aren't tested. The implementation partially fulfills VAL-STF-010 through VAL-STF-022 but the core capacity accounting has correctness issues that would cause overbooking under concurrent load."
+}

@@ -1,0 +1,61 @@
+{
+  "featureId": "admin-reservation-series-scope-operations",
+  "reviewedAt": "2026-04-11T18:45:00.000Z",
+  "commitId": "c6676ca",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation covers all three scope operations (full-series, single, from-date) with correct detached/excepcionated instance handling. However, the move operation does not implement capacity recalculation for origin/destination slots, violating VAL-ADM-005. Additionally, no dedicated tests were added for reservation series operations.",
+    "issues": [
+      {
+        "file": "server/src/reservation-series.ts",
+        "line": 850,
+        "severity": "blocking",
+        "description": "Series move operation does not recalculate capacity for origin/destination slots. Comments at line 850 reference VAL-ADM-005 'Move recalculates capacity origin/destination' but the implementation only updates slotId/staffUserId without calling releaseCapacity on the original slot or consumeCapacity on the target slot. All active bookings in the series are moved with new slotId but capacity remains consumed from original slots."
+      },
+      {
+        "file": "server/src/reservation-series.ts",
+        "line": 950,
+        "severity": "blocking",
+        "description": "Single instance move operation does not recalculate capacity. Similar to series move, only slotId/staffUserId are updated without releasing original capacity or consuming target capacity. VAL-ADM-005 expectation not met."
+      },
+      {
+        "file": "server/src/reservation-series.ts",
+        "line": 1,
+        "severity": "non_blocking",
+        "description": "No test file specifically for reservation-series scope operations. The feature has no dedicated unit/integration tests - only typecheck and curl checks were performed per handoff. However, existing file reservation-idempotency.test.ts covers related VAL-ADM assertions but focuses on idempotency/conflict rather than scope semantics."
+      },
+      {
+        "file": "server/src/reservation-series.ts",
+        "line": 1,
+        "severity": "non_blocking",
+        "description": "No audit events written for any mutation operations (create series, update series, update instance, release, move). AGENTS.md specifies 'Every critical write operation must produce auditable trace (audit_event)' but none of the endpoints in this file call the audit_event table."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Move capacity recalculation expectation (VAL-ADM-005) is not implemented. The architecture.md in library documents 'Decisión de capacidad en reservas/reasignaciones: Se valida simultáneamente cupo global del slot y cupo/estado operativo del auxiliar' but move operations skip this validation for the origin slot.",
+      "evidence": "Lines 850-880 and 950-1000 update booking.slotId directly without calling releaseCapacity or consumeCapacity. Comment mentions VAL-ADM-005 but implementation is incomplete."
+    },
+    {
+      "area": "skills",
+      "observation": "Worker followed backend-domain-worker procedure (defined tests, implemented, ran typecheck, ran curl checks). No deviations from skill procedure were noted in handoff.skillFeedback.",
+      "evidence": "Handoff verification.commandsRun shows typecheck and curl checks passed. skillFeedback.followedProcedure is true."
+    },
+    {
+      "area": "services",
+      "observation": "No gaps - all commands used (cd server && bunx tsc --noEmit, curl for HTTP checks) are correctly mapped in services.yaml.",
+      "evidence": "services.yaml defines typecheck-server and backend service; worker used the correct forms."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Worker discovered and correctly implemented the idempotency-key infrastructure (schema idempotencyKey, hashPayload, checkIdempotencyKey, storeIdempotencyKey) which is a new pattern not previously used in the codebase. This pattern should be documented in library/architecture.md or equivalent.",
+      "evidence": "server/src/reservation-series.ts:55-190 implements full idempotency key handling with expiration, conflict detection, and response caching. No prior file in the codebase had this pattern."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature implements reservation series scope operations (full-series update, single-instance edit, from-date cutoff) with correct handling of detached/excepcionated instances. However, the move operation for both series and single instances fails to recalculate capacity origin/destination (VAL-ADM-005), leaving capacity orphaned in original slots while new slot doesn't get charged. Additionally, no dedicated tests were added for this feature, relying only on typecheck and HTTP checks. These are blocking issues that prevent the feature from passing review."
+}

@@ -1,0 +1,104 @@
+{
+  "milestone": "admin-reservations",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun run test -- --passWithNoTests --maxWorkers=5", "exitCode": 0, "note": "Requires TURSO_DATABASE_URL env var set explicitly due to relative path in .env" },
+    "typecheck": { "passed": true, "command": "bunx tsc --noEmit", "exitCode": 0 },
+    "typecheck-server": { "passed": true, "command": "cd server && bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 },
+    "build": { "passed": true, "command": "bun run build", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 1,
+    "failed": 1,
+    "failedFeatures": ["admin-reservation-series-scope-operations"]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "admin-reservation-series-scope-operations",
+      "severity": "blocking",
+      "file": "server/src/reservation-series.ts",
+      "line": 850,
+      "description": "Series move operation does not recalculate capacity for origin/destination slots. Comments reference VAL-ADM-005 but implementation only updates slotId/staffUserId without calling releaseCapacity on origin or consumeCapacity on destination. Capacity remains consumed from original slots."
+    },
+    {
+      "featureId": "admin-reservation-series-scope-operations",
+      "severity": "blocking",
+      "file": "server/src/reservation-series.ts",
+      "line": 950,
+      "description": "Single instance move operation does not recalculate capacity. Same issue as series move - only slotId/staffUserId updated without capacity recalculation. VAL-ADM-005 expectation not met."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Clarify that tests which require real database (TURSO_DATABASE_URL) need explicit env setup in the test command, since .env has relative path from server/ directory but tests run from root.",
+      "evidence": "bookings-capacity.test.ts and reservation-idempotency.test.ts import from capacity.ts which imports db, requiring TURSO_DATABASE_URL. Running 'bun run test' from root doesn't load the .env properly.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document the idempotency-key infrastructure pattern (schema idempotencyKey, hashPayload, checkIdempotencyKey, storeIdempotencyKey) implemented in reservation-series.ts as a reference for future workers.",
+      "evidence": "Feature admin-reservations-idempotency-conflicts-integrity introduced this pattern which is new to the codebase.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [],
+  "reviewDetails": [
+    {
+      "featureId": "admin-reservation-series-scope-operations",
+      "status": "fail",
+      "commitId": "c6676ca",
+      "issues": [
+        {
+          "severity": "blocking",
+          "description": "Move operation does not recalculate capacity for origin/destination slots (VAL-ADM-005)",
+          "location": "server/src/reservation-series.ts:850"
+        },
+        {
+          "severity": "blocking",
+          "description": "Single instance move does not recalculate capacity (VAL-ADM-005)",
+          "location": "server/src/reservation-series.ts:950"
+        },
+        {
+          "severity": "non_blocking",
+          "description": "No dedicated tests for reservation series scope operations",
+          "location": "server/src/reservation-series.ts"
+        },
+        {
+          "severity": "non_blocking",
+          "description": "No audit_event writes for mutation operations",
+          "location": "server/src/reservation-series.ts"
+        }
+      ],
+      "sharedStateObservations": [
+        "Move capacity recalculation expectation (VAL-ADM-005) is not implemented in series move operations",
+        "Worker followed backend-domain-worker procedure correctly"
+      ]
+    },
+    {
+      "featureId": "admin-reservations-idempotency-conflicts-integrity",
+      "status": "pass",
+      "commitId": "c6676ca",
+      "issues": [
+        {
+          "severity": "non_blocking",
+          "description": "Series creation not wrapped in database transaction - potential orphaned series if crash occurs mid-creation",
+          "location": "server/src/reservation-series.ts:1"
+        },
+        {
+          "severity": "non_blocking",
+          "description": "Rollback in series create doesn't clean up individual bookings already created",
+          "location": "server/src/reservation-series.ts:450"
+        }
+      ],
+      "sharedStateObservations": [
+        "Handoff references commit c6676ca but idempotency work is in working tree - minor inconsistency"
+      ]
+    }
+  ],
+  "previousRound": null
+}

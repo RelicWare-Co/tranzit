@@ -1,0 +1,73 @@
+{
+  "assertionId": "VAL-SCH-024",
+  "description": "Override parcial hereda horario base en campos no informados",
+  "testDate": "2026-04-11T13:33:00Z",
+  "tool": "curl",
+  "results": [
+    {
+      "test": "Partial override with only slotCapacityLimit=8 set (template has capacityLimit=4)",
+      "setup": [
+        {
+          "action": "Get template for weekday 6 (Saturday)",
+          "result": "Template has slotCapacityLimit: 4"
+        },
+        {
+          "action": "Create partial override for 2026-04-18",
+          "request": {
+            "method": "POST",
+            "url": "/api/admin/schedule/overrides",
+            "body": {"overrideDate":"2026-04-18","slotCapacityLimit":8}
+          },
+          "result": {
+            "id": "d39b79ba-d71b-4e17-9914-44b3f6b40e42",
+            "overrideDate": "2026-04-18",
+            "slotCapacityLimit": 8,
+            "morningStart": null,
+            "afternoonStart": null,
+            "slotDurationMinutes": null,
+            "bufferMinutes": null
+          }
+        }
+      ]
+    },
+    {
+      "test": "Generate slots for date with partial override",
+      "action": "POST /api/admin/schedule/slots/generate with dateFrom=2026-04-18, dateTo=2026-04-18",
+      "response": {
+        "status": 201,
+        "body": {"generatedCount": 10}
+      }
+    },
+    {
+      "test": "Verify generated slots use override's slotCapacityLimit",
+      "action": "GET /api/admin/schedule/slots?date=2026-04-18",
+      "response": {
+        "status": 200,
+        "slots": [
+          {
+            "id": "8b35f677-63cd-4982-b840-0d217bf30696",
+            "slotDate": "2026-04-18",
+            "startTime": "09:00",
+            "endTime": "09:30",
+            "status": "open",
+            "capacityLimit": 8,
+            "reservedCount": 0,
+            "remainingCapacity": 8,
+            "generatedFrom": "override"
+          },
+          {
+            "capacityLimit": 8,
+            "generatedFrom": "override"
+          }
+        ]
+      },
+      "analysis": "Slots correctly have capacityLimit=8 from partial override, NOT 4 from template. generatedFrom=override confirms override was applied."
+    }
+  ],
+  "summary": {
+    "status": "PASSED",
+    "fixVerified": true,
+    "description": "Partial override's slotCapacityLimit is now correctly applied to generated slots. When override explicitly sets slotCapacityLimit=8 (while other fields are null), slots inherit this value instead of falling back to template's capacityLimit=4."
+  },
+  "evidenceFiles": []
+}

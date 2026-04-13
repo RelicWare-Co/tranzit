@@ -1,94 +1,184 @@
-import type { RecordModel } from "pocketbase";
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
-import pb from "./pb";
+import { createContext, useCallback, useContext, useMemo } from "react";
+
+import { type AuthUser, authClient } from "./auth-client";
+
+type PermissionMap = Record<string, string[]>;
+type AdminRole = "admin" | "staff" | "auditor";
 
 interface AuthContextValue {
-	user: RecordModel | null;
+	user: AuthUser | null;
 	isAuthenticated: boolean;
 	isLoading: boolean;
 	login: (email: string, password: string) => Promise<void>;
-	logout: () => void;
+	register: (name: string, email: string, password: string) => Promise<void>;
+	logout: () => Promise<void>;
 	refreshUser: () => Promise<void>;
+	sendVerificationOtp: (
+		email: string,
+		type?: "sign-in" | "email-verification" | "forget-password",
+	) => Promise<void>;
+	signInEmailOtp: (email: string, otp: string, name?: string) => Promise<void>;
+	hasPermission: (permissions: PermissionMap) => Promise<boolean>;
+	checkRolePermission: (params: {
+		permissions: PermissionMap;
+		role: AdminRole;
+	}) => boolean;
+	hasRole: (role: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	const [user, setUser] = useState<RecordModel | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
+	const { data: session, isPending, refetch } = authClient.useSession();
 
-	const checkAuth = useCallback(async () => {
-		setIsLoading(true);
-		try {
-			if (pb.authStore.isValid) {
-				// Refresh the auth to ensure it's still valid
-				await pb.collection("users").authRefresh();
-				setUser(pb.authStore.record as RecordModel);
-			} else {
-				setUser(null);
+	const login = useCallback(
+		async (email: string, password: string) => {
+			if (!email || !password) {
+				throw new Error("Credenciales requeridas.");
 			}
-		} catch {
-			setUser(null);
-			pb.authStore.clear();
-		} finally {
-			setIsLoading(false);
+
+			const { error } = await authClient.signIn.email({ email, password });
+
+			if (error) {
+				throw new Error(error.message);
+			}
+
+			await refetch();
+		},
+		[refetch],
+	);
+
+	const register = useCallback(
+		async (name: string, email: string, password: string) => {
+			if (!name || !email || !password) {
+				throw new Error("Completa nombre, correo y contraseña.");
+			}
+
+			const { error } = await authClient.signUp.email({
+				name,
+				email,
+				password,
+			});
+
+			if (error) {
+				throw new Error(error.message);
+			}
+
+			await refetch();
+		},
+		[refetch],
+	);
+
+	const logout = useCallback(async () => {
+		const { error } = await authClient.signOut();
+
+		if (error) {
+			throw new Error(error.message);
 		}
-	}, []);
 
-	useEffect(() => {
-		checkAuth();
-
-		// Subscribe to auth state changes
-		const unsubscribe = pb.authStore.onChange((token, model) => {
-			// Use token to satisfy the callback signature
-			if (token && model && "collectionId" in model) {
-				setUser(model as RecordModel);
-			} else {
-				setUser(null);
-			}
-		});
-
-		return () => {
-			unsubscribe();
-		};
-	}, [checkAuth]);
-
-	const login = useCallback(async (email: string, password: string) => {
-		const authData = await pb
-			.collection("users")
-			.authWithPassword(email, password);
-		setUser(authData.record);
-	}, []);
-
-	const logout = useCallback(() => {
-		pb.authStore.clear();
-		setUser(null);
-	}, []);
+		await refetch();
+	}, [refetch]);
 
 	const refreshUser = useCallback(async () => {
-		if (pb.authStore.isValid && user) {
-			const freshUser = await pb.collection("users").getOne(user.id);
-			setUser(freshUser);
-		}
-	}, [user]);
+		await refetch();
+	}, [refetch]);
+
+	const sendVerificationOtp = useCallback(
+		async (
+			email: string,
+			type: "sign-in" | "email-verification" | "forget-password" = "sign-in",
+		) => {
+			if (!email) {
+				throw new Error("Correo electrónico requerido.");
+			}
+
+			const { error } = await authClient.emailOtp.sendVerificationOtp({
+				email,
+				type,
+			});
+
+			if (error) {
+				throw new Error(error.message);
+			}
+		},
+		[],
+	);
+
+	const signInEmailOtp = useCallback(
+		async (email: string, otp: string, name?: string) => {
+			if (!email || !otp) {
+				throw new Error("Correo y código OTP requeridos.");
+			}
+
+			const { error } = await authClient.signIn.emailOtp({
+				email,
+				otp,
+				name,
+			});
+
+			if (error) {
+				throw new Error(error.message);
+			}
+
+			await refetch();
+		},
+		[refetch],
+	);
+
+	const hasPermission = useCallback(async (permissions: PermissionMap) => {
+		const result = await authClient.admin.hasPermission({
+			permissions,
+		});
+		return result.data?.success ?? false;
+	}, []);
+
+	const checkRolePermission = useCallback(
+		(params: { permissions: PermissionMap; role: AdminRole }) => {
+			return authClient.admin.checkRolePermission(params);
+		},
+		[],
+	);
+
+	const hasRole = useCallback(
+		(role: string) => {
+			const user = session?.user;
+			if (!user?.role) return false;
+			return user.role
+				.split(",")
+				.map((r) => r.trim())
+				.includes(role);
+		},
+		[session],
+	);
 
 	const value = useMemo(
 		() => ({
-			user,
-			isAuthenticated: !!user,
-			isLoading,
+			user: session?.user ? (session.user as AuthUser) : null,
+			isAuthenticated: !!session?.user,
+			isLoading: isPending,
 			login,
+			register,
 			logout,
 			refreshUser,
+			sendVerificationOtp,
+			signInEmailOtp,
+			hasPermission,
+			checkRolePermission,
+			hasRole,
 		}),
-		[user, isLoading, login, logout, refreshUser],
+		[
+			session,
+			isPending,
+			login,
+			register,
+			logout,
+			refreshUser,
+			sendVerificationOtp,
+			signInEmailOtp,
+			hasPermission,
+			checkRolePermission,
+			hasRole,
+		],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

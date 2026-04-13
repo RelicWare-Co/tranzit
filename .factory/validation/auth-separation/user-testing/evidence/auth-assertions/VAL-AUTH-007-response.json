@@ -1,0 +1,6 @@
+Requests 1-5 all returned 200 success
+
+5 consecutive OTP send requests all succeeded
+
+Note: Better Auth global rate limit is 100 req/10s, not 3 per 60s per email/type
+The assertion's specific rate limit (3/60s) may not be implemented as specified

@@ -1,0 +1,50 @@
+{
+  "featureId": "auth-admin-login-and-surface-guards",
+  "reviewedAt": "2026-04-11T10:30:00.000Z",
+  "commitId": "45884ee",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation covers admin login surface at /admin/login, role-based authorization guards on /api/auth/admin/* and /api/admin/*, session contract behavior (/session=401 null vs /api/auth/get-session=200 null), and test infrastructure for SQLite constraint simulation on resend OTP. All three fulfilled assertions (VAL-AUTH-008, VAL-AUTH-009, VAL-AUTH-010) are correctly implemented in both production code and tests.",
+    "issues": [
+      {
+        "file": "server/src/admin-auth-guard.test.ts",
+        "line": 353,
+        "severity": "non_blocking",
+        "description": "VAL-AUTH-010 admin test sets role via direct in-memory db mutation (userRecord.role = 'admin') rather than through a proper setRole API call. While this correctly tests the guard middleware's 403/200 behavior for the role check, it doesn't exercise the actual admin role promotion pipeline. This is acceptable given the test's scope (guarding) but worth noting the admin role creation flow is not fully covered by integration test."
+      },
+      {
+        "file": "biome.json",
+        "line": 36,
+        "severity": "suggestion",
+        "description": "biome.json overrides for test files add 'noExplicitAny: off' and downgrade 'noUnusedVariables' to 'warn'. This was needed to pass lint for Better Auth's integration test patterns using explicit any for the auth instance type. The AGENTS.md and project conventions don't document that test files have relaxed linting. Consider documenting this pattern so future workers understand the convention."
+      },
+      {
+        "file": "server/src/admin-auth-guard.test.ts",
+        "line": 309,
+        "severity": "suggestion",
+        "description": "The test 'citizen email/password session on admin endpoint returns 403' is labeled under VAL-AUTH-009 which the feature description says covers 'citizen OTP session cannot use admin APIs'. The test actually uses email/password session. While this is a valid additional test case (non-OTP citizen session), it should be labeled distinctly from the OTP-specific VAL-AUTH-009 assertion to avoid confusion in validation reports."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "biome.json now has test-file-specific lint overrides (noExplicitAny off, noUnusedVariables warn) that were added to support Better Auth integration test patterns. AGENTS.md does not document this pattern of relaxing lint for test files, nor is there guidance on when test-specific overrides are acceptable.",
+      "evidence": "biome.json lines 35-44: overrides array with includes: ['**/*.test.ts', '**/*.test.tsx']"
+    },
+    {
+      "area": "skills",
+      "observation": "The worker followed the fullstack-admin-worker skill procedure for implementing admin auth guards and session contract. No significant deviations from the skill's expected procedure were identified.",
+      "evidence": "Handoff skillFeedback section is absent in the handoff, but transcript skeleton shows skill was invoked early (Tool: Skill with fullstack-admin-worker). Verification commands match the skill's expected checks."
+    },
+    {
+      "area": "knowledge",
+      "observation": "The worker correctly identified that the memory adapter doesn't enforce SQLite's unique constraint on verification.identifier, so resend OTP invalidation must be simulated by manually deleting old verification rows. This is accurate for SQLite/libsql behavior and the worker documented it well in test comments. No gap in shared state needed.",
+      "evidence": "server/src/admin-auth-guard.test.ts lines 475-485 and server/src/auth-hardening.test.ts lines 337-344 - comments explain the unique constraint simulation approach"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature passes scrutiny. Admin login surface, role-based guards, and session contract are correctly implemented. Tests cover VAL-AUTH-008 (401 without session), VAL-AUTH-009 (403 with citizen session), VAL-AUTH-010 (200 with admin, 403 with non-admin). The main non-blocking concern is that VAL-AUTH-010's admin test promotes user role via direct db mutation rather than through a proper setRole API call, but the guard middleware behavior is still correctly validated. Biome lint overrides for test files are not documented in AGENTS.md."
+}

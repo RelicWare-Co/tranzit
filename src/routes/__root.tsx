@@ -257,7 +257,9 @@ function UserMenu() {
 							<LogOut size={16} color="#e03131" />
 						</Box>
 					}
-					onClick={logout}
+					onClick={() => {
+						void logout().catch(() => {});
+					}}
 					style={{
 						borderRadius: "12px",
 						fontWeight: 600,

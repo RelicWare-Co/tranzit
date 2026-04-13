@@ -1,0 +1,4 @@
+sign-up with role:admin rejected: {"message":"role is not allowed to be set","code":"FIELD_NOT_ALLOWED"}
+sign-in/email-otp with role:admin rejected: {"message":"role is not allowed to be set","code":"FIELD_NOT_ALLOWED"}
+Normal signup user role is 'user', admin endpoint returns 403
+Result: PASS - Payload injection does not grant admin privileges
