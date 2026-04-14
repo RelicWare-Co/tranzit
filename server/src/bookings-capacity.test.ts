@@ -27,8 +27,8 @@ import {
 	consumeCapacity,
 	reassignBooking,
 	releaseCapacity,
-} from "./capacity";
-import { db, schema } from "./db";
+} from "./features/bookings/capacity.service";
+import { db, schema } from "./lib/db";
 
 // ---------------------------------------------------------------------------
 // Test Auth Setup (uses memory adapter for auth testing)

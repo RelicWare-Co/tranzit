@@ -13,10 +13,12 @@ import {
 	Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, Lock, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../lib/AuthContext";
+import { orpc } from "../../lib/orpc-client";
 
 export const Route = createFileRoute("/admin/login")({
 	component: AdminLoginPage,
@@ -24,33 +26,46 @@ export const Route = createFileRoute("/admin/login")({
 
 function AdminLoginPage() {
 	const navigate = useNavigate();
-	const { login, isAuthenticated, isLoading: authLoading, user } = useAuth();
+	const {
+		hasRole,
+		login,
+		isAuthenticated,
+		isLoading: authLoading,
+		refreshUser,
+	} = useAuth();
 	const [error, setError] = useState("");
 	const [loading, setLoading] = useState(false);
-	const [showOnboarding, setShowOnboarding] = useState(false);
-	const [onboardingLoading, setOnboardingLoading] = useState(false);
+	const isAdminRole = hasRole("admin");
+	const shouldCheckOnboarding = !authLoading && isAuthenticated && !isAdminRole;
+	const onboardingStatusQuery = useQuery(
+		orpc.admin.onboarding.status.queryOptions({
+			enabled: shouldCheckOnboarding,
+			retry: false,
+		}),
+	);
+	const onboardingMutation = useMutation(
+		orpc.admin.onboarding.bootstrap.mutationOptions(),
+	);
 
 	useEffect(() => {
-		if (!authLoading && isAuthenticated) {
-			if (user?.role?.includes("admin")) {
-				navigate({ to: "/admin" });
-				return;
-			}
-			fetch("/api/admin/onboard/status")
-				.then((r) => r.json())
-				.then((data) => {
-					if (!data.adminExists) {
-						setShowOnboarding(true);
-					} else {
-						navigate({ to: "/admin" });
-					}
-				})
-				.catch(() => {
-					setShowOnboarding(true);
-				});
+		if (!authLoading && isAuthenticated && isAdminRole) {
+			navigate({ to: "/admin" });
 			return;
 		}
-	}, [isAuthenticated, authLoading, navigate, user]);
+		if (
+			shouldCheckOnboarding &&
+			onboardingStatusQuery.data?.adminExists === true
+		) {
+			navigate({ to: "/admin" });
+		}
+	}, [
+		authLoading,
+		isAuthenticated,
+		isAdminRole,
+		navigate,
+		onboardingStatusQuery.data?.adminExists,
+		shouldCheckOnboarding,
+	]);
 
 	const form = useForm({
 		initialValues: {
@@ -83,24 +98,17 @@ function AdminLoginPage() {
 	});
 
 	const handleOnboard = async () => {
-		setOnboardingLoading(true);
 		setError("");
 		try {
-			const res = await fetch("/api/admin/onboard", { method: "POST" });
-			const data = await res.json();
-			if (!res.ok) {
-				throw new Error(data.message || "Error en el onboarding");
-			}
+			await onboardingMutation.mutateAsync();
+			await refreshUser();
 			navigate({ to: "/admin" });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Error en el onboarding");
-		} finally {
-			setOnboardingLoading(false);
 		}
 	};
 
 	const skipOnboarding = () => {
-		setShowOnboarding(false);
 		navigate({ to: "/admin" });
 	};
 
@@ -124,7 +132,40 @@ function AdminLoginPage() {
 		},
 	};
 
-	if (showOnboarding) {
+	if (shouldCheckOnboarding && onboardingStatusQuery.isPending) {
+		return (
+			<Box bg="#f8f9fa" mih="100vh" pt={160} pb={80}>
+				<Container size="xs">
+					<Card
+						p={40}
+						radius="xl"
+						bg="white"
+						style={{
+							border: "1px solid #e5e7eb",
+							boxShadow:
+								"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
+						}}
+					>
+						<Stack gap="md" align="center">
+							<Badge variant="light" color="red" size="lg">
+								Verificando acceso
+							</Badge>
+							<Text size="sm" c="#6b7280" ta="center">
+								Cargando el estado administrativo antes de mostrar el
+								formulario.
+							</Text>
+						</Stack>
+					</Card>
+				</Container>
+			</Box>
+		);
+	}
+
+	if (
+		shouldCheckOnboarding &&
+		(onboardingStatusQuery.data?.adminExists === false ||
+			onboardingStatusQuery.isError)
+	) {
 		return (
 			<Box bg="#f8f9fa" mih="100vh">
 				<Container size="xs">
@@ -193,7 +234,7 @@ function AdminLoginPage() {
 								<Button
 									fullWidth
 									size="md"
-									loading={onboardingLoading}
+									loading={onboardingMutation.isPending}
 									onClick={handleOnboard}
 									color="red"
 									style={{
@@ -209,7 +250,7 @@ function AdminLoginPage() {
 									size="md"
 									variant="subtle"
 									onClick={skipOnboarding}
-									loading={onboardingLoading}
+									loading={onboardingMutation.isPending}
 									style={{ borderRadius: "8px", fontWeight: 500 }}
 								>
 									Saltar por ahora

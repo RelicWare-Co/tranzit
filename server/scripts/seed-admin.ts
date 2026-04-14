@@ -9,16 +9,20 @@
  */
 
 import "dotenv/config";
-import { db, schema } from "../src/db";
-import { eq } from "drizzle-orm";
 import { hashPassword } from "@better-auth/utils/password";
+import { eq } from "drizzle-orm";
+import { db, schema } from "../src/lib/db";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-	console.error("Error: ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required.");
-	console.error("Usage: ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=strongpassword bun run scripts/seed-admin.ts");
+	console.error(
+		"Error: ADMIN_EMAIL and ADMIN_PASSWORD environment variables are required.",
+	);
+	console.error(
+		"Usage: ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=strongpassword bun run scripts/seed-admin.ts",
+	);
 	process.exit(1);
 }
 
@@ -34,17 +38,18 @@ async function seedAdmin() {
 
 	if (existingAdmin) {
 		console.log(`User with email ${email} already exists.`);
-		
+
 		// Update role to admin if not already
 		if (existingAdmin.role !== "admin") {
-			await db.update(schema.user)
+			await db
+				.update(schema.user)
 				.set({ role: "admin" })
 				.where(eq(schema.user.id, existingAdmin.id));
 			console.log(`Updated user role to admin.`);
 		} else {
 			console.log(`User already has admin role.`);
 		}
-		
+
 		return;
 	}
 

@@ -1,6 +1,6 @@
 # Backend Status (Current Implementation)
 
-Last updated: 2026-04-11
+Last updated: 2026-04-13
 
 This document describes what the backend **really has implemented today**.
 Use it as an operational map before adding or changing backend behavior.
@@ -16,32 +16,32 @@ This file complements (not replaces):
 - HTTP framework: Hono
 - ORM/DB: Drizzle + libsql/sqlite
 - Auth provider: Better Auth
+- Primary business API transport: oRPC at `/api/rpc/*`
+- `/api/admin/*` is no longer exposed as a public HTTP surface
 
 ### Auth and session
-- Session is resolved on every request in `server/src/index.ts`.
-- `GET /session`:
-  - `401` + `null` when unauthenticated
-  - `200` + `{ user, session }` when authenticated
 - Better Auth endpoint is mounted on `/api/auth/*`.
+- `session.get` is a native oRPC procedure that resolves session via `auth.api.getSession` using request headers.
+- `session.get` is available through oRPC (`/api/rpc/session/get`).
 
 ### Authorization
 - Role-based access control with three roles: `admin`, `staff`, `auditor`.
-- Roles and permissions are defined in `server/src/permissions.ts` using Better Auth's Access Control system.
+- Roles and permissions are defined in `server/src/features/auth/auth.permissions.ts` using Better Auth's Access Control system.
 - `/api/auth/admin/*` requires `admin` role.
-- `/api/admin/*` requires at least one of: `admin`, `staff`, `auditor`.
+- Admin domain access via oRPC requires at least one of: `admin`, `staff`, `auditor`.
 - Each domain module has granular permission guards:
-  - `/api/admin/schedule/*` requires `schedule: ["read"]`
-  - `/api/admin/staff/*` requires `staff: ["read"]`
-  - `/api/admin/bookings/*` requires `booking: ["read"]`
-  - `/api/admin/reservation-series/*` requires `reservation-series: ["read"]`
-  - `/api/admin/reservations/*` requires `reservation-series: ["read"]`
+  - schedule requires `schedule: ["read"]`
+  - staff requires `staff: ["read"]`
+  - bookings requires `booking: ["read"]`
+  - reservation-series requires `reservation-series: ["read"]`
+  - reservations requires `reservation-series: ["read"]`
 - Permission verification uses `auth.api.userHasPermission` server-side.
-- Middleware helpers in `server/src/permission-guard.ts`:
+- Middleware helpers in `server/src/middlewares/authorization.ts`:
   - `requirePermissions(permissions)` — checks granular permissions
   - `requireRole(...roles)` — checks user has at least one role
 
 ### CORS
-- CORS is applied for `/api/auth/*` and `/api/admin/*`.
+- CORS is applied for `/api/auth/*` and `/api/rpc/*`.
 - Allowed origin comes from `CORS_ORIGIN` (default `http://localhost:3000`).
 - Credentials are only allowed for the exact configured origin.
 
@@ -56,28 +56,38 @@ This file complements (not replaces):
   - limit: 3 requests per 60s window per email (in-memory)
 
 ### Admin onboarding
-- `POST /api/admin/onboard`: eleva el usuario autenticado a admin solo si no existe ningun admin en el sistema. No requiere rol previo.
-- `GET /api/admin/onboard/status`: devuelve `{ adminExists: boolean }` para que el frontend sepa si debe mostrar el flujo de onboarding. No requiere rol previo.
+- Available via oRPC:
+  - `admin.onboarding.bootstrap`
+  - `admin.onboarding.status`
+- Business rule is unchanged:
+  - elevates authenticated user to `admin` only when no admins exist yet
+  - status returns `{ adminExists: boolean }`
 
-## 2) Domain modules and active routes
+### oRPC surface
+- The backend exposes admin/session capabilities through an oRPC router mounted at `/api/rpc/*`.
+- oRPC is now the only public transport for admin domain APIs.
+- Session and admin onboarding are implemented as native oRPC procedures.
+- Schedule, staff, bookings, reservation-series and reservations operations are implemented as native oRPC procedures.
+- Procedure type listing is available through native oRPC procedures.
 
-All routes below are admin-protected unless explicitly under `/api/auth/*`.
+## 2) Domain modules and active procedures
 
-### 2.1 Schedule module (`server/src/schedule.ts`)
-Mounted at `/api/admin/schedule`.
+All domain operations below are reachable through oRPC procedures (served under `/api/rpc/*`) and remain admin-protected unless explicitly under `/api/auth/*`.
 
-- `POST /templates`
-- `GET /templates`
-- `GET /templates/:id`
-- `PATCH /templates/:id`
-- `DELETE /templates/:id`
-- `POST /overrides`
-- `GET /overrides`
-- `GET /overrides/:id`
-- `PATCH /overrides/:id`
-- `DELETE /overrides/:id`
-- `POST /slots/generate`
-- `GET /slots?date=YYYY-MM-DD`
+### 2.1 Schedule module (`server/src/orpc/modules/schedule.router.ts`)
+
+- `admin.schedule.templates.list`
+- `admin.schedule.templates.create`
+- `admin.schedule.templates.get`
+- `admin.schedule.templates.update`
+- `admin.schedule.templates.remove`
+- `admin.schedule.overrides.list`
+- `admin.schedule.overrides.create`
+- `admin.schedule.overrides.get`
+- `admin.schedule.overrides.update`
+- `admin.schedule.overrides.remove`
+- `admin.schedule.slots.generate`
+- `admin.schedule.slots.list`
 
 Key behavior already implemented:
 - strict validation for dates, time windows, slot duration, buffers, and capacity
@@ -85,20 +95,19 @@ Key behavior already implemented:
 - slot generation by window with buffer support
 - guarded handling of invalid schedule configuration during generation
 
-### 2.2 Staff module (`server/src/staff.ts`)
-Mounted at `/api/admin/staff`.
+### 2.2 Staff module (`server/src/orpc/modules/staff.router.ts`)
 
-- `POST /`
-- `GET /`
-- `GET /:userId`
-- `PATCH /:userId`
-- `DELETE /:userId`
-- `POST /:userId/date-overrides` (upsert by staff+date)
-- `GET /:userId/date-overrides`
-- `GET /:userId/date-overrides/:overrideId`
-- `PATCH /:userId/date-overrides/:overrideId`
-- `DELETE /:userId/date-overrides/:overrideId`
-- `GET /:userId/effective-availability?date=YYYY-MM-DD`
+- `admin.staff.list`
+- `admin.staff.create`
+- `admin.staff.get`
+- `admin.staff.update`
+- `admin.staff.remove`
+- `admin.staff.dateOverrides.list`
+- `admin.staff.dateOverrides.create`
+- `admin.staff.dateOverrides.get`
+- `admin.staff.dateOverrides.update`
+- `admin.staff.dateOverrides.remove`
+- `admin.staff.effectiveAvailability`
 
 Key behavior already implemented:
 - validation of `weeklyAvailability` structure and windows
@@ -106,20 +115,19 @@ Key behavior already implemented:
 - deletion guard when staff has active bookings
 - effective availability/capacity resolution by profile + date overrides
 
-### 2.3 Bookings module (`server/src/bookings.ts`)
-Mounted at `/api/admin/bookings`.
+### 2.3 Bookings module (`server/src/orpc/modules/bookings.router.ts`)
 
-- `POST /`
-- `GET /` (filters include `dateFrom` and `dateTo`)
-- `GET /:id`
-- `GET /:id/capacity`
-- `POST /:id/confirm`
-- `POST /:id/release`
-- `POST /:id/reassign`
-- `POST /:id/reassign/preview`
-- `POST /reassignments/preview`
-- `POST /reassignments`
-- `GET /availability/check?slotId=...&staffUserId=...`
+- `admin.bookings.create`
+- `admin.bookings.list` (filters include `dateFrom` and `dateTo`)
+- `admin.bookings.get`
+- `admin.bookings.capacity`
+- `admin.bookings.confirm`
+- `admin.bookings.release`
+- `admin.bookings.reassign`
+- `admin.bookings.reassignPreview`
+- `admin.bookings.reassignmentsPreview`
+- `admin.bookings.reassignmentsApply`
+- `admin.bookings.availabilityCheck`
 
 Key behavior already implemented:
 - booking create integrated with capacity engine
@@ -129,25 +137,31 @@ Key behavior already implemented:
 - batch mode support: `best_effort` and `atomic`
 - preview token and drift detection for bulk reassignment apply
 
-### 2.4 Reservation series module (`server/src/reservation-series.ts`)
-- Series router mounted at `/api/admin/reservation-series`
-- Instance router mounted at `/api/admin/reservations`
+### 2.4 Procedures module (`server/src/orpc/modules/procedures.router.ts`)
 
-Series routes:
-- `POST /api/admin/reservation-series`
-- `GET /api/admin/reservation-series`
-- `GET /api/admin/reservation-series/:id`
-- `GET /api/admin/reservation-series/:id/instances`
-- `PATCH /api/admin/reservation-series/:id`
-- `PATCH /api/admin/reservation-series/:id/from-date`
-- `POST /api/admin/reservation-series/:id/release`
-- `POST /api/admin/reservation-series/:id/move`
+- `admin.procedures.list`
 
-Instance routes:
-- `GET /api/admin/reservations/:bookingId`
-- `PATCH /api/admin/reservations/:bookingId`
-- `POST /api/admin/reservations/:bookingId/release`
-- `POST /api/admin/reservations/:bookingId/move`
+Key behavior already implemented:
+- list procedure types sorted by name
+- optional `isActive` filter
+
+### 2.5 Reservation series module (`server/src/orpc/modules/reservation-series.router.ts`, `server/src/orpc/modules/reservations.router.ts`)
+
+Series procedures:
+- `admin.reservationSeries.create`
+- `admin.reservationSeries.list`
+- `admin.reservationSeries.get`
+- `admin.reservationSeries.instances`
+- `admin.reservationSeries.update`
+- `admin.reservationSeries.updateFromDate`
+- `admin.reservationSeries.release`
+- `admin.reservationSeries.move`
+
+Instance procedures:
+- `admin.reservations.get`
+- `admin.reservations.update`
+- `admin.reservations.release`
+- `admin.reservations.move`
 
 Key behavior already implemented:
 - recurrence parsing (RRULE string and object support)
@@ -159,7 +173,7 @@ Key behavior already implemented:
 
 ## 3) Capacity engine (core business logic)
 
-Implemented in `server/src/capacity.ts`.
+Implemented in `server/src/features/bookings/capacity.service.ts`.
 
 Main exported operations:
 - `checkCapacity(slotId, staffUserId)`
@@ -215,4 +229,3 @@ When adding/changing backend behavior:
 1. update this file (`server/src/BACKEND_STATUS.md`)
 2. update `AGENTS.md` if the change impacts onboarding assumptions
 3. keep `server/src/db/SCHEMA.md` aligned when domain invariants change
-

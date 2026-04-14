@@ -8,6 +8,8 @@
 	"files": {
 		"ignoreUnknown": false,
 		"includes": [
+			"**/server/**/*",
+			"!**/server/drizzle/**/*",
 			"**/src/**/*",
 			"**/.vscode/**/*",
 			"**/index.html",
