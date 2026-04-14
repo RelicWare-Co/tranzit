@@ -158,9 +158,16 @@ export interface TranzitRpcClient {
 
 type RpcQueryContext = TanstackQueryOperationContext;
 
+const getBaseUrl = () => {
+	if (typeof window !== "undefined") {
+		return window.location.origin;
+	}
+	return "http://localhost:3000";
+};
+
 export const orpcClient = createORPCClient<TranzitRpcClient>(
 	new RPCLink<RpcQueryContext>({
-		url: "/api/rpc",
+		url: `${getBaseUrl()}/api/rpc`,
 		method: ({ context }) => {
 			const operationType =
 				context[TANSTACK_QUERY_OPERATION_CONTEXT_SYMBOL]?.type;
