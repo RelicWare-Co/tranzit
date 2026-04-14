@@ -68,6 +68,7 @@ This file complements (not replaces):
 - oRPC is now the only public transport for admin domain APIs.
 - Session and admin onboarding are implemented as native oRPC procedures.
 - Schedule, staff, bookings, reservation-series and reservations operations are implemented as native oRPC procedures.
+- Procedure type listing is available through native oRPC procedures.
 
 ## 2) Domain modules and active procedures
 
@@ -136,7 +137,15 @@ Key behavior already implemented:
 - batch mode support: `best_effort` and `atomic`
 - preview token and drift detection for bulk reassignment apply
 
-### 2.4 Reservation series module (`server/src/orpc/modules/reservation-series.router.ts`, `server/src/orpc/modules/reservations.router.ts`)
+### 2.4 Procedures module (`server/src/orpc/modules/procedures.router.ts`)
+
+- `admin.procedures.list`
+
+Key behavior already implemented:
+- list procedure types sorted by name
+- optional `isActive` filter
+
+### 2.5 Reservation series module (`server/src/orpc/modules/reservation-series.router.ts`, `server/src/orpc/modules/reservations.router.ts`)
 
 Series procedures:
 - `admin.reservationSeries.create`

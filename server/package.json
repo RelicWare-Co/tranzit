@@ -5,7 +5,8 @@
 		"db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
 		"db:push": "drizzle-kit push --config drizzle.config.ts",
 		"dev": "bun run --env-file ../.env --hot src/index.ts",
-		"maildev": "maildev --smtp 1025 --web 1080 --ip 127.0.0.1 --web-ip 127.0.0.1"
+		"maildev": "maildev --smtp 1025 --web 1080 --ip 127.0.0.1 --web-ip 127.0.0.1",
+		"seed": "bun run --env-file ../.env scripts/seed.ts"
 	},
 	"dependencies": {
 		"@better-auth/drizzle-adapter": "^1.6.1",

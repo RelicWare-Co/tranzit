@@ -1,5 +1,6 @@
 import { createBookingsRouter } from "./modules/bookings.router";
 import { createOnboardingRouter } from "./modules/onboarding.router";
+import { createProceduresRouter } from "./modules/procedures.router";
 import { createReservationSeriesRouter } from "./modules/reservation-series.router";
 import { createReservationsRouter } from "./modules/reservations.router";
 import { createScheduleRouter } from "./modules/schedule.router";
@@ -14,6 +15,7 @@ export function createTranzitRpcRouter() {
 			schedule: createScheduleRouter(),
 			staff: createStaffRouter(),
 			bookings: createBookingsRouter(),
+			procedures: createProceduresRouter(),
 			reservationSeries: createReservationSeriesRouter(),
 			reservations: createReservationsRouter(),
 		},
