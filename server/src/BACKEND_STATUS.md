@@ -140,10 +140,18 @@ Key behavior already implemented:
 ### 2.4 Procedures module (`server/src/orpc/modules/procedures.router.ts`)
 
 - `admin.procedures.list`
+- `admin.procedures.get`
+- `admin.procedures.create`
+- `admin.procedures.update`
+- `admin.procedures.remove`
 
 Key behavior already implemented:
 - list procedure types sorted by name
 - optional `isActive` filter
+- get procedure by ID
+- create with slug validation and deduplication
+- update with optimistic version increment on form schema changes
+- remove with soft-delete guard when service requests exist
 
 ### 2.5 Reservation series module (`server/src/orpc/modules/reservation-series.router.ts`, `server/src/orpc/modules/reservations.router.ts`)
 
