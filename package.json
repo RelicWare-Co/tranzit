@@ -55,6 +55,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.10",
+    "@frontman-ai/vite": "^0.5.2",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/devtools-vite": "^0.6.0",
     "@tanstack/router-plugin": "^1.167.12",
