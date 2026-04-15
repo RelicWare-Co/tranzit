@@ -15,6 +15,8 @@ import { Route as AgendarRouteImport } from './routes/agendar'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminUsuariosRouteImport } from './routes/admin/usuarios'
+import { Route as AdminTramitesRouteImport } from './routes/admin/tramites'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminCitasRouteImport } from './routes/admin/citas'
 
@@ -48,6 +50,16 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminTramitesRoute = AdminTramitesRouteImport.update({
+  id: '/tramites',
+  path: '/tramites',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -67,6 +79,8 @@ export interface FileRoutesByFullPath {
   '/mi-perfil': typeof MiPerfilRoute
   '/admin/citas': typeof AdminCitasRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/tramites': typeof AdminTramitesRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -76,6 +90,8 @@ export interface FileRoutesByTo {
   '/mi-perfil': typeof MiPerfilRoute
   '/admin/citas': typeof AdminCitasRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/tramites': typeof AdminTramitesRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin': typeof AdminIndexRoute
 }
 export interface FileRoutesById {
@@ -87,6 +103,8 @@ export interface FileRoutesById {
   '/mi-perfil': typeof MiPerfilRoute
   '/admin/citas': typeof AdminCitasRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/tramites': typeof AdminTramitesRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/': typeof AdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -99,6 +117,8 @@ export interface FileRouteTypes {
     | '/mi-perfil'
     | '/admin/citas'
     | '/admin/login'
+    | '/admin/tramites'
+    | '/admin/usuarios'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -108,6 +128,8 @@ export interface FileRouteTypes {
     | '/mi-perfil'
     | '/admin/citas'
     | '/admin/login'
+    | '/admin/tramites'
+    | '/admin/usuarios'
     | '/admin'
   id:
     | '__root__'
@@ -118,6 +140,8 @@ export interface FileRouteTypes {
     | '/mi-perfil'
     | '/admin/citas'
     | '/admin/login'
+    | '/admin/tramites'
+    | '/admin/usuarios'
     | '/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -173,6 +197,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/usuarios': {
+      id: '/admin/usuarios'
+      path: '/usuarios'
+      fullPath: '/admin/usuarios'
+      preLoaderRoute: typeof AdminUsuariosRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/tramites': {
+      id: '/admin/tramites'
+      path: '/tramites'
+      fullPath: '/admin/tramites'
+      preLoaderRoute: typeof AdminTramitesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/login'
@@ -193,12 +231,16 @@ declare module '@tanstack/react-router' {
 interface AdminRouteRouteChildren {
   AdminCitasRoute: typeof AdminCitasRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminTramitesRoute: typeof AdminTramitesRoute
+  AdminUsuariosRoute: typeof AdminUsuariosRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCitasRoute: AdminCitasRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminTramitesRoute: AdminTramitesRoute,
+  AdminUsuariosRoute: AdminUsuariosRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

@@ -83,17 +83,78 @@ type AdminBookingsCreateInput = {
 	holdToken?: string;
 };
 
+type AdminBookingReassignmentsInput = {
+	reassignments: Array<{
+		bookingId: string;
+		targetStaffUserId: string;
+	}>;
+};
+
+type AdminBookingReassignmentsApplyInput = AdminBookingReassignmentsInput & {
+	executionMode?: "best_effort" | "atomic";
+	previewToken?: string;
+};
+
+type AdminBookingReassignmentsPreview = {
+	dryRun: true;
+	previewToken: string;
+	eligible: number;
+	excluded: number;
+	conflicts: number;
+	errors: number;
+	results: Array<{
+		bookingId: string;
+		preview: unknown;
+	}>;
+};
+
+type AdminBookingReassignmentsApplyResult = {
+	totalRequested: number;
+	successCount: number;
+	failureCount: number;
+	results: Array<{
+		bookingId: string;
+		success: boolean;
+		error?: string;
+	}>;
+};
+
 type AdminStaffProfile = {
 	userId: string;
 	isActive: boolean;
 	isAssignable: boolean;
 	defaultDailyCapacity: number;
+	weeklyAvailability: Record<string, unknown>;
+	notes: string | null;
+	metadata: Record<string, unknown>;
+	createdAt: string | Date;
+	updatedAt: string | Date;
 	user: {
 		id: string;
 		name: string | null;
 		email: string;
 		role: string | null;
 	} | null;
+};
+
+type AdminStaffCreateInput = {
+	userId: string;
+	isActive?: boolean;
+	isAssignable?: boolean;
+	defaultDailyCapacity?: number;
+	weeklyAvailability?: unknown;
+	notes?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+type AdminStaffUpdateInput = {
+	userId: string;
+	isActive?: boolean;
+	isAssignable?: boolean;
+	defaultDailyCapacity?: number;
+	weeklyAvailability?: unknown;
+	notes?: string | null;
+	metadata?: Record<string, unknown>;
 };
 
 type AdminScheduleSlot = {
@@ -127,9 +188,52 @@ type ProcedureType = {
 	allowsPhysicalDocuments: boolean;
 	allowsDigitalDocuments: boolean;
 	instructions: string | null;
+	eligibilitySchema: Record<string, unknown>;
+	formSchema: Record<string, unknown>;
+	documentSchema: Record<string, unknown>;
+	policySchema: Record<string, unknown>;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+};
+
+type ProcedureCreateInput = {
+	name: string;
+	slug: string;
+	description?: string;
+	requiresVehicle?: boolean;
+	allowsPhysicalDocuments?: boolean;
+	allowsDigitalDocuments?: boolean;
+	instructions?: string;
+	eligibilitySchema?: Record<string, unknown>;
+	formSchema?: Record<string, unknown>;
+	documentSchema?: Record<string, unknown>;
+	policySchema?: Record<string, unknown>;
+};
+
+type ProcedureUpdateInput = {
+	id: string;
+	name?: string;
+	description?: string;
+	isActive?: boolean;
+	requiresVehicle?: boolean;
+	allowsPhysicalDocuments?: boolean;
+	allowsDigitalDocuments?: boolean;
+	instructions?: string;
+	eligibilitySchema?: Record<string, unknown>;
+	formSchema?: Record<string, unknown>;
+	documentSchema?: Record<string, unknown>;
+	policySchema?: Record<string, unknown>;
+};
+
+type ProcedureRemoveResponse = {
+	success: boolean;
+	message: string;
+	mode?: "soft" | "hard";
 };
 
 export interface TranzitRpcClient {
+	// biome-ignore lint/suspicious/noExplicitAny: required to satisfy @orpc NestedClient generic constraint
+	[key: string]: any;
 	session: {
 		get: RpcProcedure<SessionResponse>;
 	};
@@ -145,13 +249,28 @@ export interface TranzitRpcClient {
 		};
 		staff: {
 			list: RpcProcedure<AdminStaffProfile[], { isActive?: boolean | string }>;
+			create: RpcProcedure<AdminStaffProfile, AdminStaffCreateInput>;
+			update: RpcProcedure<AdminStaffProfile, AdminStaffUpdateInput>;
+			remove: RpcProcedure<{ success: boolean }, { userId: string }>;
 		};
 		bookings: {
 			list: RpcProcedure<AdminBooking[], AdminBookingsListInput>;
 			create: RpcProcedure<AdminBooking | null, AdminBookingsCreateInput>;
+			reassignmentsPreview: RpcProcedure<
+				AdminBookingReassignmentsPreview,
+				AdminBookingReassignmentsInput
+			>;
+			reassignmentsApply: RpcProcedure<
+				AdminBookingReassignmentsApplyResult,
+				AdminBookingReassignmentsApplyInput
+			>;
 		};
 		procedures: {
 			list: RpcProcedure<ProcedureType[], { isActive?: boolean | string }>;
+			get: RpcProcedure<ProcedureType, { id: string }>;
+			create: RpcProcedure<ProcedureType, ProcedureCreateInput>;
+			update: RpcProcedure<ProcedureType, ProcedureUpdateInput>;
+			remove: RpcProcedure<ProcedureRemoveResponse, { id: string }>;
 		};
 	};
 }
