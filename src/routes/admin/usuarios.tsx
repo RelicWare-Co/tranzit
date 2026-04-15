@@ -6,7 +6,6 @@ import {
 	Box,
 	Button,
 	Card,
-	Divider,
 	Grid,
 	Group,
 	Menu,
@@ -21,7 +20,6 @@ import {
 	Text,
 	TextInput,
 	Title,
-	Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { createFileRoute } from "@tanstack/react-router";
@@ -30,7 +28,6 @@ import {
 	ArrowRightLeft,
 	Calendar,
 	CheckCircle2,
-	ChevronDown,
 	Clock,
 	Edit3,
 	MoreHorizontal,
@@ -40,158 +37,84 @@ import {
 	Users,
 	UserX,
 } from "lucide-react";
-import { useMemo, useState } from "react";
-
-// Types matching backend schema
-interface StaffUser {
-	id: string;
-	name: string;
-	email: string;
-	role: string | null;
-}
-
-interface StaffProfile {
-	userId: string;
-	isActive: boolean;
-	isAssignable: boolean;
-	defaultDailyCapacity: number;
-	weeklyAvailability: Record<string, unknown>;
-	notes: string | null;
-	metadata: Record<string, unknown>;
-	createdAt: number;
-	updatedAt: number;
-	user: StaffUser | null;
-}
-
-interface StaffBooking {
-	id: string;
-	citizenName: string;
-	service: string;
-	time: string;
-	status: "confirmada" | "en_proceso" | "pendiente";
-}
-
-// Mock data - replace with actual API calls
-const MOCK_STAFF: StaffProfile[] = [
-	{
-		userId: "staff-1",
-		isActive: true,
-		isAssignable: true,
-		defaultDailyCapacity: 25,
-		weeklyAvailability: {},
-		notes: null,
-		metadata: {},
-		createdAt: Date.now(),
-		updatedAt: Date.now(),
-		user: {
-			id: "staff-1",
-			name: "María Elena Vargas",
-			email: "maria.vargas@simut.gov.co",
-			role: "staff",
-		},
-	},
-	{
-		userId: "staff-2",
-		isActive: true,
-		isAssignable: true,
-		defaultDailyCapacity: 25,
-		weeklyAvailability: {},
-		notes: null,
-		metadata: {},
-		createdAt: Date.now(),
-		updatedAt: Date.now(),
-		user: {
-			id: "staff-2",
-			name: "Carlos Andrés Ruiz",
-			email: "carlos.ruiz@simut.gov.co",
-			role: "staff",
-		},
-	},
-	{
-		userId: "staff-3",
-		isActive: true,
-		isAssignable: false,
-		defaultDailyCapacity: 25,
-		weeklyAvailability: {},
-		notes: "Vacaciones hasta el 20 de abril",
-		metadata: {},
-		createdAt: Date.now(),
-		updatedAt: Date.now(),
-		user: {
-			id: "staff-3",
-			name: "Ana Patricia Morales",
-			email: "ana.morales@simut.gov.co",
-			role: "staff",
-		},
-	},
-	{
-		userId: "staff-4",
-		isActive: false,
-		isAssignable: false,
-		defaultDailyCapacity: 25,
-		weeklyAvailability: {},
-		notes: "Temporalmente inactivo",
-		metadata: {},
-		createdAt: Date.now(),
-		updatedAt: Date.now(),
-		user: {
-			id: "staff-4",
-			name: "Juan Pablo Ortiz",
-			email: "juan.ortiz@simut.gov.co",
-			role: "staff",
-		},
-	},
-];
-
-const MOCK_BOOKINGS: Record<string, StaffBooking[]> = {
-	"staff-1": [
-		{
-			id: "b1",
-			citizenName: "Laura María Castellanos",
-			service: "Renovación de Licencia",
-			time: "09:00 AM",
-			status: "confirmada",
-		},
-		{
-			id: "b2",
-			citizenName: "Pedro José Mendoza",
-			service: "Traspaso de Propiedad",
-			time: "10:00 AM",
-			status: "en_proceso",
-		},
-		{
-			id: "b3",
-			citizenName: "Diana Carolina Flores",
-			service: "Matrícula Inicial",
-			time: "11:00 AM",
-			status: "pendiente",
-		},
-	],
-	"staff-2": [
-		{
-			id: "b4",
-			citizenName: "Roberto Carlos Suárez",
-			service: "Certificado de Tradición",
-			time: "09:30 AM",
-			status: "confirmada",
-		},
-		{
-			id: "b5",
-			citizenName: "María Fernanda López",
-			service: "Renovación de Licencia",
-			time: "10:30 AM",
-			status: "confirmada",
-		},
-	],
-	"staff-3": [],
-	"staff-4": [],
-};
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { authClient } from "../../lib/auth-client";
+import { orpcClient } from "../../lib/orpc-client";
 
 export const Route = createFileRoute("/admin/usuarios")({
 	component: UsuariosPage,
 });
 
-// Capacity Indicator Component
+type StaffProfile = Awaited<
+	ReturnType<typeof orpcClient.admin.staff.list>
+>[number];
+type AdminBooking = Awaited<
+	ReturnType<typeof orpcClient.admin.bookings.list>
+>[number];
+
+type BookingByStaff = Record<string, AdminBooking[]>;
+
+type CreateStaffPayload = {
+	name: string;
+	email: string;
+	capacity: number;
+};
+
+function getErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
+
+	if (
+		error &&
+		typeof error === "object" &&
+		"message" in error &&
+		typeof (error as { message?: unknown }).message === "string"
+	) {
+		return (error as { message: string }).message;
+	}
+
+	return fallback;
+}
+
+function formatDateLocal(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+function mapBookingsByStaff(bookings: AdminBooking[]): BookingByStaff {
+	return bookings.reduce<BookingByStaff>((acc, booking) => {
+		if (!booking.staffUserId) {
+			return acc;
+		}
+		if (!acc[booking.staffUserId]) {
+			acc[booking.staffUserId] = [];
+		}
+		acc[booking.staffUserId].push(booking);
+		return acc;
+	}, {});
+}
+
+function getBookingStatusLabel(status: string): string {
+	if (status === "confirmed") return "Confirmada";
+	if (status === "held") return "En hold";
+	if (status === "cancelled") return "Cancelada";
+	if (status === "attended") return "Atendida";
+	if (status === "released") return "Liberada";
+	return status;
+}
+
+function getBookingStatusColor(status: string): string {
+	if (status === "confirmed") return "green";
+	if (status === "held") return "yellow";
+	if (status === "cancelled") return "red";
+	if (status === "attended") return "teal";
+	if (status === "released") return "gray";
+	return "blue";
+}
+
 function CapacityIndicator({
 	current,
 	max,
@@ -201,7 +124,7 @@ function CapacityIndicator({
 	max: number;
 	isActive: boolean;
 }) {
-	const percentage = Math.min((current / max) * 100, 100);
+	const percentage = max > 0 ? Math.min((current / max) * 100, 100) : 0;
 
 	if (!isActive) {
 		return (
@@ -231,15 +154,11 @@ function CapacityIndicator({
 				}
 				size={8}
 				radius="xl"
-				style={{
-					transition: "all 300ms cubic-bezier(0.32, 0.72, 0, 1)",
-				}}
 			/>
 		</Box>
 	);
 }
 
-// Staff Card Component
 function StaffCard({
 	profile,
 	isSelected,
@@ -254,7 +173,7 @@ function StaffCard({
 	const initials =
 		profile.user?.name
 			?.split(" ")
-			.map((n) => n[0])
+			.map((part) => part[0])
 			.join("")
 			.slice(0, 2)
 			.toUpperCase() || "U";
@@ -266,27 +185,9 @@ function StaffCard({
 			bg={isSelected ? "#fef2f2" : "white"}
 			style={{
 				border: isSelected ? "2px solid #e03131" : "1px solid #e5e7eb",
-				boxShadow: isSelected
-					? "0 8px 24px -8px rgba(224, 49, 49, 0.15)"
-					: "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.025)",
 				cursor: "pointer",
-				transition: "all 300ms cubic-bezier(0.32, 0.72, 0, 1)",
-				transform: isSelected ? "translateY(-2px)" : "translateY(0)",
 			}}
 			onClick={onClick}
-			onMouseEnter={(e) => {
-				if (!isSelected) {
-					e.currentTarget.style.boxShadow = "0 8px 24px -8px rgba(0,0,0,0.1)";
-					e.currentTarget.style.transform = "translateY(-2px)";
-				}
-			}}
-			onMouseLeave={(e) => {
-				if (!isSelected) {
-					e.currentTarget.style.boxShadow =
-						"0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.025)";
-					e.currentTarget.style.transform = "translateY(0)";
-				}
-			}}
 		>
 			<Group align="flex-start" gap="md">
 				<Avatar
@@ -294,29 +195,15 @@ function StaffCard({
 					radius="xl"
 					bg={profile.isActive ? "#fef2f2" : "#f3f4f6"}
 					c={profile.isActive ? "#e03131" : "#9ca3af"}
-					style={{
-						border: profile.isActive
-							? "2px solid #e03131"
-							: "2px solid #d1d5db",
-						fontWeight: 700,
-						fontSize: "14px",
-					}}
 				>
 					{initials}
 				</Avatar>
-
 				<Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
 					<Group justify="space-between" wrap="nowrap">
 						<Text
 							fw={700}
 							c={profile.isActive ? "#111827" : "gray.5"}
-							style={{
-								fontSize: "15px",
-								letterSpacing: "-0.3px",
-								whiteSpace: "nowrap",
-								overflow: "hidden",
-								textOverflow: "ellipsis",
-							}}
+							lineClamp={1}
 						>
 							{profile.user?.name || "Usuario"}
 						</Text>
@@ -326,11 +213,6 @@ function StaffCard({
 								variant="light"
 								size="sm"
 								leftSection={<CheckCircle2 size={12} />}
-								style={{
-									textTransform: "none",
-									fontWeight: 600,
-									fontSize: "11px",
-								}}
 							>
 								Activo
 							</Badge>
@@ -340,141 +222,102 @@ function StaffCard({
 								variant="light"
 								size="sm"
 								leftSection={<UserX size={12} />}
-								style={{
-									textTransform: "none",
-									fontWeight: 600,
-									fontSize: "11px",
-								}}
 							>
 								Inactivo
 							</Badge>
 						)}
 					</Group>
-
-					<Text
-						size="xs"
-						c="gray.5"
-						style={{
-							whiteSpace: "nowrap",
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-						}}
-					>
+					<Text size="xs" c="gray.5" lineClamp={1}>
 						{profile.user?.email}
 					</Text>
-
-					<Group gap="xs" mt={4}>
-						{profile.isAssignable ? (
-							<Badge
-								color="blue"
-								variant="light"
-								size="sm"
-								style={{
-									textTransform: "none",
-									fontWeight: 600,
-									fontSize: "10px",
-								}}
-							>
-								Recibe citas
-							</Badge>
-						) : (
-							<Badge
-								color="gray"
-								variant="light"
-								size="sm"
-								style={{
-									textTransform: "none",
-									fontWeight: 600,
-									fontSize: "10px",
-								}}
-							>
-								No asignable
-							</Badge>
-						)}
-					</Group>
-
-					<Box mt={8}>
-						<CapacityIndicator
-							current={currentBookings}
-							max={profile.defaultDailyCapacity}
-							isActive={profile.isActive && profile.isAssignable}
-						/>
-					</Box>
+					<Badge
+						color={profile.isAssignable ? "blue" : "gray"}
+						variant="light"
+						size="sm"
+					>
+						{profile.isAssignable ? "Recibe citas" : "No asignable"}
+					</Badge>
+					<CapacityIndicator
+						current={currentBookings}
+						max={profile.defaultDailyCapacity}
+						isActive={profile.isActive && profile.isAssignable}
+					/>
 				</Stack>
 			</Group>
 		</Card>
 	);
 }
 
-// Reassign Modal Component
 function ReassignModal({
 	opened,
 	onClose,
 	staffList,
 	sourceStaff,
+	sourceBookings,
+	onReassign,
 }: {
 	opened: boolean;
 	onClose: () => void;
 	staffList: StaffProfile[];
 	sourceStaff: StaffProfile | null;
+	sourceBookings: AdminBooking[];
+	onReassign: (
+		targetStaffUserId: string,
+		bookingCount: number,
+	) => Promise<void>;
 }) {
 	const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
 	const [bookingCount, setBookingCount] = useState<number>(1);
+	const [error, setError] = useState<string | null>(null);
+	const [loading, setLoading] = useState(false);
+
+	useEffect(() => {
+		if (!opened) return;
+		setSelectedTarget(null);
+		setBookingCount(1);
+		setError(null);
+	}, [opened]);
 
 	const availableTargets = staffList.filter(
-		(s) => s.userId !== sourceStaff?.userId && s.isActive && s.isAssignable,
+		(staff) =>
+			staff.userId !== sourceStaff?.userId &&
+			staff.isActive &&
+			staff.isAssignable,
 	);
 
-	const handleReassign = () => {
-		// TODO: Call API to reassign bookings
-		console.log("Reassign", {
-			from: sourceStaff?.userId,
-			to: selectedTarget,
-			count: bookingCount,
-		});
-		onClose();
+	const handleSubmit = async () => {
+		if (!selectedTarget || bookingCount < 1) {
+			setError("Selecciona el destino y la cantidad de citas a mover.");
+			return;
+		}
+
+		setLoading(true);
+		setError(null);
+		try {
+			await onReassign(selectedTarget, bookingCount);
+			onClose();
+		} catch (submitError) {
+			setError(getErrorMessage(submitError, "No se pudieron mover las citas."));
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	return (
 		<Modal
 			opened={opened}
 			onClose={onClose}
-			title={
-				<Group gap="sm">
-					<Box
-						style={{
-							width: 40,
-							height: 40,
-							borderRadius: "12px",
-							backgroundColor: "#fef2f2",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-						}}
-					>
-						<ArrowRightLeft size={20} color="#e03131" />
-					</Box>
-					<Title order={3} c="#111827" style={{ fontWeight: 700 }}>
-						Mover citas
-					</Title>
-				</Group>
-			}
+			title="Mover citas"
 			size="md"
 			radius="xl"
-			padding="xl"
-			styles={{
-				header: {
-					backgroundColor: "white",
-					borderBottom: "1px solid #e5e7eb",
-					padding: "24px 32px",
-				},
-				body: {
-					backgroundColor: "white",
-					padding: "24px 32px 32px",
-				},
-			}}
 		>
 			<Stack gap="lg">
+				{error && (
+					<Alert color="red" icon={<AlertCircle size={16} />}>
+						{error}
+					</Alert>
+				)}
+
 				{sourceStaff && (
 					<Alert
 						color="blue"
@@ -486,7 +329,7 @@ function ReassignModal({
 							Origen: {sourceStaff.user?.name}
 						</Text>
 						<Text size="xs" c="gray.5">
-							{MOCK_BOOKINGS[sourceStaff.userId]?.length || 0} citas asignadas
+							{sourceBookings.length} citas activas hoy
 						</Text>
 					</Alert>
 				)}
@@ -494,46 +337,43 @@ function ReassignModal({
 				<Select
 					label="Encargado destino"
 					placeholder="Selecciona un encargado"
-					data={availableTargets.map((s) => ({
-						value: s.userId,
-						label: s.user?.name || "",
+					data={availableTargets.map((staff) => ({
+						value: staff.userId,
+						label: staff.user?.name || staff.userId,
 					}))}
 					value={selectedTarget}
 					onChange={setSelectedTarget}
 					radius="xl"
-					size="md"
-					styles={{
-						input: {
-							fontWeight: 500,
-						},
-					}}
+					disabled={loading}
 				/>
 
 				<NumberInput
 					label="Cantidad de citas a mover"
-					placeholder="1"
 					min={1}
-					max={sourceStaff ? MOCK_BOOKINGS[sourceStaff.userId]?.length || 0 : 0}
+					max={sourceBookings.length}
 					value={bookingCount}
-					onChange={(val) => setBookingCount(typeof val === "number" ? val : 1)}
+					onChange={(value) =>
+						setBookingCount(typeof value === "number" ? value : 1)
+					}
 					radius="xl"
-					size="md"
-					styles={{
-						input: {
-							fontWeight: 600,
-							textAlign: "center",
-						},
-					}}
+					disabled={loading}
 				/>
 
 				<Group justify="flex-end" mt="md">
-					<Button variant="light" color="gray" onClick={onClose} radius="xl">
+					<Button
+						variant="light"
+						color="gray"
+						onClick={onClose}
+						radius="xl"
+						disabled={loading}
+					>
 						Cancelar
 					</Button>
 					<Button
 						color="red"
-						onClick={handleReassign}
-						disabled={!selectedTarget}
+						onClick={handleSubmit}
+						disabled={!selectedTarget || sourceBookings.length === 0}
+						loading={loading}
 						radius="xl"
 						leftSection={<ArrowRightLeft size={16} />}
 					>
@@ -545,74 +385,68 @@ function ReassignModal({
 	);
 }
 
-// Add Staff Modal
 function AddStaffModal({
 	opened,
 	onClose,
+	onCreate,
 }: {
 	opened: boolean;
 	onClose: () => void;
+	onCreate: (payload: CreateStaffPayload) => Promise<void>;
 }) {
 	const [email, setEmail] = useState("");
 	const [name, setName] = useState("");
 	const [capacity, setCapacity] = useState(25);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-	const handleSubmit = () => {
-		// TODO: Call API to create staff
-		console.log("Add staff", { email, name, capacity });
-		onClose();
+	useEffect(() => {
+		if (!opened) return;
+		setError(null);
+	}, [opened]);
+
+	const handleSubmit = async () => {
+		setError(null);
+		setIsSubmitting(true);
+		try {
+			await onCreate({
+				name,
+				email,
+				capacity,
+			});
+			setEmail("");
+			setName("");
+			setCapacity(25);
+			onClose();
+		} catch (submitError) {
+			setError(getErrorMessage(submitError, "No se pudo crear el encargado."));
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
 		<Modal
 			opened={opened}
 			onClose={onClose}
-			title={
-				<Group gap="sm">
-					<Box
-						style={{
-							width: 40,
-							height: 40,
-							borderRadius: "12px",
-							backgroundColor: "#dcfce7",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-						}}
-					>
-						<Plus size={20} color="#16a34a" />
-					</Box>
-					<Title order={3} c="#111827" style={{ fontWeight: 700 }}>
-						Nuevo encargado
-					</Title>
-				</Group>
-			}
+			title="Nuevo encargado"
 			size="md"
 			radius="xl"
-			padding="xl"
-			styles={{
-				header: {
-					backgroundColor: "white",
-					borderBottom: "1px solid #e5e7eb",
-					padding: "24px 32px",
-				},
-				body: {
-					backgroundColor: "white",
-					padding: "24px 32px 32px",
-				},
-			}}
 		>
 			<Stack gap="lg">
+				{error && (
+					<Alert color="red" icon={<AlertCircle size={16} />}>
+						{error}
+					</Alert>
+				)}
+
 				<TextInput
 					label="Nombre completo"
 					placeholder="Ej: María Elena Vargas"
 					value={name}
-					onChange={(e) => setName(e.currentTarget.value)}
+					onChange={(event) => setName(event.currentTarget.value)}
 					radius="xl"
-					size="md"
-					styles={{
-						input: { fontWeight: 500 },
-					}}
+					disabled={isSubmitting}
 				/>
 
 				<TextInput
@@ -620,37 +454,40 @@ function AddStaffModal({
 					placeholder="ejemplo@simut.gov.co"
 					type="email"
 					value={email}
-					onChange={(e) => setEmail(e.currentTarget.value)}
+					onChange={(event) => setEmail(event.currentTarget.value)}
 					radius="xl"
-					size="md"
-					styles={{
-						input: { fontWeight: 500 },
-					}}
+					disabled={isSubmitting}
 				/>
 
 				<NumberInput
 					label="Capacidad diaria máxima"
-					description="Número máximo de citas por día (por defecto 25)"
+					description="Número máximo de citas por día"
 					value={capacity}
-					onChange={(val) => setCapacity(typeof val === "number" ? val : 25)}
+					onChange={(value) =>
+						setCapacity(typeof value === "number" ? value : 25)
+					}
 					min={1}
 					max={50}
 					radius="xl"
-					size="md"
-					styles={{
-						input: { fontWeight: 600, textAlign: "center" },
-					}}
+					disabled={isSubmitting}
 				/>
 
 				<Group justify="flex-end" mt="md">
-					<Button variant="light" color="gray" onClick={onClose} radius="xl">
+					<Button
+						variant="light"
+						color="gray"
+						onClick={onClose}
+						radius="xl"
+						disabled={isSubmitting}
+					>
 						Cancelar
 					</Button>
 					<Button
 						color="green"
 						onClick={handleSubmit}
-						disabled={!email || !name}
+						disabled={!email.trim() || !name.trim()}
 						radius="xl"
+						loading={isSubmitting}
 						leftSection={<Plus size={16} />}
 					>
 						Crear encargado
@@ -661,185 +498,285 @@ function AddStaffModal({
 	);
 }
 
-// Main Page Component
 function UsuariosPage() {
 	const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+	const [staffList, setStaffList] = useState<StaffProfile[]>([]);
+	const [bookingsByStaff, setBookingsByStaff] = useState<BookingByStaff>({});
+	const [isLoading, setIsLoading] = useState(true);
+	const [isUpdating, setIsUpdating] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
+
 	const [reassignModalOpened, { open: openReassign, close: closeReassign }] =
 		useDisclosure(false);
 	const [addModalOpened, { open: openAdd, close: closeAdd }] =
 		useDisclosure(false);
 
-	// Local state for staff list (to handle toggle updates optimistically)
-	const [staffList, setStaffList] = useState<StaffProfile[]>(MOCK_STAFF);
-	const [isUpdating, setIsUpdating] = useState<string | null>(null);
+	const loadData = useCallback(async () => {
+		const today = formatDateLocal(new Date());
+		const [staff, bookings] = await Promise.all([
+			orpcClient.admin.staff.list({}),
+			orpcClient.admin.bookings.list({
+				isActive: true,
+				dateFrom: today,
+				dateTo: today,
+			}),
+		]);
 
-	// TODO: Replace with actual API calls using @orpc/tanstack-query
-	const isLoading = false;
+		setStaffList(staff);
+		setBookingsByStaff(mapBookingsByStaff(bookings));
+		setSelectedStaffId((current) => {
+			if (current && staff.some((item) => item.userId === current)) {
+				return current;
+			}
+			return staff[0]?.userId ?? null;
+		});
+	}, []);
+
+	useEffect(() => {
+		let mounted = true;
+		setIsLoading(true);
+		setError(null);
+		void loadData()
+			.catch((loadError) => {
+				if (!mounted) return;
+				setError(
+					getErrorMessage(
+						loadError,
+						"No se pudo cargar la gestión de usuarios.",
+					),
+				);
+			})
+			.finally(() => {
+				if (mounted) {
+					setIsLoading(false);
+				}
+			});
+
+		return () => {
+			mounted = false;
+		};
+	}, [loadData]);
 
 	const selectedStaff = useMemo(
-		() => staffList.find((s) => s.userId === selectedStaffId) || null,
+		() => staffList.find((staff) => staff.userId === selectedStaffId) ?? null,
 		[staffList, selectedStaffId],
 	);
 
 	const selectedBookings = selectedStaff
-		? MOCK_BOOKINGS[selectedStaff.userId] || []
+		? bookingsByStaff[selectedStaff.userId] || []
 		: [];
 
-	// Distribution calculation
-	const assignableStaff = staffList.filter((s) => s.isActive && s.isAssignable);
-	const distributionRatio =
-		assignableStaff.length > 0 ? assignableStaff.length : 1;
+	const assignableStaff = staffList.filter(
+		(staff) => staff.isActive && staff.isAssignable,
+	);
+	const totalDailyCapacity = assignableStaff.reduce(
+		(total, staff) => total + staff.defaultDailyCapacity,
+		0,
+	);
+
+	const refreshData = async () => {
+		setError(null);
+		await loadData();
+	};
+
+	const handleCreateStaff = async (payload: CreateStaffPayload) => {
+		setError(null);
+		setNotice(null);
+
+		const createUserResult = await authClient.admin.createUser({
+			email: payload.email,
+			name: payload.name,
+			role: "staff",
+		});
+
+		if (createUserResult.error) {
+			throw new Error(createUserResult.error.message);
+		}
+
+		const createdUserId =
+			(createUserResult.data as { user?: { id?: string } } | null)?.user?.id ??
+			null;
+		if (!createdUserId) {
+			throw new Error("No se pudo obtener el usuario creado.");
+		}
+
+		await orpcClient.admin.staff.create({
+			userId: createdUserId,
+			defaultDailyCapacity: payload.capacity,
+			isActive: true,
+			isAssignable: true,
+		});
+
+		await refreshData();
+		setNotice("Encargado creado correctamente.");
+	};
+
+	const handleToggleStaffState = async (
+		staff: StaffProfile,
+		field: "isActive" | "isAssignable",
+		nextValue: boolean,
+	) => {
+		setIsUpdating(staff.userId);
+		setError(null);
+		setNotice(null);
+		try {
+			await orpcClient.admin.staff.update({
+				userId: staff.userId,
+				[field]: nextValue,
+			});
+			await refreshData();
+		} catch (updateError) {
+			setError(
+				getErrorMessage(updateError, "No se pudo actualizar el encargado."),
+			);
+		} finally {
+			setIsUpdating(null);
+		}
+	};
+
+	const handleRemoveStaff = async (staff: StaffProfile) => {
+		if (
+			!window.confirm(
+				`¿Eliminar perfil operativo de ${staff.user?.name || staff.userId}?`,
+			)
+		) {
+			return;
+		}
+
+		setIsUpdating(staff.userId);
+		setError(null);
+		setNotice(null);
+		try {
+			await orpcClient.admin.staff.remove({ userId: staff.userId });
+			await refreshData();
+			setNotice("Perfil operativo eliminado.");
+		} catch (removeError) {
+			setError(
+				getErrorMessage(removeError, "No se pudo eliminar el encargado."),
+			);
+		} finally {
+			setIsUpdating(null);
+		}
+	};
+
+	const handleReassign = async (
+		targetStaffUserId: string,
+		bookingCount: number,
+	) => {
+		if (!selectedStaff) {
+			throw new Error("No hay encargado seleccionado.");
+		}
+
+		const reassignments = selectedBookings
+			.slice(0, bookingCount)
+			.map((booking) => ({
+				bookingId: booking.id,
+				targetStaffUserId,
+			}));
+
+		if (reassignments.length === 0) {
+			throw new Error("No hay citas para mover.");
+		}
+
+		const preview = await orpcClient.admin.bookings.reassignmentsPreview({
+			reassignments,
+		});
+		await orpcClient.admin.bookings.reassignmentsApply({
+			reassignments,
+			previewToken: preview.previewToken,
+			executionMode: "best_effort",
+		});
+
+		await refreshData();
+		setNotice("Reasignación completada.");
+	};
 
 	if (isLoading) {
 		return (
 			<Stack gap="xl">
-				<Box>
-					<Skeleton height={40} width={300} radius="xl" mb="xs" />
-					<Skeleton height={20} width={400} radius="xl" />
-				</Box>
-				<Grid gap="xl">
-					<Grid.Col span={{ base: 12, md: 5 }}>
-						<Stack gap="md">
-							{[1, 2, 3, 4].map((i) => (
-								<Skeleton key={i} height={140} radius="xl" />
-							))}
-						</Stack>
-					</Grid.Col>
-					<Grid.Col span={{ base: 12, md: 7 }}>
-						<Skeleton height={400} radius="xl" />
-					</Grid.Col>
-				</Grid>
+				<Skeleton height={40} width={300} radius="xl" mb="xs" />
+				<Skeleton height={220} radius="xl" />
 			</Stack>
 		);
 	}
 
 	return (
 		<Stack gap="xl">
-			{/* Header */}
 			<Box>
 				<Group justify="space-between" align="flex-start" wrap="nowrap">
 					<Box>
-						<Title
-							order={1}
-							c="#111827"
-							style={{
-								letterSpacing: "-1px",
-								fontWeight: 800,
-								fontSize: "32px",
-							}}
-						>
-							Gestión de Encargados
-						</Title>
+						<Title order={1}>Gestión de Encargados</Title>
 						<Text size="lg" c="#6b7280" mt="xs">
-							Administra los auxiliares que reciben citas. Máximo 25 citas por
-							día cada uno.
+							Administra auxiliares y su capacidad diaria.
 						</Text>
 					</Box>
 					<Button
 						color="green"
 						onClick={openAdd}
 						radius="xl"
-						size="md"
 						leftSection={<Plus size={18} />}
-						style={{
-							fontWeight: 600,
-							boxShadow: "0 4px 14px 0 rgba(22, 163, 74, 0.25)",
-						}}
 					>
 						Nuevo encargado
 					</Button>
 				</Group>
 			</Box>
 
-			{/* Distribution Info */}
+			{error && (
+				<Alert color="red" icon={<AlertCircle size={16} />}>
+					{error}
+				</Alert>
+			)}
+			{notice && (
+				<Alert color="teal" icon={<CheckCircle2 size={16} />}>
+					{notice}
+				</Alert>
+			)}
+
 			{assignableStaff.length > 0 && (
 				<Card
 					radius="xl"
 					p="lg"
 					bg="#eff6ff"
-					style={{
-						border: "1px solid #bfdbfe",
-					}}
+					style={{ border: "1px solid #bfdbfe" }}
 				>
 					<Group gap="md" align="center">
-						<Box
-							style={{
-								width: 48,
-								height: 48,
-								borderRadius: "16px",
-								backgroundColor: "white",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								boxShadow: "0 2px 8px rgba(37, 99, 235, 0.15)",
-							}}
-						>
-							<Users size={24} color="#2563eb" />
-						</Box>
+						<Users size={24} color="#2563eb" />
 						<Stack gap={2}>
 							<Text fw={700} c="#1e40af" size="lg">
 								Distribución proporcional activa
 							</Text>
 							<Text size="sm" c="#3b82f6">
-								{assignableStaff.length} encargados activos: cada uno recibe{" "}
-								<strong>1 de cada {distributionRatio} citas</strong>. Capacidad
-								total: {assignableStaff.length * 25} citas/día.
+								{assignableStaff.length} encargados activos. Capacidad total:{" "}
+								{totalDailyCapacity} citas/día.
 							</Text>
 						</Stack>
 					</Group>
 				</Card>
 			)}
 
-			{/* Empty State */}
-			{staffList.length === 0 && (
+			{staffList.length === 0 ? (
 				<Card
 					radius="xl"
 					p={60}
 					bg="white"
-					style={{
-						border: "1px solid #e5e7eb",
-						textAlign: "center",
-					}}
+					style={{ border: "1px solid #e5e7eb", textAlign: "center" }}
 				>
 					<Stack align="center" gap="lg">
-						<Box
-							style={{
-								width: 80,
-								height: 80,
-								borderRadius: "24px",
-								backgroundColor: "#f3f4f6",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Users size={36} color="#9ca3af" />
-						</Box>
-						<Stack gap="xs">
-							<Text fw={700} c="#111827" size="xl">
-								No hay encargados registrados
-							</Text>
-							<Text size="md" c="gray.5">
-								Crea encargados para comenzar a recibir citas
-							</Text>
-						</Stack>
+						<Users size={36} color="#9ca3af" />
+						<Text fw={700}>No hay encargados registrados</Text>
 						<Button
 							color="red"
 							onClick={openAdd}
 							radius="xl"
-							size="md"
 							leftSection={<Plus size={18} />}
 						>
 							Crear primer encargado
 						</Button>
 					</Stack>
 				</Card>
-			)}
-
-			{/* Main Content Grid */}
-			{staffList.length > 0 && (
+			) : (
 				<Grid gap="xl">
-					{/* Staff List */}
 					<Grid.Col span={{ base: 12, md: 5 }}>
 						<Stack gap="md">
 							{staffList.map((profile) => (
@@ -848,27 +785,20 @@ function UsuariosPage() {
 									profile={profile}
 									isSelected={selectedStaffId === profile.userId}
 									onClick={() => setSelectedStaffId(profile.userId)}
-									currentBookings={MOCK_BOOKINGS[profile.userId]?.length || 0}
+									currentBookings={bookingsByStaff[profile.userId]?.length || 0}
 								/>
 							))}
 						</Stack>
 					</Grid.Col>
 
-					{/* Staff Detail */}
 					<Grid.Col span={{ base: 12, md: 7 }}>
 						{selectedStaff ? (
 							<Card
 								radius="xl"
 								p={0}
 								bg="white"
-								style={{
-									border: "1px solid #e5e7eb",
-									boxShadow:
-										"0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.025)",
-									height: "fit-content",
-								}}
+								style={{ border: "1px solid #e5e7eb" }}
 							>
-								{/* Header */}
 								<Box p="xl" style={{ borderBottom: "1px solid #e5e7eb" }}>
 									<Group
 										justify="space-between"
@@ -881,33 +811,16 @@ function UsuariosPage() {
 												radius="xl"
 												bg={selectedStaff.isActive ? "#fef2f2" : "#f3f4f6"}
 												c={selectedStaff.isActive ? "#e03131" : "#9ca3af"}
-												style={{
-													border: selectedStaff.isActive
-														? "3px solid #e03131"
-														: "3px solid #d1d5db",
-													fontWeight: 700,
-													fontSize: "18px",
-												}}
 											>
 												{selectedStaff.user?.name
 													?.split(" ")
-													.map((n) => n[0])
+													.map((item) => item[0])
 													.join("")
 													.slice(0, 2)
 													.toUpperCase() || "U"}
 											</Avatar>
 											<Stack gap={4}>
-												<Title
-													order={2}
-													c="#111827"
-													style={{
-														fontWeight: 800,
-														fontSize: "22px",
-														letterSpacing: "-0.5px",
-													}}
-												>
-													{selectedStaff.user?.name}
-												</Title>
+												<Title order={2}>{selectedStaff.user?.name}</Title>
 												<Text size="sm" c="gray.5">
 													{selectedStaff.user?.email}
 												</Text>
@@ -926,19 +839,19 @@ function UsuariosPage() {
 												</ActionIcon>
 											</Menu.Target>
 											<Menu.Dropdown>
-												<Menu.Item
-													leftSection={<Edit3 size={14} />}
-													onClick={() => {}}
-												>
+												<Menu.Item leftSection={<Edit3 size={14} />} disabled>
 													Editar perfil
 												</Menu.Item>
 												<Menu.Divider />
 												<Menu.Item
 													color="red"
 													leftSection={<Trash2 size={14} />}
-													onClick={() => {}}
+													onClick={() => {
+														void handleRemoveStaff(selectedStaff);
+													}}
 													disabled={
-														MOCK_BOOKINGS[selectedStaff.userId]?.length > 0
+														selectedBookings.length > 0 ||
+														isUpdating === selectedStaff.userId
 													}
 												>
 													Eliminar
@@ -947,112 +860,39 @@ function UsuariosPage() {
 										</Menu>
 									</Group>
 
-									{/* Settings Row */}
 									<Group mt="xl" gap="xl">
-										<Group gap="sm">
-											<Switch
-												checked={selectedStaff.isActive}
-												label="Activo"
-												size="md"
-												disabled={isUpdating === selectedStaff.userId}
-												onChange={(event) => {
-													const newActive = event.currentTarget.checked;
-													setIsUpdating(selectedStaff.userId);
-
-													// Optimistic update
-													setStaffList((prev) =>
-														prev.map((s) =>
-															s.userId === selectedStaff.userId
-																? {
-																		...s,
-																		isActive: newActive,
-																		// If deactivating, also disable assignable
-																		isAssignable: newActive
-																			? s.isAssignable
-																			: false,
-																	}
-																: s,
-														),
-													);
-
-													// TODO: Call API to update staff status
-													console.log("Update staff active:", {
-														userId: selectedStaff.userId,
-														isActive: newActive,
-													});
-
-													// Simulate API delay
-													setTimeout(() => {
-														setIsUpdating(null);
-													}, 500);
-												}}
-												styles={{
-													track: {
-														"&:checked": {
-															backgroundColor: "#10b981",
-														},
-													},
-												}}
-											/>
-											{isUpdating === selectedStaff.userId && (
-												<Text size="xs" c="gray.5" fs="italic">
-													Actualizando...
-												</Text>
-											)}
-										</Group>
-										<Group gap="sm">
-											<Switch
-												checked={selectedStaff.isAssignable}
-												label="Recibe citas"
-												size="md"
-												disabled={
-													!selectedStaff.isActive ||
-													isUpdating === selectedStaff.userId
-												}
-												onChange={(event) => {
-													const newAssignable = event.currentTarget.checked;
-													setIsUpdating(selectedStaff.userId);
-
-													// Optimistic update
-													setStaffList((prev) =>
-														prev.map((s) =>
-															s.userId === selectedStaff.userId
-																? { ...s, isAssignable: newAssignable }
-																: s,
-														),
-													);
-
-													// TODO: Call API to update staff assignable
-													console.log("Update staff assignable:", {
-														userId: selectedStaff.userId,
-														isAssignable: newAssignable,
-													});
-
-													// Simulate API delay
-													setTimeout(() => {
-														setIsUpdating(null);
-													}, 500);
-												}}
-												styles={{
-													track: {
-														"&:checked": {
-															backgroundColor: "#2563eb",
-														},
-													},
-												}}
-											/>
-										</Group>
+										<Switch
+											checked={selectedStaff.isActive}
+											label="Activo"
+											disabled={isUpdating === selectedStaff.userId}
+											onChange={(event) => {
+												void handleToggleStaffState(
+													selectedStaff,
+													"isActive",
+													event.currentTarget.checked,
+												);
+											}}
+										/>
+										<Switch
+											checked={selectedStaff.isAssignable}
+											label="Recibe citas"
+											disabled={
+												!selectedStaff.isActive ||
+												isUpdating === selectedStaff.userId
+											}
+											onChange={(event) => {
+												void handleToggleStaffState(
+													selectedStaff,
+													"isAssignable",
+													event.currentTarget.checked,
+												);
+											}}
+										/>
 									</Group>
 								</Box>
 
-								{/* Stats */}
 								<Box p="xl" style={{ borderBottom: "1px solid #e5e7eb" }}>
-									<Title
-										order={4}
-										c="#111827"
-										mb="md"
-										style={{ fontWeight: 700 }}
-									>
+									<Title order={4} mb="md">
 										Capacidad hoy
 									</Title>
 									<CapacityIndicator
@@ -1064,12 +904,9 @@ function UsuariosPage() {
 									/>
 								</Box>
 
-								{/* Bookings List */}
 								<Box p="xl">
 									<Group justify="space-between" mb="lg">
-										<Title order={4} c="#111827" style={{ fontWeight: 700 }}>
-											Citas asignadas hoy
-										</Title>
+										<Title order={4}>Citas activas hoy</Title>
 										{selectedBookings.length > 0 && (
 											<Button
 												variant="light"
@@ -1092,7 +929,7 @@ function UsuariosPage() {
 											icon={<Calendar size={20} />}
 										>
 											<Text size="sm" c="gray.6">
-												No hay citas asignadas hoy
+												No hay citas activas asignadas hoy
 											</Text>
 										</Alert>
 									) : (
@@ -1100,18 +937,11 @@ function UsuariosPage() {
 											highlightOnHover
 											verticalSpacing="md"
 											horizontalSpacing="md"
-											styles={{
-												tbody: {
-													tr: {
-														borderBottom: "1px solid #f3f4f6",
-													},
-												},
-											}}
 										>
 											<Table.Thead>
 												<Table.Tr>
-													<Table.Th>Ciudadano</Table.Th>
-													<Table.Th>Servicio</Table.Th>
+													<Table.Th>ID</Table.Th>
+													<Table.Th>Tipo</Table.Th>
 													<Table.Th>Hora</Table.Th>
 													<Table.Th>Estado</Table.Th>
 												</Table.Tr>
@@ -1120,45 +950,41 @@ function UsuariosPage() {
 												{selectedBookings.map((booking) => (
 													<Table.Tr key={booking.id}>
 														<Table.Td>
-															<Text fw={600} c="#111827">
-																{booking.citizenName}
+															<Text fw={600} c="#111827" size="sm">
+																{booking.id.slice(0, 8)}
 															</Text>
 														</Table.Td>
 														<Table.Td>
-															<Text size="sm" c="gray.6">
-																{booking.service}
-															</Text>
+															<Badge
+																variant="light"
+																color={
+																	booking.kind === "administrative"
+																		? "violet"
+																		: "blue"
+																}
+															>
+																{booking.kind === "administrative"
+																	? "Administrativa"
+																	: "Ciudadano"}
+															</Badge>
 														</Table.Td>
 														<Table.Td>
 															<Group gap={6}>
 																<Clock size={14} color="#9ca3af" />
 																<Text size="sm" fw={600} c="gray.7">
-																	{booking.time}
+																	{booking.slot
+																		? `${booking.slot.startTime} - ${booking.slot.endTime}`
+																		: "Sin slot"}
 																</Text>
 															</Group>
 														</Table.Td>
 														<Table.Td>
 															<Badge
-																color={
-																	booking.status === "confirmada"
-																		? "green"
-																		: booking.status === "en_proceso"
-																			? "blue"
-																			: "yellow"
-																}
+																color={getBookingStatusColor(booking.status)}
 																variant="light"
 																size="sm"
-																style={{
-																	textTransform: "none",
-																	fontWeight: 600,
-																	fontSize: "11px",
-																}}
 															>
-																{booking.status === "confirmada"
-																	? "Confirmada"
-																	: booking.status === "en_proceso"
-																		? "En proceso"
-																		: "Pendiente"}
+																{getBookingStatusLabel(booking.status)}
 															</Badge>
 														</Table.Td>
 													</Table.Tr>
@@ -1173,26 +999,10 @@ function UsuariosPage() {
 								radius="xl"
 								p={60}
 								bg="white"
-								style={{
-									border: "1px solid #e5e7eb",
-									textAlign: "center",
-									height: "fit-content",
-								}}
+								style={{ border: "1px solid #e5e7eb", textAlign: "center" }}
 							>
 								<Stack align="center" gap="lg">
-									<Box
-										style={{
-											width: 64,
-											height: 64,
-											borderRadius: "20px",
-											backgroundColor: "#f3f4f6",
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "center",
-										}}
-									>
-										<UserCheck size={28} color="#9ca3af" />
-									</Box>
+									<UserCheck size={28} color="#9ca3af" />
 									<Text size="lg" c="gray.5" fw={500}>
 										Selecciona un encargado para ver sus detalles
 									</Text>
@@ -1203,15 +1013,20 @@ function UsuariosPage() {
 				</Grid>
 			)}
 
-			{/* Modals */}
 			<ReassignModal
 				opened={reassignModalOpened}
 				onClose={closeReassign}
 				staffList={staffList}
 				sourceStaff={selectedStaff}
+				sourceBookings={selectedBookings}
+				onReassign={handleReassign}
 			/>
 
-			<AddStaffModal opened={addModalOpened} onClose={closeAdd} />
+			<AddStaffModal
+				opened={addModalOpened}
+				onClose={closeAdd}
+				onCreate={handleCreateStaff}
+			/>
 		</Stack>
 	);
 }

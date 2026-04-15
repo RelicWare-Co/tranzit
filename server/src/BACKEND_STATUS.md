@@ -150,7 +150,7 @@ Key behavior already implemented:
 - optional `isActive` filter
 - get procedure by ID
 - create with slug validation and deduplication
-- update with optimistic version increment on form schema changes
+- update with config version increment on schema-impacting changes
 - remove with soft-delete guard when service requests exist
 
 ### 2.5 Reservation series module (`server/src/orpc/modules/reservation-series.router.ts`, `server/src/orpc/modules/reservations.router.ts`)

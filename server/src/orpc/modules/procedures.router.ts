@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { rpc } from "../context";
-import { requireAdminAccess } from "../shared";
+import { requireAdminAccess, throwRpcError } from "../shared";
 
 // Input validation helpers
 function generateId(): string {
-	return `${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 11)}`;
+	return crypto.randomUUID();
 }
 
 function sanitizeSlug(slug: string): string {
@@ -15,6 +15,22 @@ function sanitizeSlug(slug: string): string {
 		.replace(/[^a-z0-9\s-]/g, "")
 		.replace(/\s+/g, "-")
 		.replace(/-+/g, "-");
+}
+
+function parseName(name: string | undefined): string {
+	const trimmed = name?.trim() ?? "";
+	if (!trimmed) {
+		throwRpcError("MISSING_REQUIRED_FIELDS", 422, "name is required");
+	}
+	return trimmed;
+}
+
+function parseSlug(slug: string | undefined): string {
+	const sanitized = sanitizeSlug(slug ?? "");
+	if (!sanitized) {
+		throwRpcError("INVALID_SLUG", 422, "slug is required");
+	}
+	return sanitized;
 }
 
 export function createProceduresRouter() {
@@ -47,7 +63,7 @@ export function createProceduresRouter() {
 			const payload = input as { id: string };
 
 			if (!payload?.id) {
-				throw new Error("Procedure ID is required");
+				throwRpcError("MISSING_REQUIRED_FIELDS", 422, "id is required");
 			}
 
 			const procedure = await db.query.procedureType.findFirst({
@@ -55,7 +71,7 @@ export function createProceduresRouter() {
 			});
 
 			if (!procedure) {
-				throw new Error("Procedure not found");
+				throwRpcError("NOT_FOUND", 404, "Procedure not found");
 			}
 
 			return procedure;
@@ -63,7 +79,7 @@ export function createProceduresRouter() {
 
 		create: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
-				booking: ["write"],
+				booking: ["create"],
 			});
 			const payload = input as {
 				name: string;
@@ -79,11 +95,8 @@ export function createProceduresRouter() {
 				policySchema?: Record<string, unknown>;
 			};
 
-			if (!payload?.name || !payload?.slug) {
-				throw new Error("Name and slug are required");
-			}
-
-			const sanitizedSlug = sanitizeSlug(payload.slug);
+			const parsedName = parseName(payload?.name);
+			const sanitizedSlug = parseSlug(payload?.slug);
 
 			// Check for duplicate slug
 			const existing = await db.query.procedureType.findFirst({
@@ -91,7 +104,9 @@ export function createProceduresRouter() {
 			});
 
 			if (existing) {
-				throw new Error(
+				throwRpcError(
+					"PROCEDURE_SLUG_CONFLICT",
+					409,
 					`A procedure with slug "${sanitizedSlug}" already exists`,
 				);
 			}
@@ -99,7 +114,7 @@ export function createProceduresRouter() {
 			const now = new Date();
 			const newProcedure = {
 				id: generateId(),
-				name: payload.name,
+				name: parsedName,
 				slug: sanitizedSlug,
 				description: payload.description ?? null,
 				isActive: true,
@@ -123,7 +138,7 @@ export function createProceduresRouter() {
 
 		update: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
-				booking: ["write"],
+				booking: ["update"],
 			});
 			const payload = input as {
 				id: string;
@@ -141,7 +156,7 @@ export function createProceduresRouter() {
 			};
 
 			if (!payload?.id) {
-				throw new Error("Procedure ID is required");
+				throwRpcError("MISSING_REQUIRED_FIELDS", 422, "id is required");
 			}
 
 			const existing = await db.query.procedureType.findFirst({
@@ -149,14 +164,18 @@ export function createProceduresRouter() {
 			});
 
 			if (!existing) {
-				throw new Error("Procedure not found");
+				throwRpcError("NOT_FOUND", 404, "Procedure not found");
 			}
 
 			const updates: Record<string, unknown> = {
 				updatedAt: new Date(),
 			};
 
-			if (payload.name !== undefined) updates.name = payload.name;
+			let configChanged = false;
+
+			if (payload.name !== undefined) {
+				updates.name = parseName(payload.name);
+			}
 			if (payload.description !== undefined)
 				updates.description = payload.description;
 			if (payload.isActive !== undefined) updates.isActive = payload.isActive;
@@ -168,17 +187,26 @@ export function createProceduresRouter() {
 				updates.allowsDigitalDocuments = payload.allowsDigitalDocuments;
 			if (payload.instructions !== undefined)
 				updates.instructions = payload.instructions;
-			if (payload.eligibilitySchema !== undefined)
+			if (payload.eligibilitySchema !== undefined) {
 				updates.eligibilitySchema = payload.eligibilitySchema;
+				configChanged = true;
+			}
 			if (payload.formSchema !== undefined) {
 				updates.formSchema = payload.formSchema;
-				// Increment config version when form schema changes
+				configChanged = true;
+			}
+			if (payload.documentSchema !== undefined) {
+				updates.documentSchema = payload.documentSchema;
+				configChanged = true;
+			}
+			if (payload.policySchema !== undefined) {
+				updates.policySchema = payload.policySchema;
+				configChanged = true;
+			}
+
+			if (configChanged) {
 				updates.configVersion = (existing.configVersion || 0) + 1;
 			}
-			if (payload.documentSchema !== undefined)
-				updates.documentSchema = payload.documentSchema;
-			if (payload.policySchema !== undefined)
-				updates.policySchema = payload.policySchema;
 
 			await db
 				.update(schema.procedureType)
@@ -192,12 +220,12 @@ export function createProceduresRouter() {
 
 		remove: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
-				booking: ["write"],
+				booking: ["delete"],
 			});
 			const payload = input as { id: string };
 
 			if (!payload?.id) {
-				throw new Error("Procedure ID is required");
+				throwRpcError("MISSING_REQUIRED_FIELDS", 422, "id is required");
 			}
 
 			const existing = await db.query.procedureType.findFirst({
@@ -205,7 +233,7 @@ export function createProceduresRouter() {
 			});
 
 			if (!existing) {
-				throw new Error("Procedure not found");
+				throwRpcError("NOT_FOUND", 404, "Procedure not found");
 			}
 
 			// Check for active service requests
@@ -223,6 +251,7 @@ export function createProceduresRouter() {
 				return {
 					success: true,
 					message: "Procedure marked as inactive due to existing requests",
+					mode: "soft" as const,
 				};
 			}
 
@@ -231,7 +260,11 @@ export function createProceduresRouter() {
 				.delete(schema.procedureType)
 				.where(eq(schema.procedureType.id, payload.id));
 
-			return { success: true, message: "Procedure deleted successfully" };
+			return {
+				success: true,
+				message: "Procedure deleted successfully",
+				mode: "hard" as const,
+			};
 		}),
 	};
 }
