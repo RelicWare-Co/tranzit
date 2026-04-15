@@ -232,6 +232,8 @@ type ProcedureRemoveResponse = {
 };
 
 export interface TranzitRpcClient {
+	// biome-ignore lint/suspicious/noExplicitAny: required to satisfy @orpc NestedClient generic constraint
+	[key: string]: any;
 	session: {
 		get: RpcProcedure<SessionResponse>;
 	};

@@ -774,7 +774,13 @@ function AdminCitasPage() {
 							label="Fecha"
 							placeholder="Seleccione la fecha"
 							value={selectedDate}
-							onChange={setSelectedDate}
+							onChange={(value) => {
+								if (typeof value === "string") {
+									setSelectedDate(value ? new Date(`${value}T00:00:00`) : null);
+									return;
+								}
+								setSelectedDate(value);
+							}}
 							valueFormat="YYYY-MM-DD"
 							minDate={new Date()}
 							required

@@ -100,7 +100,7 @@ function AdminLoginPage() {
 	const handleOnboard = async () => {
 		setError("");
 		try {
-			await onboardingMutation.mutateAsync();
+			await onboardingMutation.mutateAsync(undefined);
 			await refreshUser();
 			navigate({ to: "/admin" });
 		} catch (err) {
