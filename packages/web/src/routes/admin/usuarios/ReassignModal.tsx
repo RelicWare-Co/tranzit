@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { AlertCircle, ArrowRightLeft, UserCheck } from "lucide-react";
 import { useEffect, useState } from "react";
+import { adminModalStyles } from "../_shared/admin-ui";
 import { getErrorMessage } from "../_shared/errors";
 import type { AdminBooking, StaffProfile } from "./types";
 
@@ -72,9 +73,14 @@ export function ReassignModal({
 		<Modal
 			opened={opened}
 			onClose={onClose}
-			title="Mover citas"
+			title={
+				<span className="text-lg font-semibold tracking-tight text-zinc-900">
+					Mover citas
+				</span>
+			}
 			size="md"
 			radius="xl"
+			styles={adminModalStyles}
 		>
 			<Stack gap="lg">
 				{error && (
@@ -83,21 +89,22 @@ export function ReassignModal({
 					</Alert>
 				)}
 
-				{sourceStaff && (
+				{sourceStaff ? (
 					<Alert
-						color="blue"
+						color="gray"
 						variant="light"
 						radius="lg"
-						icon={<UserCheck size={20} />}
+						icon={<UserCheck size={20} strokeWidth={1.75} />}
+						className="border border-zinc-200/90 bg-zinc-50"
 					>
-						<Text size="sm" fw={600}>
+						<Text size="sm" fw={600} className="text-zinc-900">
 							Origen: {sourceStaff.user?.name}
 						</Text>
-						<Text size="xs" c="gray.5">
+						<Text size="xs" className="text-zinc-500">
 							{sourceBookings.length} citas activas hoy
 						</Text>
 					</Alert>
-				)}
+				) : null}
 
 				<Select
 					label="Encargado destino"
@@ -129,7 +136,7 @@ export function ReassignModal({
 						variant="light"
 						color="gray"
 						onClick={onClose}
-						radius="xl"
+						radius="md"
 						disabled={loading}
 					>
 						Cancelar
@@ -139,8 +146,9 @@ export function ReassignModal({
 						onClick={handleSubmit}
 						disabled={!selectedTarget || sourceBookings.length === 0}
 						loading={loading}
-						radius="xl"
-						leftSection={<ArrowRightLeft size={16} />}
+						radius="md"
+						className="font-semibold"
+						leftSection={<ArrowRightLeft size={16} strokeWidth={1.75} />}
 					>
 						Mover citas
 					</Button>

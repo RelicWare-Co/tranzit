@@ -23,6 +23,7 @@ import {
 	Trash2,
 	UserCheck,
 } from "lucide-react";
+import { adminUi } from "../_shared/admin-ui";
 import { getBookingStatusColor, getBookingStatusLabel } from "./booking-utils";
 import { CapacityIndicator } from "./CapacityIndicator";
 import type { AdminBooking, StaffProfile } from "./types";
@@ -47,8 +48,14 @@ export function StaffDetailPanel({
 	onOpenReassign: () => void;
 }) {
 	return (
-		<Card radius="xl" p={0} bg="white" style={{ border: "1px solid #e5e7eb" }}>
-			<Box p="xl" style={{ borderBottom: "1px solid #e5e7eb" }}>
+		<Card
+			className={adminUi.surface}
+			radius="xl"
+			p={0}
+			bg="white"
+			shadow="none"
+		>
+			<Box p="xl" className="border-b border-zinc-200/90">
 				<Group justify="space-between" align="flex-start" wrap="nowrap">
 					<Group gap="md">
 						<Avatar
@@ -125,8 +132,8 @@ export function StaffDetailPanel({
 				</Group>
 			</Box>
 
-			<Box p="xl" style={{ borderBottom: "1px solid #e5e7eb" }}>
-				<Title order={4} mb="md">
+			<Box p="xl" className="border-b border-zinc-200/90">
+				<Title order={4} mb="md" className="text-zinc-900">
 					Capacidad hoy
 				</Title>
 				<CapacityIndicator
@@ -139,18 +146,19 @@ export function StaffDetailPanel({
 			<Box p="xl">
 				<Group justify="space-between" mb="lg">
 					<Title order={4}>Citas activas hoy</Title>
-					{selectedBookings.length > 0 && (
+					{selectedBookings.length > 0 ? (
 						<Button
 							variant="light"
-							color="blue"
+							color="red"
 							size="sm"
-							radius="xl"
-							leftSection={<ArrowRightLeft size={14} />}
+							radius="md"
+							leftSection={<ArrowRightLeft size={14} strokeWidth={1.75} />}
+							className="font-semibold"
 							onClick={onOpenReassign}
 						>
 							Mover citas
 						</Button>
-					)}
+					) : null}
 				</Group>
 
 				{selectedBookings.length === 0 ? (
@@ -186,7 +194,7 @@ export function StaffDetailPanel({
 										<Badge
 											variant="light"
 											color={
-												booking.kind === "administrative" ? "violet" : "blue"
+												booking.kind === "administrative" ? "gray" : "teal"
 											}
 										>
 											{booking.kind === "administrative"
@@ -226,15 +234,20 @@ export function StaffDetailPanel({
 export function StaffDetailEmptyState() {
 	return (
 		<Card
+			className={`${adminUi.surface} text-center`}
 			radius="xl"
-			p={60}
-			bg="white"
-			style={{ border: "1px solid #e5e7eb", textAlign: "center" }}
+			p={52}
+			shadow="none"
 		>
 			<Stack align="center" gap="lg">
-				<UserCheck size={28} color="#9ca3af" />
-				<Text size="lg" c="gray.5" fw={500}>
-					Selecciona un encargado para ver sus detalles
+				<Box className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/90">
+					<UserCheck size={26} className="text-zinc-500" strokeWidth={1.5} />
+				</Box>
+				<Text
+					size="lg"
+					className="max-w-sm font-medium leading-relaxed text-zinc-500"
+				>
+					Seleccioná un encargado para ver capacidad y citas del día.
 				</Text>
 			</Stack>
 		</Card>

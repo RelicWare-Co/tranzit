@@ -1,13 +1,11 @@
 import {
+	Affix,
 	Alert,
 	Box,
 	Button,
 	Card,
-	Group,
 	LoadingOverlay,
-	Stack,
-	Text,
-	Title,
+	Transition,
 } from "@mantine/core";
 import {
 	Schedule,
@@ -20,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "../../../lib/orpc-client";
 import { formatDateLocal } from "../_shared/dates";
 import { getErrorMessage } from "../_shared/errors";
+import "./admin-schedule.css";
 import { BookingStatsGrid } from "./BookingStatsGrid";
 import { NewBookingModal } from "./NewBookingModal";
 import type {
@@ -333,57 +332,108 @@ export function AdminCitasPage() {
 		};
 	}, [bookings, todayStr]);
 
-	return (
-		<Stack gap="xl">
-			<Group justify="space-between" align="center">
-				<Box>
-					<Title
-						order={1}
-						c="#111827"
-						style={{
-							letterSpacing: "-1px",
-							fontWeight: 800,
-							fontSize: "32px",
-						}}
-					>
-						Gestión de Citas
-					</Title>
-					<Text size="lg" c="#6b7280" mt="xs">
-						Administra las citas programadas y horarios disponibles.
-					</Text>
-				</Box>
-				<Button
-					leftSection={<Plus size={18} />}
-					variant="filled"
-					color="red"
-					style={{
-						borderRadius: "8px",
-						fontWeight: 600,
-					}}
-					onClick={() => setModalOpen(true)}
-				>
-					Nueva Cita
-				</Button>
-			</Group>
+	const scheduleChrome = {
+		weekViewProps: {
+			classNames: {
+				weekView: "admin-schedule-wv",
+				weekViewHeader: "admin-schedule-week-head",
+			},
+			styles: {
+				weekView: {
+					flex: 1,
+					minHeight: 0,
+					display: "flex",
+					flexDirection: "column",
+				},
+				weekViewRoot: {
+					flex: 1,
+					minHeight: 0,
+					display: "flex",
+					flexDirection: "column",
+					overflow: "hidden",
+				},
+				weekViewScrollArea: { flex: 1, minHeight: 0 },
+			},
+			scrollAreaProps: {
+				mah: "100%",
+				style: { flex: 1, minHeight: 0 },
+			},
+		},
+		dayViewProps: {
+			classNames: {
+				dayView: "admin-schedule-dv",
+			},
+			styles: {
+				dayView: {
+					flex: 1,
+					minHeight: 0,
+					display: "flex",
+					flexDirection: "column",
+				},
+				dayViewScrollArea: { flex: 1, minHeight: 0 },
+			},
+			scrollAreaProps: {
+				mah: "100%",
+				style: { flex: 1, minHeight: 0 },
+			},
+		},
+		monthViewProps: {
+			classNames: {
+				monthView: "admin-schedule-mv",
+			},
+			styles: {
+				monthView: {
+					flex: 1,
+					minHeight: 0,
+					overflow: "auto",
+				},
+			},
+		},
+		yearViewProps: {
+			classNames: {
+				yearView: "admin-schedule-yv",
+			},
+			styles: {
+				yearView: {
+					flex: 1,
+					minHeight: 0,
+					overflow: "auto",
+				},
+			},
+		},
+	} as const;
 
-			{bookingsError && (
-				<Alert icon={<AlertCircle size={16} />} color="red" radius="md">
-					{bookingsError}
-				</Alert>
-			)}
+	return (
+		<Box className="admin-citas-calendar-scope flex min-h-0 flex-1 flex-col">
+			{bookingsError ? (
+				<Box className="shrink-0 border-b border-zinc-200/90 bg-zinc-50/95 px-3 py-2 sm:px-4">
+					<Alert
+						icon={<AlertCircle size={16} />}
+						color="red"
+						radius="md"
+						variant="light"
+					>
+						{bookingsError}
+					</Alert>
+				</Box>
+			) : null}
 
 			<Card
-				radius="xl"
-				p="xl"
-				bg="white"
-				style={{
-					border: "1px solid #e5e7eb",
-					boxShadow:
-						"0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.025)",
-				}}
+				p={0}
+				withBorder={false}
+				className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 border-b border-zinc-200/90 bg-white shadow-none"
 			>
-				<Box mb="md">
-					<ScheduleHeader>
+				<Box className="shrink-0 border-b border-zinc-200/90 bg-zinc-50/95 px-4 py-3 sm:px-5">
+					<BookingStatsGrid stats={stats} />
+				</Box>
+
+				<Box className="shrink-0 px-4 pb-2 pt-3 sm:px-5">
+					<ScheduleHeader
+						classNames={{
+							header:
+								"admin-schedule-toolbar admin-schedule-toolbar--fused",
+						}}
+					>
 						<ScheduleHeader.Previous
 							onClick={() => {
 								const d = new Date(date);
@@ -440,9 +490,26 @@ export function AdminCitasPage() {
 					</ScheduleHeader>
 				</Box>
 
-				<Box pos="relative">
+				<Box className="relative flex min-h-0 flex-1 flex-col px-4 pb-4 sm:px-5">
 					<LoadingOverlay visible={isLoadingEvents} />
 					<Schedule
+						styles={{
+							root: {
+								flex: 1,
+								minHeight: 0,
+								display: "flex",
+								flexDirection: "column",
+								overflow: "hidden",
+							},
+							desktopView: {
+								flex: 1,
+								minHeight: 0,
+								display: "flex",
+								flexDirection: "column",
+								minWidth: 0,
+							},
+						}}
+						radius="md"
 						date={date}
 						onDateChange={(nextDate) => setDate(new Date(nextDate))}
 						view={view}
@@ -456,25 +523,46 @@ export function AdminCitasPage() {
 							endTime: "18:00:00",
 							intervalMinutes: 30,
 							withHeader: false,
+							...scheduleChrome.dayViewProps,
 						}}
 						weekViewProps={{
 							startTime: "07:00:00",
 							endTime: "18:00:00",
 							withWeekendDays: false,
 							withHeader: false,
+							...scheduleChrome.weekViewProps,
 						}}
 						monthViewProps={{
 							withHeader: false,
+							...scheduleChrome.monthViewProps,
 						}}
 						yearViewProps={{
 							withHeader: false,
+							...scheduleChrome.yearViewProps,
 						}}
 						locale="es"
 					/>
 				</Box>
 			</Card>
 
-			<BookingStatsGrid stats={stats} />
+			<Affix position={{ bottom: 24, right: 24 }} zIndex={200}>
+				<Transition transition="slide-up" mounted>
+					{(transitionStyles) => (
+						<Button
+							leftSection={<Plus size={18} strokeWidth={1.75} />}
+							variant="filled"
+							color="red"
+							radius="md"
+							size="md"
+							className="font-semibold shadow-lg shadow-zinc-900/15"
+							style={transitionStyles}
+							onClick={() => setModalOpen(true)}
+						>
+							Nueva cita
+						</Button>
+					)}
+				</Transition>
+			</Affix>
 
 			<NewBookingModal
 				opened={modalOpen}
@@ -497,6 +585,6 @@ export function AdminCitasPage() {
 				staffOptions={staffOptions}
 				onSubmit={handleCreateBooking}
 			/>
-		</Stack>
+		</Box>
 	);
 }

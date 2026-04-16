@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { AlertCircle, Plus } from "lucide-react";
 import { useState } from "react";
+import { adminModalStyles } from "../_shared/admin-ui";
 import { getErrorMessage } from "../_shared/errors";
 import type { ProcedureCreateInput } from "./types";
 
@@ -67,9 +68,15 @@ export function AddProcedureModal({
 		<Modal
 			opened={opened}
 			onClose={handleClose}
-			title="Nuevo trámite"
+			title={
+				<span className="text-lg font-semibold tracking-tight text-zinc-900">
+					Nuevo trámite
+				</span>
+			}
 			size="lg"
 			radius="xl"
+			overlayProps={{ backgroundOpacity: 0.45, blur: 4 }}
+			styles={adminModalStyles}
 		>
 			<Stack gap="md">
 				{error && (
@@ -133,17 +140,19 @@ export function AddProcedureModal({
 						variant="light"
 						color="gray"
 						onClick={handleClose}
-						radius="xl"
+						radius="md"
 						disabled={isSubmitting}
 					>
 						Cancelar
 					</Button>
 					<Button
-						leftSection={<Plus size={16} />}
+						color="red"
+						leftSection={<Plus size={16} strokeWidth={1.75} />}
 						onClick={handleSubmit}
-						radius="xl"
+						radius="md"
 						loading={isSubmitting}
 						disabled={!name.trim() || !slug.trim()}
+						className="font-semibold"
 					>
 						Crear trámite
 					</Button>

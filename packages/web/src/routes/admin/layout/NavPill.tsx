@@ -12,30 +12,11 @@ export function NavPill({
 	return (
 		<Link
 			to={to}
-			style={{
-				textDecoration: "none",
-				padding: "10px 20px",
-				borderRadius: "9999px",
-				fontWeight: 600,
-				fontSize: "14px",
-				letterSpacing: "-0.2px",
-				color: isActive ? "#111827" : "#6b7280",
-				backgroundColor: isActive ? "#f3f4f6" : "transparent",
-				transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-				display: "inline-block",
-			}}
-			onMouseEnter={(e) => {
-				if (!isActive) {
-					e.currentTarget.style.backgroundColor = "#f9fafb";
-					e.currentTarget.style.color = "#111827";
-				}
-			}}
-			onMouseLeave={(e) => {
-				if (!isActive) {
-					e.currentTarget.style.backgroundColor = "transparent";
-					e.currentTarget.style.color = "#6b7280";
-				}
-			}}
+			className={
+				isActive
+					? "inline-block rounded-full bg-zinc-200/90 px-4 py-2 text-sm font-semibold tracking-tight text-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition-[transform,background-color,color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] no-underline"
+					: "inline-block rounded-full px-4 py-2 text-sm font-semibold tracking-tight text-zinc-500 transition-[transform,background-color,color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-zinc-100 hover:text-zinc-900 active:scale-[0.98] no-underline"
+			}
 		>
 			{label}
 		</Link>

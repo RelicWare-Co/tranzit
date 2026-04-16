@@ -9,6 +9,7 @@ import {
 } from "@mantine/core";
 import { AlertCircle, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { adminModalStyles } from "../_shared/admin-ui";
 import { getErrorMessage } from "../_shared/errors";
 import type { CreateStaffPayload } from "./types";
 
@@ -56,9 +57,15 @@ export function AddStaffModal({
 		<Modal
 			opened={opened}
 			onClose={onClose}
-			title="Nuevo encargado"
+			title={
+				<span className="text-lg font-semibold tracking-tight text-zinc-900">
+					Nuevo encargado
+				</span>
+			}
 			size="md"
 			radius="xl"
+			overlayProps={{ backgroundOpacity: 0.45, blur: 4 }}
+			styles={adminModalStyles}
 		>
 			<Stack gap="lg">
 				{error && (
@@ -104,18 +111,19 @@ export function AddStaffModal({
 						variant="light"
 						color="gray"
 						onClick={onClose}
-						radius="xl"
+						radius="md"
 						disabled={isSubmitting}
 					>
 						Cancelar
 					</Button>
 					<Button
-						color="green"
+						color="red"
 						onClick={handleSubmit}
 						disabled={!email.trim() || !name.trim()}
-						radius="xl"
+						radius="md"
 						loading={isSubmitting}
-						leftSection={<Plus size={16} />}
+						className="font-semibold"
+						leftSection={<Plus size={16} strokeWidth={1.75} />}
 					>
 						Crear encargado
 					</Button>

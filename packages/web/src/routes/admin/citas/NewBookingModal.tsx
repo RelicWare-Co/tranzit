@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { AlertCircle } from "lucide-react";
+import { adminModalStyles } from "../_shared/admin-ui";
 import type { BookingKind } from "./types";
 
 export function NewBookingModal({
@@ -57,16 +58,21 @@ export function NewBookingModal({
 		<Modal
 			opened={opened}
 			onClose={onClose}
-			title="Nueva Cita"
+			title={
+				<span className="text-lg font-semibold tracking-tight text-zinc-900">
+					Nueva cita
+				</span>
+			}
 			size="lg"
 			radius="xl"
 			zIndex={1100}
 			centered
 			overlayProps={{
-				backgroundOpacity: 0.55,
-				blur: 3,
+				backgroundOpacity: 0.5,
+				blur: 6,
 			}}
-			yOffset="10vh"
+			yOffset="8vh"
+			styles={adminModalStyles}
 		>
 			<Box pos="relative">
 				<LoadingOverlay visible={loading} />
@@ -163,11 +169,17 @@ export function NewBookingModal({
 					/>
 
 					<Group justify="flex-end" mt="md">
-						<Button variant="default" onClick={onClose}>
+						<Button variant="default" radius="md" onClick={onClose}>
 							Cancelar
 						</Button>
-						<Button color="red" onClick={onSubmit} loading={loading}>
-							Crear Cita
+						<Button
+							color="red"
+							radius="md"
+							className="font-semibold"
+							onClick={onSubmit}
+							loading={loading}
+						>
+							Crear cita
 						</Button>
 					</Group>
 				</Stack>

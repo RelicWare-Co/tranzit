@@ -23,6 +23,7 @@ import {
 	MoreHorizontal,
 	Trash2,
 } from "lucide-react";
+import { adminUi } from "../_shared/admin-ui";
 import type { ProcedureType } from "./types";
 
 export function ProcedureDetailPanel({
@@ -39,11 +40,17 @@ export function ProcedureDetailPanel({
 	onRemove: (procedure: ProcedureType) => void;
 }) {
 	return (
-		<Card radius="xl" p={0} bg="white" style={{ border: "1px solid #e5e7eb" }}>
-			<Box p="xl" style={{ borderBottom: "1px solid #e5e7eb" }}>
+		<Card
+			className={adminUi.surface}
+			radius="xl"
+			p={0}
+			bg="white"
+			shadow="none"
+		>
+			<Box p="xl" className="border-b border-zinc-200/90">
 				<Group justify="space-between" align="flex-start" wrap="nowrap">
 					<Group gap="md">
-						<FileText size={28} color="#e03131" />
+						<FileText size={28} className="text-red-700" strokeWidth={1.5} />
 						<Stack gap={4}>
 							<Title order={2}>{procedure.name}</Title>
 							<Text size="sm" c="dimmed">
@@ -156,7 +163,7 @@ export function ProcedureDetailPanel({
 							</Badge>
 							<Badge
 								variant="light"
-								color={procedure.allowsDigitalDocuments ? "blue" : "gray"}
+								color={procedure.allowsDigitalDocuments ? "teal" : "gray"}
 							>
 								Digitales: {procedure.allowsDigitalDocuments ? "Sí" : "No"}
 							</Badge>
@@ -177,10 +184,19 @@ export function ProcedureDetailPanel({
 
 export function ProcedureDetailEmptyState() {
 	return (
-		<Card radius="xl" p={48} style={{ border: "1px solid #e5e7eb" }}>
+		<Card
+			className={`${adminUi.surface} text-center`}
+			radius="xl"
+			p={48}
+			shadow="none"
+		>
 			<Stack align="center" gap="md">
-				<AlertCircle size={28} color="#9ca3af" />
-				<Text c="dimmed">Selecciona un trámite para ver detalles.</Text>
+				<Box className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/90">
+					<AlertCircle size={26} className="text-zinc-500" strokeWidth={1.5} />
+				</Box>
+				<Text className="max-w-sm leading-relaxed text-zinc-500">
+					Seleccioná un trámite para revisar formularios y requisitos.
+				</Text>
 			</Stack>
 		</Card>
 	);

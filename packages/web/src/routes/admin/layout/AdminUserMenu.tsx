@@ -2,6 +2,7 @@ import { Avatar, Box, Menu, Text, UnstyledButton } from "@mantine/core";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, LogOut, Shield } from "lucide-react";
 import { useAuth } from "../../../lib/AuthContext";
+import { ADMIN_ACCENT } from "../_shared/admin-ui";
 
 export function AdminUserMenu() {
 	const { user, logout } = useAuth();
@@ -32,74 +33,48 @@ export function AdminUserMenu() {
 			arrowPosition="center"
 			styles={{
 				dropdown: {
-					backgroundColor: "rgba(255, 255, 255, 0.95)",
-					backdropFilter: "blur(20px)",
-					border: "1px solid rgba(0, 0, 0, 0.08)",
-					borderRadius: "20px",
-					padding: "8px",
-					boxShadow: "0 20px 40px -12px rgba(0,0,0,0.15)",
-					minWidth: "220px",
+					backgroundColor: "rgba(255, 255, 255, 0.96)",
+					backdropFilter: "blur(16px)",
+					border: "1px solid rgba(24, 24, 27, 0.08)",
+					borderRadius: 16,
+					padding: 8,
+					boxShadow:
+						"0 24px 48px -20px rgba(9, 9, 11, 0.28), inset 0 1px 0 rgba(255,255,255,0.7)",
+					minWidth: 228,
 				},
 				arrow: {
-					backgroundColor: "rgba(255, 255, 255, 0.95)",
-					border: "1px solid rgba(0, 0, 0, 0.08)",
+					backgroundColor: "rgba(255, 255, 255, 0.96)",
+					border: "1px solid rgba(24, 24, 27, 0.08)",
 				},
 			}}
 		>
 			<Menu.Target>
-				<UnstyledButton
-					style={{
-						display: "inline-flex",
-						alignItems: "center",
-						gap: "10px",
-						padding: "6px 20px 6px 6px",
-						borderRadius: "9999px",
-						backgroundColor: "#ffffff",
-						border: "1.5px solid rgba(0, 0, 0, 0.08)",
-						boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-						transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-						cursor: "pointer",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)";
-						e.currentTarget.style.transform = "translateY(-1px)";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-						e.currentTarget.style.transform = "translateY(0)";
-					}}
-				>
+				<UnstyledButton className="inline-flex cursor-pointer items-center gap-2.5 rounded-full border border-zinc-200/90 bg-white py-1.5 pl-1.5 pr-4 shadow-[0_8px_22px_-14px_rgba(9,9,11,0.35)] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px hover:shadow-[0_14px_28px_-16px_rgba(9,9,11,0.4)] active:translate-y-0 active:scale-[0.99]">
 					<Avatar
 						size="md"
 						radius="xl"
-						color="#e03131"
 						style={{
-							backgroundColor: "#fef2f2",
-							border: "2px solid #e03131",
+							backgroundColor: "#fff1f2",
+							border: `2px solid ${ADMIN_ACCENT}`,
 							fontWeight: 700,
-							fontSize: "13px",
-							boxShadow: "0 2px 4px rgba(224, 49, 49, 0.1)",
+							fontSize: 13,
+							color: ADMIN_ACCENT,
+							boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)",
 						}}
 					>
 						{initials}
 					</Avatar>
 					<Text
-						style={{
-							fontSize: "14px",
-							fontWeight: 600,
-							color: "#4b5563",
-							letterSpacing: "-0.2px",
-						}}
+						className="hidden text-sm font-semibold tracking-tight text-zinc-600 sm:block"
+						lineClamp={1}
+						maw={140}
 					>
-						Administrador
+						{user?.name || "Administrador"}
 					</Text>
 					<ChevronDown
 						size={16}
-						color="#9ca3af"
-						style={{
-							transition: "transform 300ms ease",
-						}}
-						className="chevron-icon"
+						className="shrink-0 text-zinc-400"
+						strokeWidth={1.75}
 					/>
 				</UnstyledButton>
 			</Menu.Target>
@@ -109,73 +84,34 @@ export function AdminUserMenu() {
 					component={Link}
 					to="/mi-perfil"
 					leftSection={
-						<Box
-							style={{
-								width: "32px",
-								height: "32px",
-								borderRadius: "10px",
-								backgroundColor: "#f3f4f6",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Shield size={16} color="#6b7280" />
+						<Box className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-zinc-100">
+							<Shield size={16} className="text-zinc-600" strokeWidth={1.75} />
 						</Box>
 					}
-					style={{
-						borderRadius: "12px",
-						fontWeight: 600,
-						fontSize: "14px",
-						padding: "12px 16px",
-						color: "#111827",
-						transition: "all 200ms ease",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.backgroundColor = "#f9fafb";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.backgroundColor = "transparent";
+					className="rounded-xl font-semibold text-zinc-900"
+					styles={{
+						item: {
+							borderRadius: 12,
+							padding: "10px 12px",
+						},
 					}}
 				>
 					Ver mi perfil
 				</Menu.Item>
-				<Menu.Divider
-					style={{
-						margin: "6px 8px",
-						borderColor: "rgba(0, 0, 0, 0.06)",
-					}}
-				/>
+				<Menu.Divider className="border-zinc-200/90" />
 				<Menu.Item
 					leftSection={
-						<Box
-							style={{
-								width: "32px",
-								height: "32px",
-								borderRadius: "10px",
-								backgroundColor: "#fef2f2",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<LogOut size={16} color="#e03131" />
+						<Box className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-red-50">
+							<LogOut size={16} className="text-red-700" strokeWidth={1.75} />
 						</Box>
 					}
 					onClick={handleLogout}
-					style={{
-						borderRadius: "12px",
-						fontWeight: 600,
-						fontSize: "14px",
-						padding: "12px 16px",
-						color: "#e03131",
-						transition: "all 200ms ease",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.backgroundColor = "#fef2f2";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.backgroundColor = "transparent";
+					className="rounded-xl font-semibold text-red-700"
+					styles={{
+						item: {
+							borderRadius: 12,
+							padding: "10px 12px",
+						},
 					}}
 				>
 					Cerrar sesión

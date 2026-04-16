@@ -8,7 +8,11 @@ export function SidebarItem({
 	isActive,
 	to,
 }: {
-	icon: ComponentType<{ size?: number; color?: string }>;
+	icon: ComponentType<{
+		size?: number;
+		className?: string;
+		strokeWidth?: number;
+	}>;
 	label: string;
 	isActive: boolean;
 	to: string;
@@ -17,35 +21,20 @@ export function SidebarItem({
 		<UnstyledButton
 			component={Link}
 			to={to}
-			style={{
-				display: "flex",
-				alignItems: "center",
-				gap: "12px",
-				padding: "12px 16px",
-				borderRadius: "12px",
-				width: "100%",
-				backgroundColor: isActive ? "#111827" : "transparent",
-				color: isActive ? "#ffffff" : "#6b7280",
-				transition: "all 200ms ease",
-				fontWeight: isActive ? 600 : 500,
-				fontSize: "14px",
-				textDecoration: "none",
-			}}
-			onMouseEnter={(e) => {
-				if (!isActive) {
-					e.currentTarget.style.backgroundColor = "#f3f4f6";
-					e.currentTarget.style.color = "#111827";
-				}
-			}}
-			onMouseLeave={(e) => {
-				if (!isActive) {
-					e.currentTarget.style.backgroundColor = "transparent";
-					e.currentTarget.style.color = "#6b7280";
-				}
-			}}
+			className={
+				isActive
+					? "flex w-full items-center gap-3 rounded-r-2xl rounded-l-lg bg-red-50 py-3 pl-3 pr-3 text-[0.9375rem] font-semibold text-zinc-900 no-underline transition-colors duration-200 ease-out active:bg-red-100/80"
+					: "flex w-full items-center gap-3 rounded-lg border border-transparent py-3 pl-3 pr-3 text-[0.9375rem] font-medium text-zinc-600 no-underline transition-colors duration-200 ease-out hover:bg-zinc-50 hover:text-zinc-900 active:bg-zinc-100/80"
+			}
 		>
-			<Icon size={20} color={isActive ? "#ffffff" : "#9ca3af"} />
-			{label}
+			<Icon
+				size={20}
+				strokeWidth={1.75}
+				className={
+					isActive ? "shrink-0 text-red-700" : "shrink-0 text-zinc-400"
+				}
+			/>
+			<span className="truncate">{label}</span>
 		</UnstyledButton>
 	);
 }

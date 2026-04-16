@@ -1,4 +1,5 @@
-import { Card, Grid, Stack, Text } from "@mantine/core";
+import { Stack, Text } from "@mantine/core";
+import { adminUi } from "../_shared/admin-ui";
 
 type Stats = {
 	citasHoy: number;
@@ -7,105 +8,62 @@ type Stats = {
 	canceladas: number;
 };
 
+function Cell({
+	label,
+	value,
+	valueClass,
+	className,
+}: {
+	label: string;
+	value: number;
+	valueClass: string;
+	className?: string;
+}) {
+	return (
+		<Stack
+			gap={4}
+			className={`min-w-0 items-center text-center sm:items-start sm:text-left ${className ?? ""}`}
+		>
+			<Text className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+				{label}
+			</Text>
+			<Text
+				className={`${adminUi.monoStat} text-2xl font-semibold leading-none sm:text-[1.5rem] ${valueClass}`}
+			>
+				{value}
+			</Text>
+		</Stack>
+	);
+}
+
+/** Franja de KPI: cuatro columnas iguales en escritorio; en móvil 2×2 equilibrado. */
 export function BookingStatsGrid({ stats }: { stats: Stats }) {
 	return (
-		<Grid gap="md">
-			<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-				<Card
-					radius="xl"
-					p="lg"
-					bg="white"
-					style={{ border: "1px solid #e5e7eb" }}
-				>
-					<Stack gap="xs">
-						<Text size="sm" c="#6b7280" fw={500}>
-							Citas Hoy
-						</Text>
-						<Text
-							style={{
-								fontSize: "28px",
-								fontWeight: 800,
-								color: "#111827",
-								letterSpacing: "-1px",
-							}}
-						>
-							{stats.citasHoy}
-						</Text>
-					</Stack>
-				</Card>
-			</Grid.Col>
-			<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-				<Card
-					radius="xl"
-					p="lg"
-					bg="white"
-					style={{ border: "1px solid #e5e7eb" }}
-				>
-					<Stack gap="xs">
-						<Text size="sm" c="#6b7280" fw={500}>
-							Confirmadas
-						</Text>
-						<Text
-							style={{
-								fontSize: "28px",
-								fontWeight: 800,
-								color: "#16a34a",
-								letterSpacing: "-1px",
-							}}
-						>
-							{stats.confirmadas}
-						</Text>
-					</Stack>
-				</Card>
-			</Grid.Col>
-			<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-				<Card
-					radius="xl"
-					p="lg"
-					bg="white"
-					style={{ border: "1px solid #e5e7eb" }}
-				>
-					<Stack gap="xs">
-						<Text size="sm" c="#6b7280" fw={500}>
-							Pendientes
-						</Text>
-						<Text
-							style={{
-								fontSize: "28px",
-								fontWeight: 800,
-								color: "#f59e0b",
-								letterSpacing: "-1px",
-							}}
-						>
-							{stats.pendientes}
-						</Text>
-					</Stack>
-				</Card>
-			</Grid.Col>
-			<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-				<Card
-					radius="xl"
-					p="lg"
-					bg="white"
-					style={{ border: "1px solid #e5e7eb" }}
-				>
-					<Stack gap="xs">
-						<Text size="sm" c="#6b7280" fw={500}>
-							Canceladas
-						</Text>
-						<Text
-							style={{
-								fontSize: "28px",
-								fontWeight: 800,
-								color: "#e03131",
-								letterSpacing: "-1px",
-							}}
-						>
-							{stats.canceladas}
-						</Text>
-					</Stack>
-				</Card>
-			</Grid.Col>
-		</Grid>
+		<div className="grid w-full min-w-0 grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4 sm:gap-x-0 sm:gap-y-0 sm:divide-x sm:divide-zinc-200/75">
+			<Cell
+				label="Hoy"
+				value={stats.citasHoy}
+				valueClass="text-zinc-900"
+				className="px-0.5 sm:px-2.5 sm:py-0.5"
+			/>
+			<Cell
+				label="Confirmadas"
+				value={stats.confirmadas}
+				valueClass="text-emerald-700"
+				className="px-0.5 sm:px-2.5 sm:py-0.5"
+			/>
+			<Cell
+				label="Pendientes"
+				value={stats.pendientes}
+				valueClass="text-amber-700"
+				className="px-0.5 sm:px-2.5 sm:py-0.5"
+			/>
+			<Cell
+				label="Canceladas"
+				value={stats.canceladas}
+				valueClass="text-red-700"
+				className="px-0.5 sm:px-2.5 sm:py-0.5"
+			/>
+		</div>
 	);
 }

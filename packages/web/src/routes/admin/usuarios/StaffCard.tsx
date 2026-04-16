@@ -1,5 +1,6 @@
 import { Avatar, Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { CheckCircle2, UserX } from "lucide-react";
+import { adminUi } from "../_shared/admin-ui";
 import { CapacityIndicator } from "./CapacityIndicator";
 import type { StaffProfile } from "./types";
 
@@ -26,19 +27,23 @@ export function StaffCard({
 		<Card
 			radius="xl"
 			p="lg"
-			bg={isSelected ? "#fef2f2" : "white"}
-			style={{
-				border: isSelected ? "2px solid #e03131" : "1px solid #e5e7eb",
-				cursor: "pointer",
-			}}
+			shadow="none"
+			className={`${adminUi.surface} cursor-pointer transition-[transform,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-px active:scale-[0.99] ${
+				isSelected
+					? "border-red-600/35 bg-gradient-to-br from-red-50/90 to-white ring-1 ring-red-600/20"
+					: "border-zinc-200/90 bg-white"
+			}`}
 			onClick={onClick}
 		>
 			<Group align="flex-start" gap="md">
 				<Avatar
 					size="lg"
 					radius="xl"
-					bg={profile.isActive ? "#fef2f2" : "#f3f4f6"}
-					c={profile.isActive ? "#e03131" : "#9ca3af"}
+					className={
+						profile.isActive
+							? "border border-red-100 bg-red-50 font-bold text-red-800"
+							: "border border-zinc-200 bg-zinc-100 font-semibold text-zinc-500"
+					}
 				>
 					{initials}
 				</Avatar>
@@ -46,7 +51,7 @@ export function StaffCard({
 					<Group justify="space-between" wrap="nowrap">
 						<Text
 							fw={700}
-							c={profile.isActive ? "#111827" : "gray.5"}
+							className={profile.isActive ? "text-zinc-900" : "text-zinc-400"}
 							lineClamp={1}
 						>
 							{profile.user?.name || "Usuario"}
@@ -56,7 +61,8 @@ export function StaffCard({
 								color="teal"
 								variant="light"
 								size="sm"
-								leftSection={<CheckCircle2 size={12} />}
+								leftSection={<CheckCircle2 size={12} strokeWidth={2} />}
+								styles={{ root: { textTransform: "none", fontWeight: 600 } }}
 							>
 								Activo
 							</Badge>
@@ -65,19 +71,21 @@ export function StaffCard({
 								color="gray"
 								variant="light"
 								size="sm"
-								leftSection={<UserX size={12} />}
+								leftSection={<UserX size={12} strokeWidth={2} />}
+								styles={{ root: { textTransform: "none", fontWeight: 600 } }}
 							>
 								Inactivo
 							</Badge>
 						)}
 					</Group>
-					<Text size="xs" c="gray.5" lineClamp={1}>
+					<Text size="xs" c="dimmed" lineClamp={1}>
 						{profile.user?.email}
 					</Text>
 					<Badge
-						color={profile.isAssignable ? "blue" : "gray"}
+						color={profile.isAssignable ? "red" : "gray"}
 						variant="light"
 						size="sm"
+						styles={{ root: { textTransform: "none", fontWeight: 600 } }}
 					>
 						{profile.isAssignable ? "Recibe citas" : "No asignable"}
 					</Badge>

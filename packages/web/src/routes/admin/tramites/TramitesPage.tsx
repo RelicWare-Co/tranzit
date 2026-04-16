@@ -8,12 +8,13 @@ import {
 	Skeleton,
 	Stack,
 	Text,
-	Title,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { AlertCircle, CheckCircle2, List, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "../../../lib/orpc-client";
+import { AdminPageHeader } from "../_shared/AdminPageHeader";
+import { adminUi } from "../_shared/admin-ui";
 import { getErrorMessage } from "../_shared/errors";
 import { AddProcedureModal } from "./AddProcedureModal";
 import {
@@ -171,7 +172,7 @@ export function TramitesPage() {
 	if (isLoading) {
 		return (
 			<Stack gap="xl">
-				<Skeleton height={48} radius="xl" />
+				<Skeleton height={40} width="min(100%, 420px)" radius="md" />
 				<Skeleton height={220} radius="xl" />
 			</Stack>
 		);
@@ -179,18 +180,21 @@ export function TramitesPage() {
 
 	return (
 		<Stack gap="xl">
-			<Group justify="space-between" align="flex-start" wrap="nowrap">
-				<Box>
-					<Title order={1}>Gestión de Trámites</Title>
-					<Text c="dimmed" mt="xs">
-						Configura qué trámites están disponibles para agendamiento
-						ciudadano.
-					</Text>
-				</Box>
-				<Button leftSection={<Plus size={18} />} radius="xl" onClick={openAdd}>
-					Nuevo trámite
-				</Button>
-			</Group>
+			<AdminPageHeader
+				title="Gestión de trámites"
+				description="Definí qué procedimientos están disponibles para agendamiento ciudadano y mantené la configuración alineada con operaciones."
+				actions={
+					<Button
+						leftSection={<Plus size={18} strokeWidth={1.75} />}
+						radius="md"
+						color="red"
+						className="font-semibold"
+						onClick={openAdd}
+					>
+						Nuevo trámite
+					</Button>
+				}
+			/>
 
 			{error && (
 				<Alert color="red" icon={<AlertCircle size={16} />}>
@@ -203,20 +207,17 @@ export function TramitesPage() {
 				</Alert>
 			)}
 
-			<Card
-				radius="xl"
-				p="lg"
-				bg="#eff6ff"
-				style={{ border: "1px solid #bfdbfe" }}
-			>
-				<Group gap="md" align="center">
-					<List size={24} color="#2563eb" />
-					<Stack gap={2}>
-						<Text fw={700} c="#1e40af">
+			<Card className={adminUi.callout} radius="xl" p="lg" shadow="none">
+				<Group gap="md" align="flex-start">
+					<Box className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-zinc-200/90">
+						<List size={20} className="text-red-700" strokeWidth={1.75} />
+					</Box>
+					<Stack gap={4}>
+						<Text className="font-semibold text-zinc-900">
 							{activeCount} de {procedures.length} trámites activos
 						</Text>
-						<Text size="sm" c="#3b82f6">
-							Solo los trámites activos aparecen en el flujo ciudadano.
+						<Text size="sm" className="leading-relaxed text-zinc-600">
+							Solo los trámites activos se muestran en el flujo ciudadano.
 						</Text>
 					</Stack>
 				</Group>

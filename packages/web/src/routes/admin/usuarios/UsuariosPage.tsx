@@ -8,13 +8,14 @@ import {
 	Skeleton,
 	Stack,
 	Text,
-	Title,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { AlertCircle, CheckCircle2, Plus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authClient } from "../../../lib/auth-client";
 import { orpcClient } from "../../../lib/orpc-client";
+import { AdminPageHeader } from "../_shared/AdminPageHeader";
+import { adminUi } from "../_shared/admin-ui";
 import { formatDateLocal } from "../_shared/dates";
 import { getErrorMessage } from "../_shared/errors";
 import { AddStaffModal } from "./AddStaffModal";
@@ -224,7 +225,7 @@ export function UsuariosPage() {
 	if (isLoading) {
 		return (
 			<Stack gap="xl">
-				<Skeleton height={40} width={300} radius="xl" mb="xs" />
+				<Skeleton height={40} width="min(100%, 380px)" radius="md" mb="xs" />
 				<Skeleton height={220} radius="xl" />
 			</Stack>
 		);
@@ -232,24 +233,21 @@ export function UsuariosPage() {
 
 	return (
 		<Stack gap="xl">
-			<Box>
-				<Group justify="space-between" align="flex-start" wrap="nowrap">
-					<Box>
-						<Title order={1}>Gestión de Encargados</Title>
-						<Text size="lg" c="#6b7280" mt="xs">
-							Administra auxiliares y su capacidad diaria.
-						</Text>
-					</Box>
+			<AdminPageHeader
+				title="Gestión de encargados"
+				description="Administrá auxiliares, disponibilidad y reasignación de citas con límites de capacidad por día."
+				actions={
 					<Button
-						color="green"
+						color="red"
 						onClick={openAdd}
-						radius="xl"
-						leftSection={<Plus size={18} />}
+						radius="md"
+						leftSection={<Plus size={18} strokeWidth={1.75} />}
+						className="font-semibold"
 					>
 						Nuevo encargado
 					</Button>
-				</Group>
-			</Box>
+				}
+			/>
 
 			{error && (
 				<Alert color="red" icon={<AlertCircle size={16} />}>
@@ -262,43 +260,51 @@ export function UsuariosPage() {
 				</Alert>
 			)}
 
-			{assignableStaff.length > 0 && (
-				<Card
-					radius="xl"
-					p="lg"
-					bg="#eff6ff"
-					style={{ border: "1px solid #bfdbfe" }}
-				>
-					<Group gap="md" align="center">
-						<Users size={24} color="#2563eb" />
-						<Stack gap={2}>
-							<Text fw={700} c="#1e40af" size="lg">
-								Distribución proporcional activa
+			{assignableStaff.length > 0 ? (
+				<Card className={adminUi.callout} radius="xl" p="lg" shadow="none">
+					<Group gap="md" align="flex-start">
+						<Box className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-zinc-200/90">
+							<Users size={20} className="text-red-700" strokeWidth={1.75} />
+						</Box>
+						<Stack gap={4}>
+							<Text className="text-lg font-semibold text-zinc-900">
+								Capacidad distribuida
 							</Text>
-							<Text size="sm" c="#3b82f6">
-								{assignableStaff.length} encargados activos. Capacidad total:{" "}
-								{totalDailyCapacity} citas/día.
+							<Text size="sm" className="leading-relaxed text-zinc-600">
+								<span className="font-mono tabular-nums font-semibold text-zinc-800">
+									{assignableStaff.length}
+								</span>{" "}
+								encargados activos. Cupo combinado:{" "}
+								<span className="font-mono tabular-nums font-semibold text-zinc-800">
+									{totalDailyCapacity}
+								</span>{" "}
+								citas por día.
 							</Text>
 						</Stack>
 					</Group>
 				</Card>
-			)}
+			) : null}
 
 			{staffList.length === 0 ? (
 				<Card
+					className={`${adminUi.surface} text-center`}
 					radius="xl"
-					p={60}
-					bg="white"
-					style={{ border: "1px solid #e5e7eb", textAlign: "center" }}
+					p={48}
+					shadow="none"
 				>
 					<Stack align="center" gap="lg">
-						<Users size={36} color="#9ca3af" />
-						<Text fw={700}>No hay encargados registrados</Text>
+						<Box className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/90">
+							<Users size={26} className="text-zinc-500" strokeWidth={1.5} />
+						</Box>
+						<Text className="text-lg font-semibold text-zinc-900">
+							No hay encargados registrados
+						</Text>
 						<Button
 							color="red"
 							onClick={openAdd}
-							radius="xl"
-							leftSection={<Plus size={18} />}
+							radius="md"
+							leftSection={<Plus size={18} strokeWidth={1.75} />}
+							className="font-semibold"
 						>
 							Crear primer encargado
 						</Button>
