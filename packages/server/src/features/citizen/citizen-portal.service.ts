@@ -6,7 +6,7 @@ import { throwCapacityConflict, throwRpcError } from "../../orpc/shared";
 import {
 	confirmExistingBooking,
 	createBooking,
-} from "../bookings/bookings-admin.service";
+} from "../bookings/bookings-mutations.service";
 import { releaseCapacity } from "../bookings/capacity-consume.service";
 import { checkCapacity } from "../bookings/capacity-check.service";
 import { isValidDateFormat } from "../schedule/schedule.schemas";
