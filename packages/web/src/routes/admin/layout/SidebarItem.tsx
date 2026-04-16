@@ -1,6 +1,9 @@
 import { UnstyledButton } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import type { ComponentType } from "react";
+import { ADMIN_ACCENT } from "../_shared/admin-ui";
+
+const ease = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 export function SidebarItem({
 	icon: Icon,
@@ -21,20 +24,29 @@ export function SidebarItem({
 		<UnstyledButton
 			component={Link}
 			to={to}
-			className={
+			className={[
+				"group relative flex w-full items-center gap-4 rounded-xl border-l-[3px] py-3.5 pl-4 pr-4 text-left text-[0.9375rem] leading-snug no-underline transition-[background-color,color,box-shadow] duration-200",
 				isActive
-					? "flex w-full items-center gap-3 rounded-r-2xl rounded-l-lg bg-red-50 py-3 pl-3 pr-3 text-[0.9375rem] font-semibold text-zinc-900 no-underline transition-colors duration-200 ease-out active:bg-red-100/80"
-					: "flex w-full items-center gap-3 rounded-lg border border-transparent py-3 pl-3 pr-3 text-[0.9375rem] font-medium text-zinc-600 no-underline transition-colors duration-200 ease-out hover:bg-zinc-50 hover:text-zinc-900 active:bg-zinc-100/80"
-			}
+					? "bg-white font-semibold text-zinc-950 shadow-[0_1px_3px_rgba(9,9,11,0.08),0_0_0_1px_rgba(9,9,11,0.04)]"
+					: "border-l-transparent font-medium text-zinc-600 hover:bg-zinc-200/55 hover:text-zinc-900",
+			].join(" ")}
+			style={{
+				borderLeftColor: isActive ? ADMIN_ACCENT : "transparent",
+				transitionTimingFunction: ease,
+			}}
 		>
-			<Icon
-				size={20}
-				strokeWidth={1.75}
-				className={
-					isActive ? "shrink-0 text-red-700" : "shrink-0 text-zinc-400"
-				}
-			/>
-			<span className="truncate">{label}</span>
+			<span
+				className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.95)] ring-1 ring-zinc-200/70 transition-[box-shadow,background-color] duration-200 group-hover:bg-white group-hover:ring-zinc-300/80"
+				style={{ color: isActive ? ADMIN_ACCENT : undefined }}
+			>
+				<Icon
+					size={22}
+					strokeWidth={1.65}
+					aria-hidden
+					className={isActive ? "" : "text-zinc-500"}
+				/>
+			</span>
+			<span className="min-w-0 flex-1 truncate">{label}</span>
 		</UnstyledButton>
 	);
 }
