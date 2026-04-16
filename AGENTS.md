@@ -321,6 +321,10 @@ Hoy el backend ya expone:
 Nota:
 - `/api/admin/*` ya no se expone como API publica ni como capa interna del runtime; la capa administrativa corre en handlers oRPC nativos.
 
+Ajustes operativos recientes en citizen:
+- `citizen.slots.range` valida `dateFrom` como fecha calendario real (no solo regex `YYYY-MM-DD`).
+- `citizen.bookings.hold` recorta y valida identidad requerida (`applicantName`, `applicantDocument`) para rechazar valores solo con espacios.
+
 El detalle endpoint por endpoint vive en `packages/server/src/BACKEND_STATUS.md`.
 
 Lo que todavia no esta completo:
