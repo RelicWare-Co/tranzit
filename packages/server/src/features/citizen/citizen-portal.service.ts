@@ -1,4 +1,5 @@
 import { and, eq, inArray, lte } from "drizzle-orm";
+import { z } from "zod";
 import { db, schema } from "../../lib/db";
 import { logger } from "../../lib/logger";
 import { throwCapacityConflict, throwRpcError } from "../../orpc/shared";
@@ -11,6 +12,26 @@ import { checkCapacity } from "../bookings/capacity-check.service";
 import { isValidDateFormat } from "../schedule/schedule.schemas";
 import { formatDateLocal } from "../schedule/schedule.service";
 import { listScheduleSlotsByDate } from "../schedule/schedule-admin.service";
+
+// Zod schemas for input validation
+const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "must be YYYY-MM-DD");
+
+const listSlotsSchema = z.object({
+	dateFrom: dateStringSchema.optional(),
+	days: z.number().int().positive().max(21).optional().default(7),
+});
+
+const createHoldSchema = z.object({
+	procedureTypeId: z.string().min(1, "procedureTypeId is required"),
+	slotId: z.string().min(1, "slotId is required"),
+	plate: z.string().optional(),
+	applicantName: z.string().min(1, "applicantName is required"),
+	applicantDocument: z.string().min(1, "applicantDocument is required"),
+	documentType: z.string().optional(),
+	phone: z.string().optional(),
+	email: z.string().email().optional(),
+	notes: z.string().optional(),
+});
 
 const CITIZEN_HOLD_DURATION_MS = 5 * 60 * 1000;
 const MAX_SLOTS_RANGE_DAYS = 21;
@@ -75,28 +96,20 @@ export type CitizenBookingSummary = {
 };
 
 const normalizeDateFrom = (value?: string): string => {
-	if (!value) {
-		return formatDateLocal(new Date());
-	}
-	if (!isValidDateFormat(value)) {
+	if (!value) return formatDateLocal(new Date());
+	const result = dateStringSchema.safeParse(value);
+	if (!result.success) {
 		throwRpcError("INVALID_DATE", 422, "dateFrom must be YYYY-MM-DD");
 	}
-	return value;
+	return result.data;
 };
 
 const normalizeRangeDays = (value?: number): number => {
-	const days = Number(value ?? 7);
-	if (!Number.isInteger(days) || days <= 0) {
-		throwRpcError("INVALID_RANGE", 422, "days must be a positive integer");
+	const result = z.number().int().positive().max(MAX_SLOTS_RANGE_DAYS).safeParse(value ?? 7);
+	if (!result.success) {
+		throwRpcError("INVALID_RANGE", 422, `days must be a positive integer <= ${MAX_SLOTS_RANGE_DAYS}`);
 	}
-	if (days > MAX_SLOTS_RANGE_DAYS) {
-		throwRpcError(
-			"RANGE_TOO_LARGE",
-			422,
-			`days must be less than or equal to ${MAX_SLOTS_RANGE_DAYS}`,
-		);
-	}
-	return days;
+	return result.data;
 };
 
 const listDateRange = (dateFrom: string, days: number): string[] => {
@@ -378,25 +391,10 @@ export async function createCitizenBookingHold(
 ) {
 	await expireStaleCitizenHolds();
 
-	if (!input.procedureTypeId) {
-		throwRpcError(
-			"MISSING_REQUIRED_FIELDS",
-			422,
-			"procedureTypeId is required",
-		);
-	}
-	if (!input.slotId) {
-		throwRpcError("MISSING_REQUIRED_FIELDS", 422, "slotId is required");
-	}
-	if (!input.applicantName?.trim()) {
-		throwRpcError("MISSING_REQUIRED_FIELDS", 422, "applicantName is required");
-	}
-	if (!input.applicantDocument?.trim()) {
-		throwRpcError(
-			"MISSING_REQUIRED_FIELDS",
-			422,
-			"applicantDocument is required",
-		);
+	const parsedInput = createHoldSchema.safeParse(input);
+	if (!parsedInput.success) {
+		const issue = parsedInput.error.issues[0];
+		throwRpcError("MISSING_REQUIRED_FIELDS", 422, `${issue.path.join(".")}: ${issue.message}`);
 	}
 
 	const procedure = await db.query.procedureType.findFirst({

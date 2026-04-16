@@ -100,9 +100,9 @@ export const validateWeeklyAvailability = (
 
 	const result = weeklyAvailabilitySchema.safeParse(wa);
 	if (!result.success) {
-		const firstError = result.error.errors[0];
-		const path = firstError.path.length > 0 ? `.${firstError.path.join(".")}` : "";
-		return { valid: false, error: `weeklyAvailability${path}: ${firstError.message}` };
+		const firstIssue = result.error.issues[0];
+		const path = firstIssue.path.length > 0 ? `.${firstIssue.path.join(".")}` : "";
+		return { valid: false, error: `weeklyAvailability${path}: ${firstIssue.message}` };
 	}
 
 	return { valid: true, parsed: result.data };
