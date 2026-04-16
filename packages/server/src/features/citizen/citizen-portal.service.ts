@@ -11,7 +11,7 @@ import { releaseCapacity } from "../bookings/capacity-consume.service";
 import { checkCapacity } from "../bookings/capacity-check.service";
 import { isValidDateFormat } from "../schedule/schedule.schemas";
 import { formatDateLocal } from "../schedule/schedule.service";
-import { listScheduleSlotsByDate } from "../schedule/schedule-admin.service";
+import { listScheduleSlotsByDate } from "../schedule/schedule-slots-admin.service";
 
 // Zod schemas for input validation
 const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "must be YYYY-MM-DD");
