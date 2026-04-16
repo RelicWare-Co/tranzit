@@ -28,15 +28,15 @@ Principios que debes preservar:
 ## Fuentes de verdad
 
 Antes de tocar el dominio o el esquema, lee estos archivos:
-- `packages/server/src/db/SCHEMA.md`
-- `packages/server/src/db/schema.ts`
-- `packages/server/src/BACKEND_STATUS.md`
+- `server/src/db/SCHEMA.md`
+- `server/src/db/schema.ts`
+- `server/src/BACKEND_STATUS.md`
 
 Notas importantes:
-- `packages/server/src/db/SCHEMA.md` explica por que el modelo esta simplificado como esta y que invariantes deben respetarse.
-- `packages/server/src/BACKEND_STATUS.md` describe las rutas y servicios backend realmente implementados hoy.
+- `server/src/db/SCHEMA.md` explica por que el modelo esta simplificado como esta y que invariantes deben respetarse.
+- `server/src/BACKEND_STATUS.md` describe las rutas y servicios backend realmente implementados hoy.
 - `README.md` sigue siendo casi boilerplate de TanStack/Vite. No lo tomes como documentacion funcional del proyecto.
-- Este `AGENTS.md`, `packages/server/src/db/SCHEMA.md` y `packages/server/src/BACKEND_STATUS.md` son mas confiables que el `README.md`.
+- Este `AGENTS.md`, `server/src/db/SCHEMA.md` y `server/src/BACKEND_STATUS.md` son mas confiables que el `README.md`.
 
 ## Estado actual del proyecto
 
@@ -80,99 +80,82 @@ Backend:
 Calidad:
 - Biome para lint/format/check
 - Vitest disponible, pero hoy casi no hay pruebas de dominio
-- `bunx tsc --noEmit` en `packages/server/` es una verificacion importante
+- `bunx tsc --noEmit` en `server/` es una verificacion importante
 
-## Estructura del monorepo
+## Estructura importante del repo
 
-Este proyecto usa Bun workspaces. La estructura es:
-
-```
-tranzit/
-├── package.json          # Root workspace config
-├── packages/
-│   ├── web/              # Frontend (React + Vite)
-│   └── server/           # Backend (Bun + Hono)
-├── .env                  # Variables de entorno (no versionar)
-├── AGENTS.md             # Este archivo
-└── bun.lock              # Lockfile compartido
-```
-
-Frontend (`packages/web/`):
+Raiz:
+- `package.json`: scripts del frontend y comandos generales
 - `vite.config.ts`: proxy local para `/api/auth` y `/api/rpc`
+- `src/`: app frontend
+- `server/`: backend, auth, schema y migraciones
+
+Frontend:
 - `src/main.tsx`: monta Mantine, AuthProvider y RouterProvider
 - `src/lib/auth-client.ts`: cliente Better Auth del frontend
 - `src/lib/AuthContext.tsx`: wrapper de sesion y login/logout para React
-- `src/routes/`: rutas actuales (file-based routing)
-- `src/routeTree.gen.ts`: archivo generado por TanStack Router
+- `src/routes/`: rutas actuales
+- `src/routeTree.gen.ts`: archivo generado, no lo edites manualmente
 
-Backend (`packages/server/`):
-- `src/index.ts`: entrypoint de runtime (exporta `fetch` del app)
-- `src/app.ts`: composicion principal de middlewares y rutas Hono
-- `src/features/auth/auth.config.ts`: configuracion Better Auth
-- `src/features/auth/auth.mailer.ts`: envio de OTP por correo
-- `src/lib/db.ts`: inicializacion de cliente libsql + Drizzle
-- `src/db/schema.ts`: schema Drizzle
-- `src/db/SCHEMA.md`: explicacion del modelo e invariantes
-- `src/BACKEND_STATUS.md`: inventario funcional real del backend
+Backend:
+- `server/src/index.ts`: entrypoint de runtime (exporta `fetch` del app)
+- `server/src/app.ts`: composicion principal de middlewares y rutas Hono
+- `server/src/features/auth/auth.config.ts`: configuracion Better Auth
+- `server/src/features/auth/auth.mailer.ts`: envio de OTP por correo
+- `server/src/lib/db.ts`: inicializacion de cliente libsql + Drizzle
+- `server/src/db/schema.ts`: schema Drizzle
+- `server/src/db/SCHEMA.md`: explicacion del modelo e invariantes
+- `server/src/BACKEND_STATUS.md`: inventario funcional real del backend (rutas/servicios/estado)
 
 Migraciones:
-- migraciones canonicas: `packages/server/drizzle/000*.sql`
-- journal canonico: `packages/server/drizzle/meta/_journal.json`
-- snapshots: `packages/server/drizzle/meta/*.json`
+- migraciones canonicas: `server/drizzle/000*.sql`
+- journal canonico: `server/drizzle/meta/_journal.json`
+- snapshots: `server/drizzle/meta/*.json`
+
+Importante:
+- existe un folder viejo tipo `server/drizzle/2026.../`. No lo tomes como la cadena canonica de migraciones.
+- la cadena activa hoy es la que referencia `server/drizzle/meta/_journal.json`.
 
 Locales no trackeados:
 - `.env`
-- `packages/server/sqlite.db`
-- `packages/server/*.db-shm`
-- `packages/server/*.db-wal`
+- `server/.env`
+- `server/sqlite.db`
 
 ## Comandos utiles
 
-Desde la raiz del proyecto (usa `bun run` o `bunx`):
+Frontend:
+- `bun run dev`
+- `bun run build`
+- `bun run preview`
 
-```bash
-# Desarrollo
-bun run dev              # Frontend en http://localhost:3000
-bun run dev:server        # Backend en http://localhost:3001
-bun run maildev           # Maildev en http://localhost:1080
+Backend:
+- `bun run dev:server`
+- `bun run maildev`
+- `cd server && bunx tsc --noEmit`
+- `cd server && bun run db:generate`
+- `cd server && bun run db:migrate`
 
-# Build y preview
-bun run build             # Build frontend
-bun run preview           # Preview del build
-
-# Base de datos
-bun run db:generate       # Generar migraciones Drizzle
-bun run db:migrate         # Aplicar migraciones
-
-# Calidad
-bun run test              # Tests
-bun run lint              # Lint con Biome
-bun run format            # Format con Biome
-bun run check             # Check completo
-```
-
-Desde un package especifico:
-```bash
-bun run --filter=@tranzit/web dev
-bun run --filter=@tranzit/server dev
-cd packages/server && bunx tsc --noEmit
-```
+Calidad:
+- `bun run test`
+- `bun run lint`
+- `bun run format`
+- `bun run check`
 
 ## Variables de entorno y entorno local
 
 La configuracion de ejemplo esta en `.env.example`.
 
 Puntos importantes:
-- el backend carga `../.env` desde `packages/server/`, o sea, el `.env` de la raiz es la fuente principal usada por el codigo versionado.
-- `packages/server/.env` puede existir localmente, pero el codigo actual no depende de ese archivo como fuente principal.
-- `TURSO_DATABASE_URL=file:./sqlite.db` desde `packages/server/` apunta a `packages/server/sqlite.db`.
+- el backend carga `../.env` desde `server/`, o sea, el `.env` de la raiz es la fuente principal usada por el codigo versionado.
+- `server/.env` puede existir localmente, pero el codigo actual no depende de ese archivo como fuente principal.
+- `TURSO_DATABASE_URL=file:./sqlite.db` desde `server/` apunta a `server/sqlite.db`.
 - el frontend corre en `http://localhost:3000`.
 - el backend corre en `http://localhost:3001`.
 - `vite.config.ts` hace proxy para `/api/auth` y `/api/rpc`.
 
 Ojo con esto:
-- `packages/server/src/features/auth/auth.config.ts` usa `BETTER_AUTH_URL` con default `http://localhost:3000`.
-- `packages/server/src/lib/env.ts` usa `CORS_ORIGIN` con default `http://localhost:3000`.
+- `server/src/features/auth/auth.config.ts` usa `BETTER_AUTH_URL` con default `http://localhost:3000`.
+- `server/src/lib/env.ts` usa `CORS_ORIGIN` con default `http://localhost:3000`.
 - por eso conviene mantener `CORS_ORIGIN=http://localhost:3000` en `.env`.
 
 Si agregas endpoints de dominio fuera de `/api/auth` y `/api/rpc`:
@@ -228,7 +211,7 @@ Reglas operativas que debes proteger:
 
 ## Modelo de dominio actual
 
-Lee primero `packages/server/src/db/SCHEMA.md`.
+Lee primero `server/src/db/SCHEMA.md`.
 
 Resumen corto del modelo actual:
 
@@ -244,7 +227,7 @@ Resumen corto del modelo actual:
 
 ## Invariantes del esquema que no debes romper
 
-Lee tambien `packages/server/src/db/SCHEMA.md` para el detalle. Los puntos mas delicados son estos:
+Lee tambien `server/src/db/SCHEMA.md` para el detalle. Los puntos mas delicados son estos:
 
 - `booking` sigue siendo una tabla unica para hold ciudadano, cita y reserva administrativa. No la partas en varias tablas sin una razon muy fuerte.
 - `service_request.activeBookingId` debe apuntar a la reserva/cita vigente.
@@ -262,7 +245,7 @@ Lee tambien `packages/server/src/db/SCHEMA.md` para el detalle. Los puntos mas d
 Backend hoy:
 - Better Auth con plugins `admin()` y `emailOTP()`
 - OTP configurable por env
-- envio de correo via `packages/server/src/features/auth/auth.mailer.ts`
+- envio de correo via `server/src/features/auth/auth.mailer.ts`
 
 Frontend hoy:
 - `AuthContext` usa `signIn.email` y `signUp.email`
@@ -302,7 +285,7 @@ Hoy el backend ya expone:
 Nota:
 - `/api/admin/*` ya no se expone como API publica ni como capa interna del runtime; la capa administrativa corre en handlers oRPC nativos.
 
-El detalle endpoint por endpoint vive en `packages/server/src/BACKEND_STATUS.md`.
+El detalle endpoint por endpoint vive en `server/src/BACKEND_STATUS.md`.
 
 Lo que todavia no esta completo:
 - APIs ciudadanas de service requests,
@@ -315,18 +298,18 @@ Si vas a construir esa parte:
 - diseña APIs alrededor del dominio, no solo CRUD generico.
 
 Cuando cambies rutas o servicios backend:
-- actualiza `packages/server/src/BACKEND_STATUS.md` en el mismo cambio.
+- actualiza `server/src/BACKEND_STATUS.md` en el mismo cambio.
 
 ## Workflow para cambios de schema
 
 Cuando cambies el schema:
 
-1. Actualiza `packages/server/src/db/schema.ts`.
-2. Actualiza `packages/server/src/db/SCHEMA.md`.
-3. Genera migracion con `bun run db:generate`.
+1. Actualiza `server/src/db/schema.ts`.
+2. Actualiza `server/src/db/SCHEMA.md`.
+3. Genera migracion con `cd server && bun run db:generate`.
 4. Revisa el SQL generado.
-5. Corre `bun run db:migrate`.
-6. Corre `cd packages/server && bunx tsc --noEmit`.
+5. Corre `cd server && bun run db:migrate`.
+6. Corre `cd server && bunx tsc --noEmit`.
 
 No dejes cambios de schema sin documentar.
 
@@ -341,18 +324,18 @@ Si el problema es de baseline local en `__drizzle_migrations`, arreglalo con cui
 ## Convenciones de codigo
 
 - Usa commits con Conventional Commits.
-- No commits `.env`, `packages/server/.env` ni `packages/server/sqlite.db`.
+- No commits `.env`, `server/.env` ni `server/sqlite.db`.
 - Prefiere cambios pequenos y verificables.
 - Mantén la solucion simple y operable.
-- Si agregas reglas nuevas del dominio, documentalas aqui o en `packages/server/src/db/SCHEMA.md`.
+- Si agregas reglas nuevas del dominio, documentalas aqui o en `server/src/db/SCHEMA.md`.
 - Si una decision afecta producto y no solo implementacion, deja el contexto por escrito.
 
 ## Si no sabes por donde empezar
 
 Orden recomendado para cualquier cambio grande:
 - lee `AGENTS.md`,
-- lee `packages/server/src/db/SCHEMA.md`,
-- inspecciona `packages/server/src/db/schema.ts`,
+- lee `server/src/db/SCHEMA.md`,
+- inspecciona `server/src/db/schema.ts`,
 - revisa si el frontend actual es mock o real para esa pieza,
 - decide si el cambio pertenece a UI, API, schema o a los cuatro,
 - verifica al final con `bunx tsc --noEmit`, `bun run db:migrate` si aplica, y al menos un chequeo rapido de la ruta afectada.

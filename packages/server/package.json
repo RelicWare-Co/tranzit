@@ -1,5 +1,5 @@
 {
-	"name": "server",
+	"name": "@tranzit/server",
 	"scripts": {
 		"db:generate": "drizzle-kit generate --config drizzle.config.ts",
 		"db:migrate": "drizzle-kit migrate --config drizzle.config.ts",

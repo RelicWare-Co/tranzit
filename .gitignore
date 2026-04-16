@@ -1,4 +1,9 @@
+# Dependencies (root)
 node_modules
+
+# Package-specific
+packages/web/node_modules
+packages/server/node_modules
 .DS_Store
 dist
 dist-ssr
@@ -12,4 +17,9 @@ dist-ssr
 __unconfig*
 todos.json
 tsconfig.tsbuildinfo
+
+# Local databases
+packages/server/sqlite.db
+*.db-shm
+*.db-wal
 .soulforge
