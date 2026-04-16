@@ -6,7 +6,7 @@ import {
 	previewReassignment,
 	previewReassignments,
 	reassignBooking,
-} from "./capacity.service";
+} from "./capacity-reassign.service";
 
 const MAX_BATCH_SIZE = 100;
 

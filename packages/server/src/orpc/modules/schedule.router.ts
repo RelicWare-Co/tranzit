@@ -1,17 +1,21 @@
 import {
 	createCalendarOverride,
-	createScheduleTemplate,
-	generateScheduleSlots,
 	getCalendarOverride,
-	getScheduleTemplate,
 	listCalendarOverrides,
-	listScheduleSlotsByDate,
-	listScheduleTemplates,
 	removeCalendarOverride,
-	removeScheduleTemplate,
 	updateCalendarOverride,
+} from "../../features/schedule/schedule-overrides-admin.service";
+import {
+	generateScheduleSlots,
+	listScheduleSlotsByDate,
+} from "../../features/schedule/schedule-slots-admin.service";
+import {
+	createScheduleTemplate,
+	getScheduleTemplate,
+	listScheduleTemplates,
+	removeScheduleTemplate,
 	updateScheduleTemplate,
-} from "../../features/schedule/schedule-admin.service";
+} from "../../features/schedule/schedule-templates-admin.service";
 import { rpc } from "../context";
 import { requireAdminAccess } from "../shared";
 

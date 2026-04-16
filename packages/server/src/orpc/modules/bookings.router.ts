@@ -1,16 +1,20 @@
 import {
-	applyBookingsReassignments,
-	checkBookingAvailability,
 	confirmExistingBooking,
 	createBooking,
+	releaseExistingBooking,
+} from "../../features/bookings/bookings-mutations.service";
+import {
+	checkBookingAvailability,
 	getBooking,
 	getBookingCapacity,
 	listBookings,
+} from "../../features/bookings/bookings-read.service";
+import {
+	applyBookingsReassignments,
 	previewBookingReassignment,
 	previewBookingsReassignments,
 	reassignExistingBooking,
-	releaseExistingBooking,
-} from "../../features/bookings/bookings-admin.service";
+} from "../../features/bookings/bookings-reassign.service";
 import { rpc } from "../context";
 import { requireAdminAccess } from "../shared";
 

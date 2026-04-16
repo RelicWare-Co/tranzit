@@ -22,12 +22,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import {
-	checkCapacity,
-	consumeCapacity,
-	reassignBooking,
-	releaseCapacity,
-} from "./features/bookings/capacity.service";
+import { checkCapacity } from "./features/bookings/capacity-check.service";
+import { consumeCapacity, releaseCapacity } from "./features/bookings/capacity-consume.service";
+import { reassignBooking } from "./features/bookings/capacity-reassign.service";
 import { db, schema } from "./lib/db";
 
 // ---------------------------------------------------------------------------

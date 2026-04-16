@@ -13,11 +13,8 @@ import {
 	throwIdempotencyAwareError,
 	throwRpcError,
 } from "../../orpc/shared";
-import {
-	type CapacityConflict,
-	consumeCapacity,
-	releaseCapacity,
-} from "../bookings/capacity.service";
+import type { CapacityConflict } from "../bookings/capacity.types";
+import { consumeCapacity, releaseCapacity } from "../bookings/capacity-consume.service";
 
 export interface CreateReservationSeriesInput {
 	recurrenceRule?: RecurrenceRule | string;

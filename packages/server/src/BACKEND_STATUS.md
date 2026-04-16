@@ -197,10 +197,16 @@ Key behavior already implemented:
 - citizen hold assignment only considers assignable staff profiles with a valid backing `user` row (prevents FK failures on booking insert)
 - real-time slot availability exposure based on generated schedule slots and active bookings
 - `service_request` creation with config/version snapshot at booking-hold time
+- strict `citizen.slots.range` date validation for `dateFrom` (format `YYYY-MM-DD` plus real calendar date)
+- `citizen.bookings.hold` rejects whitespace-only required identity fields (`applicantName`, `applicantDocument`)
+- `citizen.bookings.hold` applies normalized/validated Zod output for downstream persistence and booking creation
 
 ## 3) Capacity engine (core business logic)
 
-Implemented in `server/src/features/bookings/capacity.service.ts`.
+Implemented across:
+- `server/src/features/bookings/capacity-check.service.ts`
+- `server/src/features/bookings/capacity-consume.service.ts`
+- `server/src/features/bookings/capacity-reassign.service.ts`
 
 Main exported operations:
 - `checkCapacity(slotId, staffUserId)`

@@ -1,13 +1,17 @@
 import {
 	createReservationSeries,
+	releaseReservationSeries,
+} from "../../features/reservations/reservation-series-create-release.service";
+import { moveReservationSeries } from "../../features/reservations/reservation-series-move.service";
+import {
 	getReservationSeries,
 	listReservationSeries,
 	listReservationSeriesInstances,
-	moveReservationSeries,
-	releaseReservationSeries,
+} from "../../features/reservations/reservation-series-read.service";
+import {
 	updateReservationSeries,
 	updateReservationSeriesFromDate,
-} from "../../features/reservations/reservation-series.service";
+} from "../../features/reservations/reservation-series-update.service";
 import { rpc } from "../context";
 import { parseIfMatch, requireAdminAccess } from "../shared";
 
