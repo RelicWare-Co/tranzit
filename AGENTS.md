@@ -317,6 +317,39 @@ Si vas a construir esa parte:
 Cuando cambies rutas o servicios backend:
 - actualiza `packages/server/src/BACKEND_STATUS.md` en el mismo cambio.
 
+### Brecha de conexion frontend-backend (estado operativo)
+
+Admin conectado hoy en frontend:
+- onboarding (`admin.onboarding.status`, `admin.onboarding.bootstrap`),
+- staff basico (`list/create/update/remove`),
+- bookings base (`list/create/reassignmentsPreview/reassignmentsApply`),
+- procedures (`list/get/create/update/remove`),
+- schedule slots list (`admin.schedule.slots.list`).
+
+Admin avanzado conectado de forma minima (UI tecnica) en frontend:
+- `src/routes/admin/configuracion.tsx` y `src/routes/admin/configuracion/AdminConfiguracionPage.tsx`:
+  - `admin.schedule.templates.*`,
+  - `admin.schedule.overrides.*`,
+  - `admin.schedule.slots.generate`,
+  - `admin.staff.get`,
+  - `admin.staff.dateOverrides.*`,
+  - `admin.staff.effectiveAvailability`.
+- `src/routes/admin/reportes.tsx` y `src/routes/admin/reportes/AdminReportesPage.tsx`:
+  - `session.get`,
+  - `admin.bookings.get/capacity/confirm/release/reassign/reassignPreview/availabilityCheck`,
+  - `admin.reservationSeries.*`,
+  - `admin.reservations.*`.
+
+Lo que aun falta para darlo por conectado de verdad:
+- reemplazar la UI tecnica (payload JSON libre) por flujos de producto (formularios y acciones guiadas por caso de uso),
+- estandarizar manejo de concurrencia optimista (`If-Match`) e idempotency keys en acciones de series/instancias,
+- cubrir estas superficies con pruebas de frontend y pruebas de integracion.
+
+Brecha ciudadana que sigue pendiente:
+- API de ciclo de vida de `service_request`,
+- flujo documental ciudadano real,
+- flujo ciudadano end-to-end de agenda sobre sesion OTP sin depender de mocks locales.
+
 ## Workflow para cambios de schema
 
 Cuando cambies el schema:

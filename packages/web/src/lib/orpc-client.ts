@@ -119,6 +119,37 @@ type AdminBookingReassignmentsApplyResult = {
 	}>;
 };
 
+type AdminBookingReleaseInput = {
+	id: string;
+	reason: "cancelled" | "expired" | "attended";
+};
+
+type AdminBookingReassignInput = {
+	id: string;
+	targetStaffUserId: string;
+};
+
+type AdminBookingReassignPreviewInput = {
+	id: string;
+	targetStaffUserId: string;
+};
+
+type AdminBookingAvailabilityCheckInput = {
+	slotId: string;
+	staffUserId: string;
+};
+
+type AdminCapacityConflict = {
+	type: string;
+	details: string;
+};
+
+type AdminCapacityCheckResponse = {
+	available: boolean;
+	conflicts: AdminCapacityConflict[];
+	[key: string]: unknown;
+};
+
 type AdminStaffProfile = {
 	userId: string;
 	isActive: boolean;
@@ -157,6 +188,60 @@ type AdminStaffUpdateInput = {
 	metadata?: Record<string, unknown>;
 };
 
+type AdminStaffDateOverride = {
+	id: string;
+	staffUserId: string;
+	overrideDate: string;
+	isAvailable: boolean;
+	capacityOverride: number | null;
+	availableStartTime: string | null;
+	availableEndTime: string | null;
+	notes: string | null;
+	createdByUserId: string;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+};
+
+type AdminStaffDateOverridesListInput = {
+	userId: string;
+	date?: string;
+};
+
+type AdminStaffDateOverrideCreateInput = {
+	userId: string;
+	overrideDate: string;
+	isAvailable?: boolean;
+	capacityOverride?: number;
+	availableStartTime?: string | null;
+	availableEndTime?: string | null;
+	notes?: string | null;
+};
+
+type AdminStaffDateOverrideUpdateInput = {
+	userId: string;
+	overrideId: string;
+	overrideDate?: string;
+	isAvailable?: boolean;
+	capacityOverride?: number;
+	availableStartTime?: string | null;
+	availableEndTime?: string | null;
+	notes?: string | null;
+};
+
+type AdminStaffEffectiveAvailabilityInput = {
+	userId: string;
+	date: string;
+};
+
+type AdminStaffEffectiveAvailabilityResponse = {
+	userId: string;
+	date: string;
+	isAvailable: boolean;
+	reason: string;
+	dailyCapacity: number;
+	availableWindow: unknown;
+};
+
 type AdminScheduleSlot = {
 	id: string;
 	slotDate: string;
@@ -175,6 +260,120 @@ type AdminScheduleSlotsListResponse = {
 	generatedFrom: string;
 	isClosed: boolean;
 	count: number;
+};
+
+type AdminScheduleTemplate = {
+	id: string;
+	weekday: number;
+	isEnabled: boolean;
+	morningStart: string | null;
+	morningEnd: string | null;
+	afternoonStart: string | null;
+	afternoonEnd: string | null;
+	slotDurationMinutes: number;
+	bufferMinutes: number;
+	slotCapacityLimit: number | null;
+	notes: string | null;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+};
+
+type AdminScheduleTemplateCreateInput = {
+	weekday: number;
+	slotDurationMinutes: number;
+	bufferMinutes?: number;
+	slotCapacityLimit?: number | null;
+	isEnabled?: boolean;
+	morningStart?: string | null;
+	morningEnd?: string | null;
+	afternoonStart?: string | null;
+	afternoonEnd?: string | null;
+	notes?: string | null;
+};
+
+type AdminScheduleTemplateUpdateInput = {
+	id: string;
+	weekday?: number;
+	slotDurationMinutes?: number;
+	bufferMinutes?: number;
+	slotCapacityLimit?: number | null;
+	isEnabled?: boolean;
+	morningStart?: string | null;
+	morningEnd?: string | null;
+	afternoonStart?: string | null;
+	afternoonEnd?: string | null;
+	notes?: string | null;
+};
+
+type AdminCalendarOverride = {
+	id: string;
+	overrideDate: string;
+	isClosed: boolean;
+	morningEnabled: boolean;
+	morningStart: string | null;
+	morningEnd: string | null;
+	afternoonEnabled: boolean;
+	afternoonStart: string | null;
+	afternoonEnd: string | null;
+	slotDurationMinutes: number | null;
+	bufferMinutes: number | null;
+	slotCapacityLimit: number | null;
+	reason: string | null;
+	createdByUserId: string;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+};
+
+type AdminCalendarOverrideCreateInput = {
+	overrideDate: string;
+	isClosed?: boolean;
+	morningEnabled?: boolean;
+	morningStart?: string | null;
+	morningEnd?: string | null;
+	afternoonEnabled?: boolean;
+	afternoonStart?: string | null;
+	afternoonEnd?: string | null;
+	slotDurationMinutes?: number | null;
+	bufferMinutes?: number | null;
+	slotCapacityLimit?: number | null;
+	reason?: string | null;
+};
+
+type AdminCalendarOverrideUpdateInput = {
+	id: string;
+	overrideDate?: string;
+	isClosed?: boolean;
+	morningEnabled?: boolean;
+	morningStart?: string | null;
+	morningEnd?: string | null;
+	afternoonEnabled?: boolean;
+	afternoonStart?: string | null;
+	afternoonEnd?: string | null;
+	slotDurationMinutes?: number | null;
+	bufferMinutes?: number | null;
+	slotCapacityLimit?: number | null;
+	reason?: string | null;
+};
+
+type AdminScheduleSlotsGenerateInput = {
+	dateFrom: string;
+	dateTo: string;
+	maxDays?: number;
+};
+
+type AdminScheduleSlotsGenerateResponse = {
+	dateFrom: string;
+	dateTo: string;
+	generatedCount: number;
+	skippedDatesCount: number;
+	generatedSlotIds: string[];
+	skippedDates?: string[];
+	errors?: Array<{
+		date: string;
+		code: string;
+		message: string;
+	}>;
+	idempotentReplay: boolean;
 };
 
 type ProcedureType = {
@@ -231,6 +430,94 @@ type ProcedureRemoveResponse = {
 	mode?: "soft" | "hard";
 };
 
+type AdminReservationSeries = {
+	id: string;
+	kind: string;
+	recurrenceRule: unknown;
+	timezone: string | null;
+	isActive: boolean;
+	metadata: Record<string, unknown>;
+	notes: string | null;
+	createdByUserId: string;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+	activeInstanceCount?: number;
+};
+
+type AdminReservationSeriesListInput = {
+	isActive?: boolean | string;
+	kind?: string;
+};
+
+type AdminReservationSeriesCreateInput = {
+	recurrenceRule: string | Record<string, unknown>;
+	slotId: string;
+	staffUserId: string;
+	startDate: string;
+	endDate: string;
+	timezone?: string;
+	notes?: string | null;
+	metadata?: Record<string, unknown>;
+};
+
+type AdminReservationSeriesGetResponse = {
+	series: AdminReservationSeries;
+	instances: unknown[];
+};
+
+type AdminReservationSeriesInstancesInput = {
+	id: string;
+	status?: string;
+	isActive?: boolean | string;
+};
+
+type AdminReservationSeriesUpdateInput = {
+	id: string;
+	staffUserId?: string;
+	notes?: string | null;
+	metadata?: Record<string, unknown>;
+	force?: boolean;
+};
+
+type AdminReservationSeriesUpdateFromDateInput = {
+	id: string;
+	effectiveFrom: string;
+	staffUserId?: string;
+	notes?: string | null;
+};
+
+type AdminReservationSeriesReleaseInput = {
+	id: string;
+	reason?: string;
+};
+
+type AdminReservationSeriesMoveInput = {
+	id: string;
+	targetSlotId: string;
+	targetStaffUserId?: string;
+};
+
+type AdminReservationInstanceGetInput = {
+	bookingId: string;
+};
+
+type AdminReservationInstanceUpdateInput = {
+	bookingId: string;
+	staffUserId?: string;
+	notes?: string | null;
+};
+
+type AdminReservationInstanceReleaseInput = {
+	bookingId: string;
+	reason?: string;
+};
+
+type AdminReservationInstanceMoveInput = {
+	bookingId: string;
+	targetSlotId: string;
+	targetStaffUserId?: string;
+};
+
 export interface TranzitRpcClient {
 	// biome-ignore lint/suspicious/noExplicitAny: required to satisfy @orpc NestedClient generic constraint
 	[key: string]: any;
@@ -243,19 +530,88 @@ export interface TranzitRpcClient {
 			bootstrap: RpcProcedure<OnboardingBootstrapResponse>;
 		};
 		schedule: {
+			templates: {
+				list: RpcProcedure<AdminScheduleTemplate[]>;
+				create: RpcProcedure<
+					AdminScheduleTemplate,
+					AdminScheduleTemplateCreateInput
+				>;
+				get: RpcProcedure<AdminScheduleTemplate, { id: string }>;
+				update: RpcProcedure<
+					AdminScheduleTemplate,
+					AdminScheduleTemplateUpdateInput
+				>;
+				remove: RpcProcedure<{ success: boolean }, { id: string }>;
+			};
+			overrides: {
+				list: RpcProcedure<AdminCalendarOverride[], { date?: string }>;
+				create: RpcProcedure<
+					AdminCalendarOverride,
+					AdminCalendarOverrideCreateInput
+				>;
+				get: RpcProcedure<AdminCalendarOverride, { id: string }>;
+				update: RpcProcedure<
+					AdminCalendarOverride,
+					AdminCalendarOverrideUpdateInput
+				>;
+				remove: RpcProcedure<{ success: boolean }, { id: string }>;
+			};
 			slots: {
+				generate: RpcProcedure<
+					AdminScheduleSlotsGenerateResponse,
+					AdminScheduleSlotsGenerateInput
+				>;
 				list: RpcProcedure<AdminScheduleSlotsListResponse, { date: string }>;
 			};
 		};
 		staff: {
 			list: RpcProcedure<AdminStaffProfile[], { isActive?: boolean | string }>;
 			create: RpcProcedure<AdminStaffProfile, AdminStaffCreateInput>;
+			get: RpcProcedure<AdminStaffProfile, { userId: string }>;
 			update: RpcProcedure<AdminStaffProfile, AdminStaffUpdateInput>;
 			remove: RpcProcedure<{ success: boolean }, { userId: string }>;
+			dateOverrides: {
+				list: RpcProcedure<
+					AdminStaffDateOverride[],
+					AdminStaffDateOverridesListInput
+				>;
+				create: RpcProcedure<
+					AdminStaffDateOverride,
+					AdminStaffDateOverrideCreateInput
+				>;
+				get: RpcProcedure<
+					AdminStaffDateOverride,
+					{ userId: string; overrideId: string }
+				>;
+				update: RpcProcedure<
+					AdminStaffDateOverride,
+					AdminStaffDateOverrideUpdateInput
+				>;
+				remove: RpcProcedure<
+					{ success: boolean },
+					{ userId: string; overrideId: string }
+				>;
+			};
+			effectiveAvailability: RpcProcedure<
+				AdminStaffEffectiveAvailabilityResponse,
+				AdminStaffEffectiveAvailabilityInput
+			>;
 		};
 		bookings: {
 			list: RpcProcedure<AdminBooking[], AdminBookingsListInput>;
 			create: RpcProcedure<AdminBooking | null, AdminBookingsCreateInput>;
+			get: RpcProcedure<AdminBooking, { id: string }>;
+			capacity: RpcProcedure<AdminCapacityCheckResponse, { id: string }>;
+			confirm: RpcProcedure<AdminBooking, { id: string }>;
+			release: RpcProcedure<
+				{ booking: AdminBooking | null; alreadyReleased: boolean },
+				AdminBookingReleaseInput
+			>;
+			reassign: RpcProcedure<AdminBooking, AdminBookingReassignInput>;
+			reassignPreview: RpcProcedure<
+				{ dryRun: true; [key: string]: unknown },
+				AdminBookingReassignPreviewInput
+			>;
 			reassignmentsPreview: RpcProcedure<
 				AdminBookingReassignmentsPreview,
 				AdminBookingReassignmentsInput
@@ -264,6 +620,10 @@ export interface TranzitRpcClient {
 				AdminBookingReassignmentsApplyResult,
 				AdminBookingReassignmentsApplyInput
 			>;
+			availabilityCheck: RpcProcedure<
+				AdminCapacityCheckResponse,
+				AdminBookingAvailabilityCheckInput
+			>;
 		};
 		procedures: {
 			list: RpcProcedure<ProcedureType[], { isActive?: boolean | string }>;
@@ -271,6 +631,28 @@ export interface TranzitRpcClient {
 			create: RpcProcedure<ProcedureType, ProcedureCreateInput>;
 			update: RpcProcedure<ProcedureType, ProcedureUpdateInput>;
 			remove: RpcProcedure<ProcedureRemoveResponse, { id: string }>;
+		};
+		reservationSeries: {
+			create: RpcProcedure<unknown, AdminReservationSeriesCreateInput>;
+			list: RpcProcedure<
+				AdminReservationSeries[],
+				AdminReservationSeriesListInput
+			>;
+			get: RpcProcedure<AdminReservationSeriesGetResponse, { id: string }>;
+			instances: RpcProcedure<unknown[], AdminReservationSeriesInstancesInput>;
+			update: RpcProcedure<unknown, AdminReservationSeriesUpdateInput>;
+			updateFromDate: RpcProcedure<
+				unknown,
+				AdminReservationSeriesUpdateFromDateInput
+			>;
+			release: RpcProcedure<unknown, AdminReservationSeriesReleaseInput>;
+			move: RpcProcedure<unknown, AdminReservationSeriesMoveInput>;
+		};
+		reservations: {
+			get: RpcProcedure<unknown, AdminReservationInstanceGetInput>;
+			update: RpcProcedure<unknown, AdminReservationInstanceUpdateInput>;
+			release: RpcProcedure<unknown, AdminReservationInstanceReleaseInput>;
+			move: RpcProcedure<unknown, AdminReservationInstanceMoveInput>;
 		};
 	};
 }
