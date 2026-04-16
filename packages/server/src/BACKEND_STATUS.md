@@ -1,6 +1,6 @@
 # Backend Status (Current Implementation)
 
-Last updated: 2026-04-13
+Last updated: 2026-04-16
 
 This document describes what the backend **really has implemented today**.
 Use it as an operational map before adding or changing backend behavior.
@@ -15,6 +15,7 @@ This file complements (not replaces):
 - Runtime: Bun
 - HTTP framework: Hono
 - ORM/DB: Drizzle + libsql/sqlite
+- Structured logging: `hono-pino` + `pino` (global middleware + centralized `onError` logging)
 - Auth provider: Better Auth
 - Primary business API transport: oRPC at `/api/rpc/*`
 - `/api/admin/*` is no longer exposed as a public HTTP surface
@@ -68,11 +69,12 @@ This file complements (not replaces):
 - oRPC is now the only public transport for admin domain APIs.
 - Session and admin onboarding are implemented as native oRPC procedures.
 - Schedule, staff, bookings, reservation-series and reservations operations are implemented as native oRPC procedures.
-- Procedure type listing is available through native oRPC procedures.
+- Citizen-facing procedures for slot discovery and booking lifecycle are available through native oRPC procedures.
 
 ## 2) Domain modules and active procedures
 
-All domain operations below are reachable through oRPC procedures (served under `/api/rpc/*`) and remain admin-protected unless explicitly under `/api/auth/*`.
+All domain operations below are reachable through oRPC procedures (served under `/api/rpc/*`).
+Admin modules remain admin-protected; citizen modules require authenticated session.
 
 ### 2.1 Schedule module (`server/src/orpc/modules/schedule.router.ts`)
 
@@ -179,6 +181,23 @@ Key behavior already implemented:
 - detached instance behavior for per-instance PATCH vs series PATCH
 - atomic move operations for series and single instance
 
+### 2.6 Citizen portal module (`server/src/orpc/modules/citizen.router.ts`)
+
+- `citizen.procedures.list`
+- `citizen.slots.range`
+- `citizen.bookings.hold`
+- `citizen.bookings.confirm`
+- `citizen.bookings.cancel`
+- `citizen.bookings.mine`
+
+Key behavior already implemented:
+- authenticated citizen booking lifecycle over OTP session (hold/confirm/cancel/list)
+- stale hold cleanup before citizen reads/mutations (automatic release on expiry)
+- automatic staff assignment for citizen holds using capacity checks
+- citizen hold assignment only considers assignable staff profiles with a valid backing `user` row (prevents FK failures on booking insert)
+- real-time slot availability exposure based on generated schedule slots and active bookings
+- `service_request` creation with config/version snapshot at booking-hold time
+
 ## 3) Capacity engine (core business logic)
 
 Implemented in `server/src/features/bookings/capacity.service.ts`.
@@ -208,14 +227,14 @@ Main guarantees implemented:
 
 ## 4) What is still missing / partial
 
-Even with the current admin backend, this is still missing or partial:
-- public citizen API flow for:
-  - service request lifecycle
+Even with the current backend, this is still missing or partial:
+- advanced citizen API flow for:
+  - full service request lifecycle beyond hold/confirm base
   - citizen document upload/review APIs
-  - citizen-facing booking flow over OTP session
 - complete notification orchestration beyond OTP email
 - richer audit event instrumentation in all admin mutations
-- full E2E frontend-backend integration (frontend still has mock-heavy flows)
+- richer audit/notification instrumentation for citizen mutations
+- full E2E test coverage for citizen frontend-backend integration
 
 ## 5) Quality baseline currently passing
 

@@ -38,6 +38,22 @@ Notas importantes:
 - `README.md` sigue siendo casi boilerplate de TanStack/Vite. No lo tomes como documentacion funcional del proyecto.
 - Este `AGENTS.md`, `packages/server/src/db/SCHEMA.md` y `packages/server/src/BACKEND_STATUS.md` son mas confiables que el `README.md`.
 
+## Gobernanza documental obligatoria (todos los agentes)
+
+Estas reglas son obligatorias para cualquier agente que trabaje en este repo:
+
+- si cambias comportamiento, estado funcional, prioridades, decisiones de arquitectura o flujo de producto, actualiza `AGENTS.md` en el mismo cambio,
+- si el cambio afecta dominio/esquema, actualiza `packages/server/src/db/SCHEMA.md` en el mismo cambio,
+- si el cambio afecta rutas, contratos o comportamiento backend, actualiza `packages/server/src/BACKEND_STATUS.md` en el mismo cambio,
+- si un cambio deja obsoleto algun `.md` enlazado desde este archivo, tambien debes actualizar ese documento en el mismo cambio,
+- no cierres una tarea dejando drift entre codigo y documentacion.
+
+Lista minima de `.md` enlazados que debes mantener sincronizados cuando aplique:
+- `AGENTS.md`,
+- `packages/server/src/db/SCHEMA.md`,
+- `packages/server/src/BACKEND_STATUS.md`,
+- `README.md` (si el cambio hace necesario corregirlo o alinearlo para evitar contradicciones graves).
+
 ## Estado actual del proyecto
 
 No asumas que el sistema ya esta completo. Hoy el repo esta en una fase intermedia:
@@ -46,13 +62,14 @@ No asumas que el sistema ya esta completo. Hoy el repo esta en una fase intermed
 - El backend ya tiene auth, esquema del dominio y una capa administrativa funcional.
 - Ya existen endpoints reales para schedule, staff, bookings y reservation-series, con capacidad y reasignacion en backend.
 - El backend expone la capa administrativa por oRPC en `/api/rpc/*`; `/api/admin/*` ya no se expone como superficie publica.
-- Todavia faltan APIs ciudadanas completas para service request/documentos/flujo OTP de punta a punta.
+- Ya existe una capa ciudadana inicial por oRPC para procedimientos, disponibilidad y ciclo base de reserva (hold/confirm/cancel/mis citas).
+- Todavia faltan APIs ciudadanas completas para gestion documental y ciclo de vida avanzado de `service_request`.
 
-Hoy hay varias piezas mock o incompletas:
-- `src/routes/agendar.tsx` es mayormente UI/prototipo con estado local, `setTimeout` y flujo simulado.
-- `src/routes/mi-perfil.tsx` usa citas mock en memoria.
-- `src/routes/login.tsx` usa email/password tradicional.
-- La direccion real del producto para ciudadano es OTP por correo sin password.
+Hoy hay piezas ya conectadas y otras aun parciales:
+- `src/routes/login.tsx` ya usa OTP por correo para flujo ciudadano.
+- `src/routes/agendar.tsx` ya consume backend real para trámites, disponibilidad y reserva/confirmación.
+- `src/routes/mi-perfil.tsx` ya consume citas reales del ciudadano desde backend.
+- Sigue pendiente la parte documental y el ciclo completo de solicitud ciudadana.
 
 Conclusion practica:
 - no construyas logica importante encima de mocks,
@@ -265,8 +282,8 @@ Backend hoy:
 - envio de correo via `packages/server/src/features/auth/auth.mailer.ts`
 
 Frontend hoy:
-- `AuthContext` usa `signIn.email` y `signUp.email`
-- o sea, password auth clasica
+- el flujo ciudadano (`/login` y `/agendar`) usa OTP por correo (`sendVerificationOtp` + `signIn.emailOtp`)
+- el flujo interno admin mantiene login por email/password en `/admin/login`
 
 Direccion correcta del producto:
 - ciudadanos deberian entrar por OTP por correo, sin password,
@@ -280,12 +297,12 @@ Recomendacion para agentes futuros:
 
 ## Estado real de frontend
 
-La app no esta conectada de punta a punta.
+La app está conectada de forma funcional en admin y en un primer alcance ciudadano.
 
 Puntos concretos:
-- `src/routes/agendar.tsx` es una demo rica en UI, pero no consume disponibilidad real ni OTP real.
-- `src/routes/mi-perfil.tsx` muestra citas mock.
-- `src/routes/login.tsx` esta desacoplado del objetivo final ciudadano.
+- `src/routes/login.tsx` usa OTP ciudadano real.
+- `src/routes/agendar.tsx` usa procedimientos + disponibilidad + hold/confirm real via backend.
+- `src/routes/mi-perfil.tsx` muestra citas reales del ciudadano y cancelación real.
 - `src/routes/index.tsx` y `src/routes/__root.tsx` ya tienen un lenguaje visual definido. Si editas UI, intenta preservar esa direccion y no volver a un layout generico.
 
 Si vas a implementar algo real:
@@ -297,7 +314,9 @@ Si vas a implementar algo real:
 
 Hoy el backend ya expone:
 - `GET /`, `/api/auth/*` (Better Auth + OTP),
-- `/api/rpc/*` como superficie administrativa principal (session, onboarding, schedule, staff, bookings, reservation-series y reservations).
+- `/api/rpc/*` como superficie principal para:
+  - admin (session, onboarding, schedule, staff, bookings, reservation-series y reservations),
+  - citizen (procedures list, slots range, bookings hold/confirm/cancel/mine).
 
 Nota:
 - `/api/admin/*` ya no se expone como API publica ni como capa interna del runtime; la capa administrativa corre en handlers oRPC nativos.
@@ -305,9 +324,9 @@ Nota:
 El detalle endpoint por endpoint vive en `packages/server/src/BACKEND_STATUS.md`.
 
 Lo que todavia no esta completo:
-- APIs ciudadanas de service requests,
+- APIs ciudadanas avanzadas de `service_request` (beyond hold/confirm base),
 - flujo documental ciudadano completo,
-- integracion frontend-backend de punta a punta para el flujo ciudadano.
+- instrumentacion de auditoria/notificaciones mas completa para flujo ciudadano.
 
 Si vas a construir esa parte:
 - manten la logica critica en backend,
@@ -340,15 +359,33 @@ Admin avanzado conectado de forma minima (UI tecnica) en frontend:
   - `admin.reservationSeries.*`,
   - `admin.reservations.*`.
 
+Ciudadano conectado hoy en frontend:
+- `src/routes/login.tsx`:
+  - OTP real (`/api/auth/email-otp/send-verification-otp` + `signIn.emailOtp`).
+- `src/routes/agendar.tsx`:
+  - `citizen.procedures.list`,
+  - `citizen.slots.range`,
+  - `citizen.bookings.hold`,
+  - `citizen.bookings.confirm`,
+  - `citizen.bookings.cancel`.
+- `src/routes/mi-perfil.tsx`:
+  - `citizen.bookings.mine`,
+  - `citizen.bookings.cancel`.
+
 Lo que aun falta para darlo por conectado de verdad:
 - reemplazar la UI tecnica (payload JSON libre) por flujos de producto (formularios y acciones guiadas por caso de uso),
 - estandarizar manejo de concurrencia optimista (`If-Match`) e idempotency keys en acciones de series/instancias,
 - cubrir estas superficies con pruebas de frontend y pruebas de integracion.
 
+Siguientes pasos operativos prioritarios:
+1. reemplazar la UI tecnica actual de admin por interfaces funcionales orientadas a tareas reales de backoffice,
+2. aplicar manejo consistente de concurrencia/idempotencia en todas las mutaciones criticas de reservas/series,
+3. agregar pruebas automatizadas sobre admin conectado (frontend + integracion) para evitar regresiones.
+
 Brecha ciudadana que sigue pendiente:
-- API de ciclo de vida de `service_request`,
+- API de ciclo de vida avanzado de `service_request` (estados y snapshots mas ricos),
 - flujo documental ciudadano real,
-- flujo ciudadano end-to-end de agenda sobre sesion OTP sin depender de mocks locales.
+- robustecer pruebas automáticas para el flujo ciudadano conectado end-to-end.
 
 ## Workflow para cambios de schema
 

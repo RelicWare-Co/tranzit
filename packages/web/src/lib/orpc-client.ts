@@ -430,6 +430,96 @@ type ProcedureRemoveResponse = {
 	mode?: "soft" | "hard";
 };
 
+type CitizenProcedure = {
+	id: string;
+	slug: string;
+	name: string;
+	description: string | null;
+	isActive: boolean;
+	requiresVehicle: boolean;
+	allowsPhysicalDocuments: boolean;
+	allowsDigitalDocuments: boolean;
+	instructions: string | null;
+};
+
+type CitizenSlot = {
+	id: string;
+	slotDate: string;
+	startTime: string;
+	endTime: string;
+	status: string;
+	capacityLimit: number | null;
+	reservedCount: number;
+	remainingCapacity: number | null;
+	generatedFrom: string;
+};
+
+type CitizenSlotsRangeInput = {
+	dateFrom?: string;
+	days?: number;
+};
+
+type CitizenSlotsRangeResponse = {
+	dateFrom: string;
+	dateTo: string;
+	days: number;
+	daily: Array<{
+		date: string;
+		isClosed: boolean;
+		generatedFrom: string;
+		count: number;
+		slots: CitizenSlot[];
+	}>;
+};
+
+type CitizenBookingSummary = {
+	id: string;
+	status: string;
+	isActive: boolean;
+	holdExpiresAt: string | Date | null;
+	confirmedAt: string | Date | null;
+	cancelledAt: string | Date | null;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+	slot: {
+		id: string;
+		slotDate: string;
+		startTime: string;
+		endTime: string;
+		status: string;
+	} | null;
+	request: {
+		id: string;
+		status: string;
+		plate: string | null;
+		applicantName: string | null;
+		applicantDocument: string | null;
+		procedure: {
+			id: string;
+			slug: string;
+			name: string;
+			description: string | null;
+		} | null;
+	} | null;
+};
+
+type CitizenBookingHoldInput = {
+	procedureTypeId: string;
+	slotId: string;
+	plate?: string;
+	applicantName: string;
+	applicantDocument: string;
+	documentType?: string;
+	phone?: string;
+	email?: string;
+	notes?: string;
+};
+
+type CitizenBookingHoldResponse = {
+	requestId: string;
+	booking: CitizenBookingSummary;
+};
+
 type AdminReservationSeries = {
 	id: string;
 	kind: string;
@@ -523,6 +613,23 @@ export interface TranzitRpcClient {
 	[key: string]: any;
 	session: {
 		get: RpcProcedure<SessionResponse>;
+	};
+	citizen: {
+		procedures: {
+			list: RpcProcedure<CitizenProcedure[]>;
+		};
+		slots: {
+			range: RpcProcedure<CitizenSlotsRangeResponse, CitizenSlotsRangeInput>;
+		};
+		bookings: {
+			hold: RpcProcedure<CitizenBookingHoldResponse, CitizenBookingHoldInput>;
+			confirm: RpcProcedure<CitizenBookingSummary, { bookingId: string }>;
+			cancel: RpcProcedure<CitizenBookingSummary, { bookingId: string }>;
+			mine: RpcProcedure<
+				CitizenBookingSummary[],
+				{ includeInactive?: boolean }
+			>;
+		};
 	};
 	admin: {
 		onboarding: {
