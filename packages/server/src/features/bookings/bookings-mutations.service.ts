@@ -5,7 +5,7 @@ import {
 	confirmBooking,
 	consumeCapacity,
 	releaseCapacity,
-} from "./capacity.service";
+} from "./capacity-consume.service";
 
 export interface CreateBookingInput {
 	slotId: string;

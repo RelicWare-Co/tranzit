@@ -10,12 +10,12 @@ import {
 	throwIdempotencyAwareError,
 	throwRpcError,
 } from "../../orpc/shared";
+import type { CapacityConflict } from "../bookings/capacity.types";
 import {
-	type CapacityConflict,
 	countActiveSlotBookings,
 	countActiveStaffBookingsOnDate,
 	resolveStaffAvailabilityAndCapacity,
-} from "../bookings/capacity.service";
+} from "../bookings/capacity-check.service";
 
 export async function moveReservationSeries(params: {
 	input: {

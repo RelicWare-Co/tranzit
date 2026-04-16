@@ -12,7 +12,7 @@ import {
 	throwIdempotencyAwareError,
 	throwRpcError,
 } from "../../orpc/shared";
-import { releaseCapacity } from "../bookings/capacity.service";
+import { releaseCapacity } from "../bookings/capacity-consume.service";
 
 export async function releaseReservationInstance(params: {
 	input: { bookingId: string; reason?: string };

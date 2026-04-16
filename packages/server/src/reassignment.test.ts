@@ -20,15 +20,14 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
+import { checkCapacity } from "./features/bookings/capacity-check.service";
+import { consumeCapacity, releaseCapacity } from "./features/bookings/capacity-consume.service";
 import {
-	checkCapacity,
-	consumeCapacity,
 	executeBulkReassignments,
 	previewReassignment,
 	previewReassignments,
 	reassignBooking,
-	releaseCapacity,
-} from "./features/bookings/capacity.service";
+} from "./features/bookings/capacity-reassign.service";
 import { db, schema } from "./lib/db";
 
 // ---------------------------------------------------------------------------

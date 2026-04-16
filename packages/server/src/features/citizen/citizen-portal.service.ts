@@ -6,7 +6,7 @@ import {
 	confirmExistingBooking,
 	createBooking,
 } from "../bookings/bookings-admin.service";
-import { releaseCapacity } from "../bookings/capacity.service";
+import { releaseCapacity } from "../bookings/capacity-consume.service";
 import { checkCapacity } from "../bookings/capacity-check.service";
 import { isValidDateFormat } from "../schedule/schedule.schemas";
 import { formatDateLocal } from "../schedule/schedule.service";
