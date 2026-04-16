@@ -348,6 +348,10 @@ Admin conectado hoy en frontend:
 - bookings base (`list/create/reassignmentsPreview/reassignmentsApply`),
 - procedures (`list/get/create/update/remove`),
 - schedule slots list (`admin.schedule.slots.list`).
+- validaciones de formularios admin alineadas en frontend con backend para casos críticos:
+  - creación de trámite con `trim`/slug sanitizado,
+  - creación de encargado con `trim`/email normalizado,
+  - reasignación masiva limitada a 100 items por operación (límite backend).
 
 Admin avanzado conectado de forma minima (UI tecnica) en frontend:
 - `src/routes/admin/configuracion.tsx` y `src/routes/admin/configuracion/AdminConfiguracionPage.tsx`:

@@ -8,11 +8,26 @@ import {
 	Textarea,
 	TextInput,
 } from "@mantine/core";
+import { schemaResolver, useForm } from "@mantine/form";
 import { AlertCircle, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+	type ProcedureCreateFormValues,
+	procedureCreateSchema,
+	sanitizeProcedureSlug,
+} from "../../../lib/schemas/procedure";
 import { adminModalStyles } from "../_shared/-admin-ui";
 import { getErrorMessage } from "../_shared/-errors";
 import type { ProcedureCreateInput } from "./-types";
+
+const initialValues: ProcedureCreateFormValues = {
+	name: "",
+	slug: "",
+	description: "",
+	requiresVehicle: false,
+	allowsPhysicalDocuments: true,
+	allowsDigitalDocuments: true,
+};
 
 export function AddProcedureModal({
 	opened,
@@ -23,46 +38,44 @@ export function AddProcedureModal({
 	onClose: () => void;
 	onCreate: (payload: ProcedureCreateInput) => Promise<void>;
 }) {
-	const [name, setName] = useState("");
-	const [slug, setSlug] = useState("");
-	const [description, setDescription] = useState("");
-	const [requiresVehicle, setRequiresVehicle] = useState(false);
-	const [allowsPhysical, setAllowsPhysical] = useState(true);
-	const [allowsDigital, setAllowsDigital] = useState(true);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const form = useForm<ProcedureCreateFormValues>({
+		mode: "uncontrolled",
+		initialValues,
+		validate: schemaResolver(procedureCreateSchema),
+	});
+
+	// Reset form when modal opens
+	useEffect(() => {
+		if (opened) {
+			form.reset();
+			setError(null);
+		}
+	}, [opened, form.reset]);
+
 	const handleClose = () => {
 		if (isSubmitting) return;
-		setError(null);
 		onClose();
 	};
 
-	const handleSubmit = async () => {
+	const handleSubmit = form.onSubmit(async (values) => {
 		setIsSubmitting(true);
 		setError(null);
 		try {
-			await onCreate({
-				name,
-				slug,
-				description: description || undefined,
-				requiresVehicle,
-				allowsPhysicalDocuments: allowsPhysical,
-				allowsDigitalDocuments: allowsDigital,
-			});
-			setName("");
-			setSlug("");
-			setDescription("");
-			setRequiresVehicle(false);
-			setAllowsPhysical(true);
-			setAllowsDigital(true);
+			const normalizedValues = procedureCreateSchema.parse(values);
+			await onCreate(normalizedValues);
+			form.reset();
 			onClose();
 		} catch (submitError) {
 			setError(getErrorMessage(submitError, "No se pudo crear el trámite."));
 		} finally {
 			setIsSubmitting(false);
 		}
-	};
+	});
+
+	const slugInputProps = form.getInputProps("slug");
 
 	return (
 		<Modal
@@ -78,86 +91,95 @@ export function AddProcedureModal({
 			overlayProps={{ backgroundOpacity: 0.45, blur: 4 }}
 			styles={adminModalStyles}
 		>
-			<Stack gap="md">
-				{error && (
-					<Alert color="red" icon={<AlertCircle size={16} />}>
-						{error}
-					</Alert>
-				)}
-				<TextInput
-					label="Nombre"
-					value={name}
-					onChange={(event) => setName(event.currentTarget.value)}
-					placeholder="Ej: Renovación de Licencia"
-					radius="xl"
-					disabled={isSubmitting}
-				/>
-				<TextInput
-					label="Slug"
-					value={slug}
-					onChange={(event) =>
-						setSlug(
-							event.currentTarget.value
-								.toLowerCase()
-								.replace(/[^a-z0-9-]/g, "-"),
-						)
-					}
-					placeholder="renovacion-licencia"
-					radius="xl"
-					disabled={isSubmitting}
-				/>
-				<Textarea
-					label="Descripción"
-					value={description}
-					onChange={(event) => setDescription(event.currentTarget.value)}
-					placeholder="Describe el trámite..."
-					minRows={3}
-					radius="xl"
-					disabled={isSubmitting}
-				/>
-				<Switch
-					label="Requiere vehículo"
-					checked={requiresVehicle}
-					onChange={(event) => setRequiresVehicle(event.currentTarget.checked)}
-					disabled={isSubmitting}
-				/>
-				<Group grow>
-					<Switch
-						label="Permite documentos físicos"
-						checked={allowsPhysical}
-						onChange={(event) => setAllowsPhysical(event.currentTarget.checked)}
+			<form onSubmit={handleSubmit}>
+				<Stack gap="md">
+					{error && (
+						<Alert color="red" icon={<AlertCircle size={16} />}>
+							{error}
+						</Alert>
+					)}
+					<TextInput
+						label="Nombre"
+						placeholder="Ej: Renovación de Licencia"
+						radius="xl"
 						disabled={isSubmitting}
+						withAsterisk
+						key={form.key("name")}
+						{...form.getInputProps("name")}
+					/>
+					<TextInput
+						label="Slug"
+						placeholder="renovacion-licencia"
+						radius="xl"
+						disabled={isSubmitting}
+						withAsterisk
+						key={form.key("slug")}
+						{...slugInputProps}
+						onChange={(event) => {
+							const sanitized = sanitizeProcedureSlug(
+								event.currentTarget.value,
+							);
+							event.currentTarget.value = sanitized;
+							slugInputProps.onChange(event);
+						}}
+					/>
+					<Textarea
+						label="Descripción"
+						placeholder="Describe el trámite..."
+						minRows={3}
+						radius="xl"
+						disabled={isSubmitting}
+						key={form.key("description")}
+						{...form.getInputProps("description")}
 					/>
 					<Switch
-						label="Permite documentos digitales"
-						checked={allowsDigital}
-						onChange={(event) => setAllowsDigital(event.currentTarget.checked)}
+						label="Requiere vehículo"
 						disabled={isSubmitting}
+						key={form.key("requiresVehicle")}
+						{...form.getInputProps("requiresVehicle", { type: "checkbox" })}
 					/>
-				</Group>
-				<Group justify="flex-end" mt="sm">
-					<Button
-						variant="light"
-						color="gray"
-						onClick={handleClose}
-						radius="md"
-						disabled={isSubmitting}
-					>
-						Cancelar
-					</Button>
-					<Button
-						color="red"
-						leftSection={<Plus size={16} strokeWidth={1.75} />}
-						onClick={handleSubmit}
-						radius="md"
-						loading={isSubmitting}
-						disabled={!name.trim() || !slug.trim()}
-						className="font-semibold"
-					>
-						Crear trámite
-					</Button>
-				</Group>
-			</Stack>
+					<Group grow>
+						<Switch
+							label="Permite documentos físicos"
+							disabled={isSubmitting}
+							key={form.key("allowsPhysicalDocuments")}
+							{...form.getInputProps("allowsPhysicalDocuments", {
+								type: "checkbox",
+							})}
+						/>
+						<Switch
+							label="Permite documentos digitales"
+							disabled={isSubmitting}
+							key={form.key("allowsDigitalDocuments")}
+							{...form.getInputProps("allowsDigitalDocuments", {
+								type: "checkbox",
+							})}
+						/>
+					</Group>
+					<Group justify="flex-end" mt="sm">
+						<Button
+							type="button"
+							variant="light"
+							color="gray"
+							onClick={handleClose}
+							radius="md"
+							disabled={isSubmitting}
+						>
+							Cancelar
+						</Button>
+						<Button
+							type="submit"
+							color="red"
+							leftSection={<Plus size={16} strokeWidth={1.75} />}
+							radius="md"
+							loading={isSubmitting}
+							className="font-semibold"
+						>
+							Crear trámite
+						</Button>
+					</Group>
+				</Stack>
+			</form>
 		</Modal>
 	);
 }
