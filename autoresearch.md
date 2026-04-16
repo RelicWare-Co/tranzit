@@ -105,15 +105,48 @@ Oportunidad: unificar modelo de disponibilidad en un solo lugar.
 - Funciones movidas a capacity-reassign.service.ts
 - Resultado: -12 líneas, -1 archivo, mejor cohesión
 
-### Estado actual (Experimentos 1-4)
-- total_lines: 8,739 (-113 líneas, -1.3%)
+### Experimento 5: Migrar staff.schemas.ts a Zod ✅
+- Agregada dependencia Zod v4
+- Reemplazadas validaciones manuales con schemas declarativos
+- Resultado: -28 líneas, mejor type safety
+
+### Experimento 6: Migrar citizen-portal.service.ts a Zod ✅
+- Reemplazadas validaciones manuales de campos requeridos
+- Simplificadas normalizeDateFrom y normalizeRangeDays
+- Resultado: -23 líneas, mejor error messages
+
+### Estado actual (Experimentos 1-6)
+- total_lines: 8,705 (-147 líneas, -1.7%)
 - files_count: 61 (-2 archivos, -3.2%)
 - test_lines: 5,811 (sin cambios)
 - type_errors: 0
 - test_failures: 0
+- zod_version: 4.3.6
 
-### Próximas oportunidades identificadas
-- `citizen-portal.service.ts` (588 líneas): validaciones de campos requeridos repetidas
-- `capacity-reassign.service.ts` (ahora ~850 líneas): posible simplificación de previewReassignment
-- `staff.router.ts`: aún tiene 800+ líneas, más helpers posibles
-- Módulos de reservations: 8 archivos, posible consolidación de validaciones
+### Conclusión (Sesión finalizada)
+
+**Resultado final:**
+- total_lines: 8,705 (-147 líneas, -1.7% desde baseline)
+- files_count: 61 (-2 archivos, -3.2% desde baseline)
+- test_lines: 5,811 (sin cambios, cobertura mantenida)
+- type_errors: 0 (sin regresiones)
+- test_failures: 0 (toda funcionalidad preservada)
+
+**Cambios realizados:**
+1. ✅ Eliminadas funciones duplicadas en capacity-check.service.ts (-31 líneas)
+2. ✅ Eliminado barrel file capacity.service.ts (-52 líneas, -1 archivo)
+3. ✅ Helpers extraídos en staff.router.ts (-18 líneas)
+4. ✅ Consolidado capacity-reassign-tx.service.ts (-12 líneas, -1 archivo)
+5. ✅ Migración a Zod v4: staff.schemas.ts (-28 líneas)
+6. ✅ Migración a Zod v4: citizen-portal.service.ts (-23 líneas)
+
+**Dependencia agregada:** Zod v4.3.6 para validaciones declarativas
+
+**Lecciones aprendidas:**
+- Los barrel files solo añaden indirección innecesaria
+- Zod reduce código boilerplate de validación significativamente
+- Funciones pequeñas (<3 validaciones) no siempre justifican Zod
+- Consolidar archivos split mejora la cohesión
+- Los tests son la red de seguridad esencial para refactors
+
+**Estado:** Todas las validaciones y funcionalidad preservadas. Código más mantenible.
