@@ -20,6 +20,26 @@ import {
 } from "./capacity-hold.service";
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+type BookingLike = {
+	id: string;
+	slotId: string;
+	staffUserId: string | null;
+	isActive: boolean;
+	kind: string;
+	requestId: string | null;
+};
+
+function toBookingSummary(booking: BookingLike) {
+	return {
+		id: booking.id,
+		slotId: booking.slotId,
+		staffUserId: booking.staffUserId,
+		isActive: booking.isActive,
+		kind: booking.kind,
+		requestId: booking.requestId,
+	};
+}
+
 async function getActiveBookingIdForRequest(
 	requestId: string,
 ): Promise<string | null> {
