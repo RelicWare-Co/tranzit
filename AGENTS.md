@@ -353,19 +353,25 @@ Admin conectado hoy en frontend:
   - creación de encargado con `trim`/email normalizado,
   - reasignación masiva limitada a 100 items por operación (límite backend).
 
-Admin avanzado conectado de forma minima (UI tecnica) en frontend:
-- `src/routes/admin/configuracion.tsx` y `src/routes/admin/configuracion/AdminConfiguracionPage.tsx`:
-  - `admin.schedule.templates.*`,
-  - `admin.schedule.overrides.*`,
-  - `admin.schedule.slots.generate`,
-  - `admin.staff.get`,
-  - `admin.staff.dateOverrides.*`,
-  - `admin.staff.effectiveAvailability`.
-- `src/routes/admin/reportes.tsx` y `src/routes/admin/reportes/AdminReportesPage.tsx`:
-  - `session.get`,
-  - `admin.bookings.get/capacity/confirm/release/reassign/reassignPreview/availabilityCheck`,
-  - `admin.reservationSeries.*`,
-  - `admin.reservations.*`.
+Admin avanzado conectado con UI funcional premium en frontend:
+- `src/routes/admin/configuracion.tsx` y `src/routes/admin/configuracion/-AdminConfiguracionPage.tsx`:
+  - `admin.schedule.templates.*` con formularios validados y diseño premium,
+  - `admin.schedule.overrides.*` con validaciones en tiempo real,
+  - `admin.schedule.slots.generate` con feedback visual,
+  - `admin.staff.get` con selector mejorado,
+  - `admin.staff.dateOverrides.*` con validaciones de horarios (HH:MM),
+  - `admin.staff.effectiveAvailability` con visualización mejorada.
+  - Características UX: notificaciones toast, confirmaciones modales, estados empty elegantes,
+    skeletons de carga, badges de estado coloridos, tooltips en acciones, validaciones con @mantine/form.
+- `src/routes/admin/reportes.tsx` y `src/routes/admin/reportes/-AdminReportesPage.tsx`:
+  - `session.get` con display de usuario mejorado,
+  - `admin.bookings.get/capacity/confirm/release/reassign/reassignPreview/availabilityCheck`
+    con filtros avanzados y panel de acciones contextual,
+  - `admin.reservationSeries.*` con creación validada y gestión completa,
+  - `admin.reservations.*` para instancias individuales.
+  - Características UX: filtros de citas con badges de estado, selección visual de items,
+    formularios de series con validación RRULE, confirmaciones antes de acciones destructivas,
+    estados de carga con skeletons, empty states ilustrativos.
 
 Ciudadano conectado hoy en frontend:
 - `src/routes/login.tsx`:
@@ -381,14 +387,12 @@ Ciudadano conectado hoy en frontend:
   - `citizen.bookings.cancel`.
 
 Lo que aun falta para darlo por conectado de verdad:
-- reemplazar la UI tecnica (payload JSON libre) por flujos de producto (formularios y acciones guiadas por caso de uso),
 - estandarizar manejo de concurrencia optimista (`If-Match`) e idempotency keys en acciones de series/instancias,
 - cubrir estas superficies con pruebas de frontend y pruebas de integracion.
 
 Siguientes pasos operativos prioritarios:
-1. reemplazar la UI tecnica actual de admin por interfaces funcionales orientadas a tareas reales de backoffice,
-2. aplicar manejo consistente de concurrencia/idempotencia en todas las mutaciones criticas de reservas/series,
-3. agregar pruebas automatizadas sobre admin conectado (frontend + integracion) para evitar regresiones.
+1. aplicar manejo consistente de concurrencia/idempotencia en todas las mutaciones criticas de reservas/series,
+2. agregar pruebas automatizadas sobre admin conectado (frontend + integracion) para evitar regresiones.
 
 Brecha ciudadana que sigue pendiente:
 - API de ciclo de vida avanzado de `service_request` (estados y snapshots mas ricos),
