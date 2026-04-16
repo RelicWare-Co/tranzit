@@ -16,19 +16,19 @@ import {
 import { AlertCircle, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "../../../lib/orpc-client";
-import { formatDateLocal } from "../_shared/dates";
-import { getErrorMessage } from "../_shared/errors";
+import { formatDateLocal } from "../_shared/-dates";
+import { getErrorMessage } from "../_shared/-errors";
 import "./admin-schedule.css";
-import { BookingStatsGrid } from "./BookingStatsGrid";
-import { NewBookingModal } from "./NewBookingModal";
+import { BookingStatsGrid } from "./-BookingStatsGrid";
+import { NewBookingModal } from "./-NewBookingModal";
 import type {
 	BookingKind,
 	BookingWithRelations,
 	ProcedureType,
 	SlotWithCapacity,
 	StaffProfile,
-} from "./types";
-import { getDateRange, getEventColor, toDateTimeString } from "./utils";
+} from "./-types";
+import { getDateRange, getEventColor, toDateTimeString } from "./-utils";
 
 export function AdminCitasPage() {
 	const [view, setView] = useState<ScheduleViewLevel>("week");
@@ -430,8 +430,7 @@ export function AdminCitasPage() {
 				<Box className="shrink-0 px-4 pb-2 pt-3 sm:px-5">
 					<ScheduleHeader
 						classNames={{
-							header:
-								"admin-schedule-toolbar admin-schedule-toolbar--fused",
+							header: "admin-schedule-toolbar admin-schedule-toolbar--fused",
 						}}
 					>
 						<ScheduleHeader.Previous

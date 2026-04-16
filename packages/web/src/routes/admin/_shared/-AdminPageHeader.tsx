@@ -1,6 +1,6 @@
 import { Box, Group } from "@mantine/core";
 import type { ReactNode } from "react";
-import { adminUi } from "./admin-ui";
+import { adminUi } from "./-admin-ui";
 
 export function AdminPageHeader({
 	title,

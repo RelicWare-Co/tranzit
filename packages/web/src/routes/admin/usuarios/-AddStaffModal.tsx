@@ -9,9 +9,9 @@ import {
 } from "@mantine/core";
 import { AlertCircle, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { adminModalStyles } from "../_shared/admin-ui";
-import { getErrorMessage } from "../_shared/errors";
-import type { CreateStaffPayload } from "./types";
+import { adminModalStyles } from "../_shared/-admin-ui";
+import { getErrorMessage } from "../_shared/-errors";
+import type { CreateStaffPayload } from "./-types";
 
 export function AddStaffModal({
 	opened,

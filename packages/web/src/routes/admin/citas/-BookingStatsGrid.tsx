@@ -1,5 +1,5 @@
 import { Stack, Text } from "@mantine/core";
-import { adminUi } from "../_shared/admin-ui";
+import { adminUi } from "../_shared/-admin-ui";
 
 type Stats = {
 	citasHoy: number;

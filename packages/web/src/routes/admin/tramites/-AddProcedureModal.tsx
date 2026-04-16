@@ -10,9 +10,9 @@ import {
 } from "@mantine/core";
 import { AlertCircle, Plus } from "lucide-react";
 import { useState } from "react";
-import { adminModalStyles } from "../_shared/admin-ui";
-import { getErrorMessage } from "../_shared/errors";
-import type { ProcedureCreateInput } from "./types";
+import { adminModalStyles } from "../_shared/-admin-ui";
+import { getErrorMessage } from "../_shared/-errors";
+import type { ProcedureCreateInput } from "./-types";
 
 export function AddProcedureModal({
 	opened,

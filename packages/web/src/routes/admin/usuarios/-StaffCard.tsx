@@ -1,8 +1,8 @@
 import { Avatar, Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { CheckCircle2, UserX } from "lucide-react";
-import { adminUi } from "../_shared/admin-ui";
-import { CapacityIndicator } from "./CapacityIndicator";
-import type { StaffProfile } from "./types";
+import { adminUi } from "../_shared/-admin-ui";
+import { CapacityIndicator } from "./-CapacityIndicator";
+import type { StaffProfile } from "./-types";
 
 export function StaffCard({
 	profile,

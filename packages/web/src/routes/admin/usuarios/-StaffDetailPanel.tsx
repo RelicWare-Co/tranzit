@@ -23,10 +23,10 @@ import {
 	Trash2,
 	UserCheck,
 } from "lucide-react";
-import { adminUi } from "../_shared/admin-ui";
-import { getBookingStatusColor, getBookingStatusLabel } from "./booking-utils";
-import { CapacityIndicator } from "./CapacityIndicator";
-import type { AdminBooking, StaffProfile } from "./types";
+import { adminUi } from "../_shared/-admin-ui";
+import { getBookingStatusColor, getBookingStatusLabel } from "./-booking-utils";
+import { CapacityIndicator } from "./-CapacityIndicator";
+import type { AdminBooking, StaffProfile } from "./-types";
 
 export function StaffDetailPanel({
 	selectedStaff,

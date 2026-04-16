@@ -23,8 +23,8 @@ import {
 	MoreHorizontal,
 	Trash2,
 } from "lucide-react";
-import { adminUi } from "../_shared/admin-ui";
-import type { ProcedureType } from "./types";
+import { adminUi } from "../_shared/-admin-ui";
+import type { ProcedureType } from "./-types";
 
 export function ProcedureDetailPanel({
 	procedure,

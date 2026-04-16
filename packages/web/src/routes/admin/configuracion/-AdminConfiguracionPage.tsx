@@ -18,8 +18,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "../../../lib/orpc-client";
-import { AdminPageHeader } from "../_shared/AdminPageHeader";
-import { getErrorMessage } from "../_shared/errors";
+import { AdminPageHeader } from "../_shared/-AdminPageHeader";
+import { getErrorMessage } from "../_shared/-errors";
 
 const CONFIG_SNAPSHOT_QUERY_KEY = [
 	"admin",

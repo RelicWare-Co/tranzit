@@ -19,7 +19,7 @@ import { AlertCircle, Lock, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../lib/AuthContext";
 import { orpc } from "../../lib/orpc-client";
-import { ADMIN_ACCENT, adminUi } from "./_shared/admin-ui";
+import { ADMIN_ACCENT, adminUi } from "./_shared/-admin-ui";
 
 export const Route = createFileRoute("/admin/login")({
 	component: AdminLoginPage,

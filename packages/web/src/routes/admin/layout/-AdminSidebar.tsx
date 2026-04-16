@@ -7,7 +7,7 @@ import {
 	Settings,
 	Users,
 } from "lucide-react";
-import { SidebarItem } from "./SidebarItem";
+import { SidebarItem } from "./-SidebarItem";
 
 const sectionClass =
 	"mb-5 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400";

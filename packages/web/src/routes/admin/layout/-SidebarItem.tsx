@@ -1,7 +1,7 @@
 import { UnstyledButton } from "@mantine/core";
 import { Link } from "@tanstack/react-router";
 import type { ComponentType } from "react";
-import { ADMIN_ACCENT } from "../_shared/admin-ui";
+import { ADMIN_ACCENT } from "../_shared/-admin-ui";
 
 const ease = "cubic-bezier(0.16, 1, 0.3, 1)";
 

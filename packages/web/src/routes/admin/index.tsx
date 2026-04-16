@@ -2,8 +2,8 @@ import { Avatar, Badge, Box, Button, Group, Stack, Text } from "@mantine/core";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BarChart3, Calendar, ClipboardList, Users } from "lucide-react";
 import { useAuth } from "../../lib/AuthContext";
-import { AdminPageHeader } from "./_shared/AdminPageHeader";
-import { adminUi } from "./_shared/admin-ui";
+import { AdminPageHeader } from "./_shared/-AdminPageHeader";
+import { adminUi } from "./_shared/-admin-ui";
 
 export const Route = createFileRoute("/admin/")({
 	component: AdminDashboard,

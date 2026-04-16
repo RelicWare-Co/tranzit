@@ -1,7 +1,7 @@
 import { Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { Car, FileCheck } from "lucide-react";
-import { adminUi } from "../_shared/admin-ui";
-import type { ProcedureType } from "./types";
+import { adminUi } from "../_shared/-admin-ui";
+import type { ProcedureType } from "./-types";
 
 export function ProcedureSummaryCard({
 	procedure,

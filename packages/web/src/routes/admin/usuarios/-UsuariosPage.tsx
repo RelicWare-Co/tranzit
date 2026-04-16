@@ -14,16 +14,20 @@ import { AlertCircle, CheckCircle2, Plus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { authClient } from "../../../lib/auth-client";
 import { orpcClient } from "../../../lib/orpc-client";
-import { AdminPageHeader } from "../_shared/AdminPageHeader";
-import { adminUi } from "../_shared/admin-ui";
-import { formatDateLocal } from "../_shared/dates";
-import { getErrorMessage } from "../_shared/errors";
-import { AddStaffModal } from "./AddStaffModal";
-import { mapBookingsByStaff } from "./booking-utils";
-import { ReassignModal } from "./ReassignModal";
-import { StaffCard } from "./StaffCard";
-import { StaffDetailEmptyState, StaffDetailPanel } from "./StaffDetailPanel";
-import type { BookingByStaff, CreateStaffPayload, StaffProfile } from "./types";
+import { AdminPageHeader } from "../_shared/-AdminPageHeader";
+import { adminUi } from "../_shared/-admin-ui";
+import { formatDateLocal } from "../_shared/-dates";
+import { getErrorMessage } from "../_shared/-errors";
+import { AddStaffModal } from "./-AddStaffModal";
+import { mapBookingsByStaff } from "./-booking-utils";
+import { ReassignModal } from "./-ReassignModal";
+import { StaffCard } from "./-StaffCard";
+import { StaffDetailEmptyState, StaffDetailPanel } from "./-StaffDetailPanel";
+import type {
+	BookingByStaff,
+	CreateStaffPayload,
+	StaffProfile,
+} from "./-types";
 
 export function UsuariosPage() {
 	const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);

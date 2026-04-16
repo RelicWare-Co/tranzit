@@ -10,8 +10,8 @@ import {
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { AlertCircle } from "lucide-react";
-import { adminModalStyles } from "../_shared/admin-ui";
-import type { BookingKind } from "./types";
+import { adminModalStyles } from "../_shared/-admin-ui";
+import type { BookingKind } from "./-types";
 
 export function NewBookingModal({
 	opened,

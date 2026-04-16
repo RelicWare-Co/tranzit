@@ -13,17 +13,17 @@ import { useDisclosure } from "@mantine/hooks";
 import { AlertCircle, CheckCircle2, List, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "../../../lib/orpc-client";
-import { AdminPageHeader } from "../_shared/AdminPageHeader";
-import { adminUi } from "../_shared/admin-ui";
-import { getErrorMessage } from "../_shared/errors";
-import { AddProcedureModal } from "./AddProcedureModal";
+import { AdminPageHeader } from "../_shared/-AdminPageHeader";
+import { adminUi } from "../_shared/-admin-ui";
+import { getErrorMessage } from "../_shared/-errors";
+import { AddProcedureModal } from "./-AddProcedureModal";
 import {
 	ProcedureDetailEmptyState,
 	ProcedureDetailPanel,
-} from "./ProcedureDetailPanel";
-import { ProcedureSummaryCard } from "./ProcedureSummaryCard";
-import type { ProcedureCreateInput, ProcedureType } from "./types";
-import { buildDuplicateSlug } from "./utils";
+} from "./-ProcedureDetailPanel";
+import { ProcedureSummaryCard } from "./-ProcedureSummaryCard";
+import type { ProcedureCreateInput, ProcedureType } from "./-types";
+import { buildDuplicateSlug } from "./-utils";
 
 export function TramitesPage() {
 	const [procedures, setProcedures] = useState<ProcedureType[]>([]);
