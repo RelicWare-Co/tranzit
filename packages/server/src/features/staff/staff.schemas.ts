@@ -1,12 +1,15 @@
+import { z } from "zod";
+
 const WEEKDAY_MIN = 0;
 const WEEKDAY_MAX = 6;
 
-const isValidWeekday = (w: number) =>
-	Number.isInteger(w) && w >= WEEKDAY_MIN && w <= WEEKDAY_MAX;
+const timeFormatRegex = /^\d{2}:\d{2}$/;
+
+const isValidTimeValue = (t: string) => t >= "00:00" && t <= "23:59";
 
 export const isValidTimeFormat = (t: string | null | undefined): boolean => {
 	if (!t) return true;
-	return /^\d{2}:\d{2}$/.test(t) && t >= "00:00" && t <= "23:59";
+	return timeFormatRegex.test(t) && isValidTimeValue(t);
 };
 
 export const isValidDateFormat = (d: string): boolean => {
@@ -38,11 +41,53 @@ export const isValidTimeWindow = (
 	return start < end;
 };
 
-export const errorResponse = (code: string, message: string, status: number) =>
-	new Response(JSON.stringify({ code, message }), {
-		status,
-		headers: { "Content-Type": "application/json" },
-	});
+const isValidWeekday = (w: number) =>
+	Number.isInteger(w) && w >= WEEKDAY_MIN && w <= WEEKDAY_MAX;
+
+// Zod schemas for type-safe validation
+const timeFieldSchema = z
+	.string()
+	.regex(timeFormatRegex, "must be in HH:MM format")
+	.refine(isValidTimeValue, "must be between 00:00 and 23:59");
+
+const dayConfigSchema = z.object({
+	enabled: z.boolean().optional(),
+	morningStart: timeFieldSchema.optional(),
+	morningEnd: timeFieldSchema.optional(),
+	afternoonStart: timeFieldSchema.optional(),
+	afternoonEnd: timeFieldSchema.optional(),
+});
+
+const weeklyAvailabilitySchema = z
+	.record(z.string(), dayConfigSchema)
+	.refine((record) => {
+		for (const key of Object.keys(record)) {
+			const dayNum = parseInt(key, 10);
+			if (!isValidWeekday(dayNum)) {
+				return false;
+			}
+		}
+		return true;
+	}, "weekday keys must be 0-6")
+	.refine((record) => {
+		for (const [key, config] of Object.entries(record)) {
+			if (
+				config.morningStart &&
+				config.morningEnd &&
+				config.morningStart >= config.morningEnd
+			) {
+				return false;
+			}
+			if (
+				config.afternoonStart &&
+				config.afternoonEnd &&
+				config.afternoonStart >= config.afternoonEnd
+			) {
+				return false;
+			}
+		}
+		return true;
+	}, "end time must be after start time");
 
 export const validateWeeklyAvailability = (
 	wa: unknown,
@@ -53,89 +98,15 @@ export const validateWeeklyAvailability = (
 		return { valid: true, parsed: {} };
 	}
 
-	if (typeof wa !== "object" || Array.isArray(wa)) {
-		return { valid: false, error: "weeklyAvailability must be an object" };
+	const result = weeklyAvailabilitySchema.safeParse(wa);
+	if (!result.success) {
+		const firstError = result.error.errors[0];
+		const path = firstError.path.length > 0 ? `.${firstError.path.join(".")}` : "";
+		return { valid: false, error: `weeklyAvailability${path}: ${firstError.message}` };
 	}
 
-	const parsed = wa as Record<string, unknown>;
-	const days = Object.keys(parsed);
-
-	for (const day of days) {
-		const dayNum = parseInt(day, 10);
-		if (!isValidWeekday(dayNum)) {
-			return {
-				valid: false,
-				error: `Invalid weekday key: ${day}. Must be 0-6.`,
-			};
-		}
-
-		const dayConfig = parsed[day];
-		if (typeof dayConfig !== "object" || dayConfig === null) {
-			return {
-				valid: false,
-				error: `weeklyAvailability.${day} must be an object`,
-			};
-		}
-
-		const config = dayConfig as Record<string, unknown>;
-
-		if (config.enabled !== undefined && typeof config.enabled !== "boolean") {
-			return {
-				valid: false,
-				error: `weeklyAvailability.${day}.enabled must be a boolean`,
-			};
-		}
-
-		const timeFields = [
-			"morningStart",
-			"morningEnd",
-			"afternoonStart",
-			"afternoonEnd",
-		];
-
-		for (const field of timeFields) {
-			if (config[field] !== undefined) {
-				if (typeof config[field] !== "string") {
-					return {
-						valid: false,
-						error: `weeklyAvailability.${day}.${field} must be a string`,
-					};
-				}
-				if (!isValidTimeFormat(config[field] as string)) {
-					return {
-						valid: false,
-						error: `weeklyAvailability.${day}.${field} must be in HH:MM format`,
-					};
-				}
-			}
-		}
-
-		const morningStart = config.morningStart as string | undefined;
-		const morningEnd = config.morningEnd as string | undefined;
-		if (
-			morningStart &&
-			morningEnd &&
-			!isValidTimeWindow(morningStart, morningEnd)
-		) {
-			return {
-				valid: false,
-				error: `weeklyAvailability.${day}.morningEnd must be after morningStart`,
-			};
-		}
-
-		const afternoonStart = config.afternoonStart as string | undefined;
-		const afternoonEnd = config.afternoonEnd as string | undefined;
-		if (
-			afternoonStart &&
-			afternoonEnd &&
-			!isValidTimeWindow(afternoonStart, afternoonEnd)
-		) {
-			return {
-				valid: false,
-				error: `weeklyAvailability.${day}.afternoonEnd must be after afternoonStart`,
-			};
-		}
-	}
-
-	return { valid: true, parsed };
+	return { valid: true, parsed: result.data };
 };
+
+// Export schemas for reuse
+export { weeklyAvailabilitySchema, dayConfigSchema, timeFieldSchema };

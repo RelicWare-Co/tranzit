@@ -79,7 +79,41 @@ Oportunidad: unificar modelo de disponibilidad en un solo lugar.
 ## What's Been Tried
 
 ### Baseline (2026-04-16)
-- total_lines: ~9814
+- total_lines: 8,852
 - files_count: 63
 - test_files: 7
 - Estado: tests pasan, types pasan, lint pasa
+
+### Experimento 1: Eliminar funciones duplicadas en capacity-check.service.ts ✅
+- Eliminadas: `getActiveBookingCountForSlot`, `getActiveBookingCountForStaffOnDate`
+- Eran duplicados no usados de `countActiveSlotBookings`, `countActiveStaffBookingsOnDate`
+- Resultado: -31 líneas, todos los tests pasan
+
+### Experimento 2: Eliminar barrel file capacity.service.ts ✅
+- Eliminado barrel file que solo re-exportaba
+- Actualizados 10+ consumidores para imports directos
+- Actualizados 3 archivos de test
+- Resultado: -52 líneas, -1 archivo, todos los tests pasan
+
+### Experimento 3: Extraer helpers en staff.router.ts ✅
+- Agregados: `parseDefaultCapacity`, `validateBooleanField`
+- Eliminada duplicación de validaciones en create/update
+- Resultado: -18 líneas, código más mantenible
+
+### Experimento 4: Consolidar capacity-reassign-tx.service.ts ✅
+- Eliminado archivo split innecesario
+- Funciones movidas a capacity-reassign.service.ts
+- Resultado: -12 líneas, -1 archivo, mejor cohesión
+
+### Estado actual (Experimentos 1-4)
+- total_lines: 8,739 (-113 líneas, -1.3%)
+- files_count: 61 (-2 archivos, -3.2%)
+- test_lines: 5,811 (sin cambios)
+- type_errors: 0
+- test_failures: 0
+
+### Próximas oportunidades identificadas
+- `citizen-portal.service.ts` (588 líneas): validaciones de campos requeridos repetidas
+- `capacity-reassign.service.ts` (ahora ~850 líneas): posible simplificación de previewReassignment
+- `staff.router.ts`: aún tiene 800+ líneas, más helpers posibles
+- Módulos de reservations: 8 archivos, posible consolidación de validaciones
