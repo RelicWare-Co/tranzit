@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "bun --cwd packages/web dev",
     "dev:server": "bun --cwd packages/server dev",
-    "dev:all": "bun run --workspaces --parallel",
+    "dev:all": "bun run --workspaces --parallel dev",
     "build": "bun --cwd packages/web build",
     "preview": "bun --cwd packages/web preview",
     "maildev": "bun --cwd packages/server run maildev",

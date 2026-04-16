@@ -3,7 +3,7 @@ import { config as loadEnv } from "dotenv";
 import { drizzle } from "drizzle-orm/libsql/node";
 import * as schema from "../db/schema";
 
-loadEnv({ path: "../.env" });
+loadEnv({ path: "../../.env" });
 
 const url = process.env.TURSO_DATABASE_URL;
 
