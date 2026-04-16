@@ -1,9 +1,7 @@
-import {
-	getReservationInstance,
-	moveReservationInstance,
-	releaseReservationInstance,
-	updateReservationInstance,
-} from "../../features/reservations/reservations-admin.service";
+import { getReservationInstance } from "../../features/reservations/reservations-instance-read.service";
+import { moveReservationInstance } from "../../features/reservations/reservations-instance-move.service";
+import { releaseReservationInstance } from "../../features/reservations/reservations-instance-release.service";
+import { updateReservationInstance } from "../../features/reservations/reservations-instance-update-core.service";
 import { rpc } from "../context";
 import { parseIfMatch, requireAdminAccess } from "../shared";
 
