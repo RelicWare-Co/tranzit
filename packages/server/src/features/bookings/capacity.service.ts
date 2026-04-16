@@ -28,8 +28,6 @@ export {
 	checkCapacity,
 	countActiveSlotBookings,
 	countActiveStaffBookingsOnDate,
-	getActiveBookingCountForSlot,
-	getActiveBookingCountForStaffOnDate,
 	resolveStaffAvailabilityAndCapacity,
 } from "./capacity-check.service";
 
