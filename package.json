@@ -8,17 +8,21 @@
     "packages/server"
   ],
   "scripts": {
-    "dev": "bun run --filter=web dev",
-    "dev:server": "bun run --filter=server dev",
-    "build": "bun run --filter=web build",
-    "preview": "bun run --filter=web preview",
-    "maildev": "bun run --filter=server maildev",
-    "test": "bun run --filter=web test",
-    "lint": "bun run lint",
-    "format": "bun run format",
-    "check": "bun run check",
-    "db:generate": "bun run --filter=server db:generate",
-    "db:migrate": "bun run --filter=server db:migrate"
+    "dev": "bun --cwd packages/web dev",
+    "dev:server": "bun --cwd packages/server dev",
+    "dev:all": "bun run --workspaces --parallel",
+    "build": "bun --cwd packages/web build",
+    "preview": "bun --cwd packages/web preview",
+    "maildev": "bun --cwd packages/server run maildev",
+    "test": "bun --cwd packages/web test",
+    "lint": "bun run --filter=\"*\" lint",
+    "format": "bun run --filter=\"*\" format",
+    "check": "bun run --filter=\"*\" check",
+    "db:generate": "bun --cwd packages/server run db:generate",
+    "db:migrate": "bun --cwd packages/server run db:migrate",
+    "tsc:web": "bun --cwd packages/web tsc --noEmit",
+    "tsc:server": "bun --cwd packages/server tsc --noEmit",
+    "tsc": "bun run tsc:web && bun run tsc:server"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.10"
