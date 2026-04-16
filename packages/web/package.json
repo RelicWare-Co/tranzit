@@ -8,9 +8,9 @@
   },
   "scripts": {
     "dev": "vite dev --port 3000",
-    "dev:server": "bun --cwd server run dev",
+    "dev:server": "bun run --cwd ../server dev",
     "build": "vite build",
-    "maildev": "bun --cwd server run maildev",
+    "maildev": "bun run --cwd ../server maildev",
     "preview": "vite preview",
     "test": "vitest run --maxWorkers=1",
     "format": "biome format",
