@@ -6,7 +6,8 @@
 		"db:push": "drizzle-kit push --config drizzle.config.ts",
 		"dev": "bun run --env-file ../.env --hot src/index.ts",
 		"maildev": "maildev --smtp 1025 --web 1080 --ip 127.0.0.1 --web-ip 127.0.0.1",
-		"seed": "bun run --env-file ../.env scripts/seed.ts"
+		"seed": "bun run --env-file ../.env scripts/seed.ts",
+		"test": "vitest run --maxWorkers=1"
 	},
 	"dependencies": {
 		"@better-auth/drizzle-adapter": "^1.6.1",
@@ -29,6 +30,7 @@
 		"@types/nodemailer": "^8.0.0",
 		"drizzle-kit": "^0.31.10",
 		"maildev": "^2.2.1",
-		"tsx": "^4.20.6"
+		"tsx": "^4.20.6",
+		"vitest": "^4.1.3"
 	}
 }
