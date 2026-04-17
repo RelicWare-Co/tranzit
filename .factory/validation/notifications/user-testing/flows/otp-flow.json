@@ -1,0 +1,95 @@
+{
+  "groupId": "otp-flow",
+  "testedAt": "2026-04-17T07:14:56.000Z",
+  "isolation": {
+    "appUrl": "http://localhost:3001",
+    "maildevUrl": "http://localhost:1080",
+    "database": "packages/server/sqlite.db",
+    "maildevApi": "http://localhost:1080/email"
+  },
+  "toolsUsed": ["curl"],
+  "assertions": [
+    {
+      "id": "VAL-NOTIF-001",
+      "title": "OTP email sent",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "DELETE /email/delete-all to clear Maildev inbox",
+          "expected": "Maildev inbox cleared",
+          "observed": "Email not found (inbox was already empty or cleared)"
+        },
+        {
+          "action": "POST /api/auth/email-otp/send-verification-otp with {email, type:sign-in}",
+          "expected": "HTTP 200 with {success:true}",
+          "observed": "HTTP 200 with {success:true}"
+        },
+        {
+          "action": "GET /email to query Maildev inbox",
+          "expected": "Email appears in Maildev inbox",
+          "observed": "Email with id 'KtZdqvte' found in Maildev inbox, sent to test@example.com"
+        }
+      ],
+      "evidence": {
+        "httpStatus": 200,
+        "responseBody": "{\"success\":true}",
+        "maildevEmailId": "KtZdqvte",
+        "maildevTo": "test@example.com",
+        "maildevSubject": "Codigo de acceso SIMUT Tulua"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-NOTIF-002",
+      "title": "OTP email contains valid 6-digit code",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Extract OTP from Maildev email body",
+          "expected": "6-digit OTP code pattern",
+          "observed": "OTP code '788817' found in email body (6 digits)"
+        }
+      ],
+      "evidence": {
+        "otpCode": "788817",
+        "otpPattern": "^\\d{6}$",
+        "emailText": "Use este codigo para continuar el ingreso o registro transparente en SIMUT Tulua.\n\nCodigo: 788817\n\nSi usted no solicito este codigo, ignore este correo."
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-NOTIF-003",
+      "title": "OTP notification record created",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "Send OTP via POST /api/auth/email-otp/send-verification-otp",
+          "expected": "notification_delivery row created with templateKey, status, recipient",
+          "observed": "No notification_delivery row found for the OTP email"
+        },
+        {
+          "action": "Query SQLite: SELECT * FROM notification_delivery WHERE recipient LIKE '%test%'",
+          "expected": "Row with templateKey related to OTP (e.g., 'otp-sign-in' or 'sign-in')",
+          "observed": "No rows returned - notification_delivery table is empty"
+        }
+      ],
+      "evidence": {
+        "databaseQuery": "SELECT * FROM notification_delivery ORDER BY created_at DESC LIMIT 10;",
+        "queryResult": "No rows in notification_delivery table",
+        "schemaExists": true,
+        "tableHasData": false
+      },
+      "issues": "OTP emails are sent via auth.mailer.ts::sendVerificationOtpEmail which directly uses nodemailer without creating a notification_delivery record. The notification.service.ts handles booking lifecycle emails (confirmation, cancellation, hold expiration) but has no OTP template. This is a gap: OTP notifications should create notification_delivery records for auditability."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Initial OTP request failed because the API requires 'type' field in body - the task description omitted this required parameter",
+      "resolved": true,
+      "resolution": "Retried with correct body format: {email, type:sign-in}",
+      "affectedAssertions": ["VAL-NOTIF-001"]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 3 assertions: 2 passed (VAL-NOTIF-001, VAL-NOTIF-002), 1 failed (VAL-NOTIF-003). OTP email is sent correctly and contains valid 6-digit code (788817). However, OTP notifications do NOT create notification_delivery records because auth.mailer.ts sends emails directly via nodemailer without going through notification.service.ts. The notification service only handles booking lifecycle emails (booking-confirmation, booking-cancellation, booking-hold-expired) but has no OTP template."
+}
