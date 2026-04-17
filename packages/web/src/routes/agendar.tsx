@@ -26,9 +26,14 @@ import {
 	CalendarClock,
 	CheckCircle2,
 	Clock,
+	FileText,
 	Mail,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+	type DocumentItem,
+	DocumentUpload,
+} from "../components/DocumentUpload";
 import { useAuth } from "../lib/AuthContext";
 import { orpcClient } from "../lib/orpc-client";
 
@@ -127,6 +132,55 @@ function formatSeconds(seconds: number) {
 	return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
 
+function getDocumentRequirements(
+	procedure: CitizenProcedure | null,
+): Array<{ key: string; label: string }> {
+	if (!procedure) return [];
+
+	// Check if procedure allows any document mode
+	if (!procedure.allowsDigitalDocuments && !procedure.allowsPhysicalDocuments) {
+		return [];
+	}
+
+	// Try to extract requirements from documentSchema
+	const docSchema = procedure.documentSchema as
+		| Record<string, unknown>
+		| undefined;
+	if (docSchema && typeof docSchema === "object") {
+		// Check for required array
+		const required = (docSchema.required as string[] | undefined) || [];
+		// Check for properties
+		const properties =
+			(docSchema.properties as
+				| Record<string, { title?: string; description?: string }>
+				| undefined) || {};
+
+		if (required.length > 0) {
+			return required.map((key) => ({
+				key,
+				label: properties[key]?.title || properties[key]?.description || key,
+			}));
+		}
+
+		// If no required array, list all properties
+		const keys = Object.keys(properties);
+		if (keys.length > 0) {
+			return keys.map((key) => ({
+				key,
+				label: properties[key]?.title || properties[key]?.description || key,
+			}));
+		}
+	}
+
+	// Default: provide generic document requirement based on procedure
+	return [
+		{
+			key: "supporting_document",
+			label: "Documento de soporte",
+		},
+	];
+}
+
 function AgendarPage() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
@@ -143,6 +197,7 @@ function AgendarPage() {
 	);
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [documents, setDocuments] = useState<DocumentItem[]>([]);
 	const currentStep = isAuthenticated ? authenticatedStep : 0;
 
 	const detailsForm = useForm({
@@ -250,7 +305,9 @@ function AgendarPage() {
 			setHoldBooking(response.booking);
 			setAuthenticatedStep(3);
 			setError(null);
-			setFeedback("Reserva temporal creada. Confirma antes de que expire.");
+			setFeedback(
+				"Reserva temporal creada. Carga tus documentos antes de confirmar.",
+			);
 			await Promise.all([
 				queryClient.invalidateQueries({
 					queryKey: ["citizen", "slots-range", 14],
@@ -460,7 +517,10 @@ function AgendarPage() {
 						<Badge color={currentStep >= 1 ? "red" : "gray"}>2. Datos</Badge>
 						<Badge color={currentStep >= 2 ? "red" : "gray"}>3. Horario</Badge>
 						<Badge color={currentStep >= 3 ? "red" : "gray"}>
-							4. Confirmar
+							4. Documentos
+						</Badge>
+						<Badge color={currentStep >= 4 ? "red" : "gray"}>
+							5. Confirmar
 						</Badge>
 					</Group>
 
@@ -769,6 +829,19 @@ function AgendarPage() {
 									</Grid.Col>
 								</Grid>
 
+								<Divider
+									label="Documentos del trámite"
+									labelPosition="center"
+								/>
+
+								<DocumentUpload
+									requestId={holdBooking.request?.id || ""}
+									requirements={getDocumentRequirements(selectedProcedure)}
+									onDocumentsChange={setDocuments}
+								/>
+
+								<Divider />
+
 								<Group justify="space-between">
 									<Button
 										variant="default"
@@ -780,6 +853,155 @@ function AgendarPage() {
 										loading={cancelHoldMutation.isPending}
 									>
 										{holdExpired ? "Elegir otro horario" : "Cancelar reserva"}
+									</Button>
+									<Button
+										onClick={() => {
+											setError(null);
+											setFeedback(null);
+											setAuthenticatedStep(4);
+										}}
+										disabled={holdExpired}
+									>
+										Continuar a confirmar
+									</Button>
+								</Group>
+							</Stack>
+						</Card>
+					) : null}
+
+					{currentStep === 4 && holdBooking ? (
+						<Card withBorder radius="md" p="xl">
+							<Stack gap="lg">
+								<Alert
+									color={holdExpired ? "red" : "yellow"}
+									icon={<Clock size={16} />}
+								>
+									{holdExpired ? (
+										<>
+											La reserva temporal expiró. Selecciona un nuevo horario.
+										</>
+									) : (
+										<>
+											Tu reserva temporal expira en{" "}
+											<b>{formatSeconds(holdRemainingSeconds)}</b>.
+										</>
+									)}
+								</Alert>
+
+								<Group gap="sm">
+									<ThemeIcon size="lg" variant="light" color="blue" radius="xl">
+										<FileText size={18} />
+									</ThemeIcon>
+									<Stack gap={0}>
+										<Text fw={600}>Resumen de tu cita</Text>
+										<Text size="sm" c="dimmed">
+											Revisa los datos antes de confirmar
+										</Text>
+									</Stack>
+								</Group>
+
+								<Grid>
+									<Grid.Col span={{ base: 12, sm: 6 }}>
+										<Text size="sm" c="dimmed">
+											Trámite
+										</Text>
+										<Text fw={600}>
+											{holdBooking.request?.procedure?.name ?? "-"}
+										</Text>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 6 }}>
+										<Text size="sm" c="dimmed">
+											Horario
+										</Text>
+										<Text fw={600}>
+											{holdBooking.slot?.slotDate ?? "-"}{" "}
+											{holdBooking.slot?.startTime ?? ""}
+										</Text>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 6 }}>
+										<Text size="sm" c="dimmed">
+											Estado
+										</Text>
+										<Text fw={600}>{holdBooking.status}</Text>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 6 }}>
+										<Text size="sm" c="dimmed">
+											Expira
+										</Text>
+										<Text fw={600}>
+											{formatDateTime(holdBooking.holdExpiresAt)}
+										</Text>
+									</Grid.Col>
+								</Grid>
+
+								{/* Documents summary */}
+								{documents.length > 0 && (
+									<>
+										<Divider label="Documentos" labelPosition="center" />
+										<Stack gap="xs">
+											{documents
+												.filter((d) => d.isCurrent)
+												.map((doc) => (
+													<Group
+														key={doc.id}
+														justify="space-between"
+														wrap="nowrap"
+													>
+														<Group gap="sm" wrap="nowrap">
+															<ThemeIcon
+																size="sm"
+																variant="light"
+																color={
+																	doc.deliveryMode === "physical"
+																		? "grape"
+																		: "blue"
+																}
+																radius="sm"
+															>
+																<FileText size={14} />
+															</ThemeIcon>
+															<Stack gap={0}>
+																<Text size="xs" fw={500}>
+																	{doc.label}
+																</Text>
+																<Text size="xs" c="dimmed">
+																	{doc.deliveryMode === "physical"
+																		? "Entrega física"
+																		: doc.fileName}
+																</Text>
+															</Stack>
+														</Group>
+														<Badge
+															color={
+																doc.status === "valid"
+																	? "green"
+																	: doc.status === "pending"
+																		? "yellow"
+																		: "gray"
+															}
+															size="sm"
+															variant="light"
+														>
+															{doc.status === "valid"
+																? "Aprobado"
+																: doc.status === "pending"
+																	? "Pendiente"
+																	: doc.status}
+														</Badge>
+													</Group>
+												))}
+										</Stack>
+									</>
+								)}
+
+								<Divider />
+
+								<Group justify="space-between">
+									<Button
+										variant="default"
+										onClick={() => setAuthenticatedStep(3)}
+									>
+										Volver a documentos
 									</Button>
 									<Button
 										onClick={() => {

@@ -520,6 +520,77 @@ type CitizenBookingHoldResponse = {
 	booking: CitizenBookingSummary;
 };
 
+type RequestDocument = {
+	id: string;
+	requestId: string;
+	requirementKey: string;
+	label: string;
+	deliveryMode: string;
+	storageKey: string | null;
+	fileName: string | null;
+	mimeType: string | null;
+	fileSizeBytes: number | null;
+	status: string;
+	isCurrent: boolean;
+	replacesDocumentId: string | null;
+	reviewedByUserId: string | null;
+	reviewedAt: string | Date | null;
+	notes: string | null;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+};
+
+type DocumentUploadInput = {
+	requestId: string;
+	requirementKey: string;
+	label: string;
+	deliveryMode: "digital" | "physical";
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	content: string;
+};
+
+type DocumentUploadResponse = {
+	id: string;
+	requestId: string;
+	requirementKey: string;
+	label: string;
+	deliveryMode: string;
+	storageKey: string;
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	status: string;
+	isCurrent: boolean;
+	createdAt: string | Date;
+};
+
+type DocumentDeclarePhysicalInput = {
+	requestId: string;
+	requirementKey: string;
+	label: string;
+};
+
+type DocumentDeclarePhysicalResponse = {
+	id: string;
+	requestId: string;
+	requirementKey: string;
+	label: string;
+	deliveryMode: string;
+	storageKey: null;
+	fileName: null;
+	mimeType: null;
+	fileSizeBytes: null;
+	status: string;
+	isCurrent: boolean;
+	createdAt: string | Date;
+};
+
+type DocumentListInput = {
+	requestId: string;
+};
+
 type AdminReservationSeries = {
 	id: string;
 	kind: string;
@@ -613,6 +684,14 @@ export interface TranzitRpcClient {
 	[key: string]: any;
 	session: {
 		get: RpcProcedure<SessionResponse>;
+	};
+	documents: {
+		upload: RpcProcedure<DocumentUploadResponse, DocumentUploadInput>;
+		declarePhysical: RpcProcedure<
+			DocumentDeclarePhysicalResponse,
+			DocumentDeclarePhysicalInput
+		>;
+		list: RpcProcedure<RequestDocument[], DocumentListInput>;
 	};
 	citizen: {
 		procedures: {
