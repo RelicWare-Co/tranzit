@@ -1,51 +1,25 @@
 {
   "milestone": "notifications",
   "round": 1,
-  "status": "fail",
+  "status": "pass",
   "validatorsRun": {
-    "test": {
-      "passed": true,
-      "command": "cd packages/server && bun test",
-      "exitCode": 0,
-      "observation": "All 184 tests passed across 12 files, including 9 notification tests. Note: server package has no test script; tests run directly via bun."
-    },
-    "typecheck": {
-      "passed": true,
-      "command": "cd packages/server && bunx tsc --noEmit && cd packages/web && bunx tsc --noEmit",
-      "exitCode": 0,
-      "observation": "Both server and web packages pass TypeScript check with no errors"
-    },
-    "lint": {
-      "passed": true,
-      "command": "bun run lint",
-      "exitCode": 0,
-      "observation": "Checked 69 files in 30ms. No fixes applied."
-    }
+    "test": { "passed": true, "command": "cd packages/server && bun test", "exitCode": 0, "output": "186 pass, 0 fail across 13 test files" },
+    "typecheck": { "passed": true, "command": "cd packages/server && bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": "bun run --filter=\"*\" lint", "exitCode": 0 }
   },
   "reviewsSummary": {
-    "total": 1,
-    "passed": 0,
-    "failed": 1,
-    "failedFeatures": ["notification-email-templates"]
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "notification-email-templates",
-      "severity": "blocking",
-      "description": "Hold expiration email (booking-hold-expired template) is never sent when a hold actually expires. The sendHoldExpirationEmail function exists and is tested in isolation, but releaseExpiredHoldsAndReturnCount() and the expired-hold check in confirmExistingBooking both call releaseCapacity with reason='expired' but neither sends a hold expiration email notification.",
-      "files": [
-        "packages/server/src/features/bookings/capacity-consume.service.ts:165 - releaseCapacity called with reason='expired' but no email sent",
-        "packages/server/src/features/citizen/citizen-portal.service.ts:380 - releaseExpiredHoldsAndReturnCount releases stale holds but never sends emails"
-      ],
-      "suggestedFix": "Integrate sendHoldExpirationEmail call into both releaseExpiredHoldsAndReturnCount() and the expired-hold check in confirmExistingBooking(), passing the booking data (procedure name, slot datetime, applicant name/email) so the email can be rendered and sent."
-    }
-  ],
+  "blockingIssues": [],
   "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
-      "target": "services.yaml",
-      "suggestion": "Fix the typecheck command. Current: 'typecheck: bunx tsc --noEmit' (no project specified, fails). Correct: 'typecheck: cd server && bunx tsc --noEmit' or use 'tsc:server' script from package.json.",
-      "evidence": "Command 'bunx tsc --noEmit' without -p flag doesn't find tsconfig.json. package.json has 'tsc:server: bun --cwd packages/server tsc --noEmit'.",
+      "target": "AGENTS.md",
+      "suggestion": "Add a convention for shared helper functions that are duplicated across services (e.g., buildNotificationContext). Workers should extract common helpers to a shared module if they're used in more than one place.",
+      "evidence": "fix-hold-expiration-email review found buildNotificationContext defined identically in both bookings-mutations.service.ts and citizen-portal.service.ts. This pattern could proliferate.",
       "isSystemic": false
     }
   ],
