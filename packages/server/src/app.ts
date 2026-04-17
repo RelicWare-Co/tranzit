@@ -12,7 +12,9 @@ import type { AppVariables } from "./shared/types/app-context";
 
 export const app = new Hono<{ Variables: AppVariables }>();
 const rpcRouter = createTranzitRpcRouter();
-const rpcHandler = new RPCHandler(rpcRouter);
+const rpcHandler = new RPCHandler(rpcRouter, {
+	strictGetMethodPluginEnabled: false,
+});
 
 app.use("*", pinoLogger({ pino: logger }));
 app.use("/api/auth/*", authCorsMiddleware);

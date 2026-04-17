@@ -697,6 +697,85 @@ type AdminReservationInstanceMoveInput = {
 	targetStaffUserId?: string;
 };
 
+// Service Request types
+type ServiceRequest = {
+	id: string;
+	procedureTypeId: string;
+	citizenUserId: string;
+	email: string;
+	documentType: string;
+	documentNumber: string;
+	status: string;
+	procedureConfigVersion: number;
+	activeBookingId: string | null;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+	verifiedAt: string | Date | null;
+	confirmedAt: string | Date | null;
+	cancelledAt: string | Date | null;
+	procedureSnapshot: Record<string, unknown> | null;
+	eligibilityResult: Record<string, unknown> | null;
+	draftData: Record<string, unknown> | null;
+	procedureType: {
+		id: string;
+		name: string;
+		slug: string;
+	} | null;
+	citizen: {
+		id: string;
+		name: string | null;
+		email: string;
+	} | null;
+	activeBooking: {
+		id: string;
+		status: string;
+		slot: {
+			id: string;
+			slotDate: string;
+			startTime: string;
+			endTime: string;
+		} | null;
+		staff: {
+			id: string;
+			name: string | null;
+			email: string;
+		} | null;
+	} | null;
+};
+
+type ServiceRequestListInput = {
+	status?: string | string[];
+	procedureTypeId?: string;
+	citizenUserId?: string;
+	email?: string;
+	limit?: number;
+	offset?: number;
+	orderBy?: "createdAt" | "updatedAt" | "status";
+	orderDir?: "asc" | "desc";
+};
+
+type ServiceRequestListResponse = {
+	requests: ServiceRequest[];
+	total: number;
+	limit: number;
+	offset: number;
+	hasMore: boolean;
+};
+
+type ServiceRequestUpdateStatusInput = {
+	requestId: string;
+	status: string;
+	reason?: string;
+	eligibilityData?: Record<string, unknown>;
+};
+
+type ServiceRequestUpdateStatusResponse = {
+	previousStatus: string;
+	newStatus: string;
+	timestampField: string | null;
+	auditEventId: string;
+};
+
 export interface TranzitRpcClient {
 	// biome-ignore lint/suspicious/noExplicitAny: required to satisfy @orpc NestedClient generic constraint
 	[key: string]: any;
@@ -869,6 +948,14 @@ export interface TranzitRpcClient {
 			create: RpcProcedure<ProcedureType, ProcedureCreateInput>;
 			update: RpcProcedure<ProcedureType, ProcedureUpdateInput>;
 			remove: RpcProcedure<ProcedureRemoveResponse, { id: string }>;
+		};
+		serviceRequests: {
+			list: RpcProcedure<ServiceRequestListResponse, ServiceRequestListInput>;
+			get: RpcProcedure<ServiceRequest, { id: string }>;
+			updateStatus: RpcProcedure<
+				ServiceRequestUpdateStatusResponse,
+				ServiceRequestUpdateStatusInput
+			>;
 		};
 		reservationSeries: {
 			create: RpcProcedure<unknown, AdminReservationSeriesCreateInput>;
