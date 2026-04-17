@@ -1,5 +1,9 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
+import {
+	buildBookingSummary,
+	createAuditEvent,
+} from "../audit/audit.service";
 import type {
 	CapacityConflict,
 	CapacityMutationResult,
@@ -318,6 +322,45 @@ export async function confirmBooking(bookingId: string): Promise<{
 			updatedAt: now,
 		})
 		.where(eq(schema.booking.id, bookingId));
+
+	// Create audit event for booking confirmation
+	const staffUser = booking.staffUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.staffUserId),
+			})
+		: null;
+	const citizenUser = booking.citizenUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.citizenUserId),
+			})
+		: null;
+	const slot = await db.query.appointmentSlot.findFirst({
+		where: eq(schema.appointmentSlot.id, booking.slotId),
+	});
+
+	await createAuditEvent({
+		actorType: booking.kind === "citizen" ? "citizen" : "admin",
+		actorUserId: booking.createdByUserId,
+		entityType: "booking",
+		entityId: booking.id,
+		action: "confirm",
+		summary: buildBookingSummary("confirmed", booking.id, {
+			kind: booking.kind,
+			status: "confirmed",
+			slotDate: slot?.slotDate,
+			startTime: slot?.startTime,
+			staffName: staffUser?.name,
+			citizenName: citizenUser?.name,
+		}),
+		payload: {
+			slotId: booking.slotId,
+			staffUserId: booking.staffUserId,
+			kind: booking.kind,
+			confirmedAt: now.toISOString(),
+		},
+		ipAddress: null,
+		userAgent: null,
+	});
 
 	return {
 		success: true,

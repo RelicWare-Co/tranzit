@@ -357,6 +357,7 @@ Main guarantees implemented:
 - transaction-based conflict handling for last-capacity contention
 - semantic conflict mapping (`GLOBAL_OVER_CAPACITY`, `STAFF_*`, etc.)
 - idempotent release semantics and active booking pointer maintenance
+- `confirmBooking` creates `audit_event` with action="confirm" including booking details in summary and payload
 
 ## 4) What is still missing / partial
 
