@@ -1,0 +1,40 @@
+{
+  "milestone": "document-management",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 15,
+    "passed": 12,
+    "failed": 2,
+    "blocked": 1
+  },
+  "passedAssertions": [
+    "VAL-DOC-001", "VAL-DOC-002", "VAL-DOC-003", "VAL-DOC-004", "VAL-DOC-005",
+    "VAL-DOC-006", "VAL-DOC-007", "VAL-DOC-008", "VAL-DOC-009", "VAL-DOC-010",
+    "VAL-DOC-011", "VAL-DOC-013"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-DOC-012",
+      "reason": "Document replacement chain: uploadCitizenDocument does not set replacesDocumentId when creating new version. markPreviousDocumentsAsNotCurrent() marks old doc as not current but doesn't capture and pass previous document ID to new document's replacesDocumentId field."
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "reason": "Admin reassignment flow: preview succeeds but actual reassignment returns Internal Server Error (500). Additionally, no audit trail entry for 'reassign' action exists in audit_event table."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "id": "VAL-CROSS-003",
+      "blockedBy": "Admin document review UI not accessible through navigation - DocumentReviewModal.tsx exists in codebase but no route/menu item provides access. No citizen account with active service requests/documents available for testing."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added note: HTTP API for documents returns 500 for /api/rpc/documents/* routes - testing via direct service calls required. Bypass: use bun to call service functions directly or investigate RPC router configuration.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null
+}

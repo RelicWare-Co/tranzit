@@ -1,0 +1,149 @@
+{
+  "groupId": "cross-browser",
+  "testedAt": "2026-04-17T07:14:56.000Z",
+  "isolation": {
+    "backendUrl": "http://localhost:3001",
+    "frontendUrl": "http://localhost:3000",
+    "maildevUrl": "http://localhost:1080",
+    "adminCredentials": "testadmin@tranzit.local / testadmin123 (seeded for testing)",
+    "citizenCredentials": "testadmin@tranzit.local (cityzone account)"
+  },
+  "toolsUsed": ["agent-browser", "curl", "sqlite3"],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-002",
+      "title": "Admin reassignment flow",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "Navigate to admin panel at /admin/login",
+          "expected": "Login form displayed",
+          "observed": "Login form displayed"
+        },
+        {
+          "action": "Login with admin credentials testadmin@tranzit.local / testadmin123",
+          "expected": "Redirect to admin dashboard",
+          "observed": "Successfully redirected to /admin dashboard"
+        },
+        {
+          "action": "Navigate to Reportes page (booking management)",
+          "expected": "List of bookings with reassignment controls",
+          "observed": "Bookings list visible with booking ID 96929fe7-84a4-440e-9998-a6b155a627e5 in 'held' status assigned to Test Staff"
+        },
+        {
+          "action": "Select booking and choose new staff member (staff-010446b3-1)",
+          "expected": "Staff selection applied",
+          "observed": "Staff staff-010446b3-1 selected for reassignment"
+        },
+        {
+          "action": "Click 'Preview reasignación'",
+          "expected": "Preview shows dry run with canReassign status",
+          "observed": "Preview returned: {\"dryRun\":true,\"canReassign\":true,\"booking\":{\"id\":\"96929fe7-84a4-440e-9998-a6b155a627e5\",...}}"
+        },
+        {
+          "action": "Click 'Reasignar' to apply bulk reassignment",
+          "expected": "Reassignment applied, success confirmation",
+          "observed": "Internal server error - page displayed 'Internal server error' message"
+        },
+        {
+          "action": "Check audit_event table for reassignment audit entry",
+          "expected": "Audit entry with action='reassign'",
+          "observed": "No reassignment audit entry found. Only document_* actions exist in audit_event table."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "document-management/cross-browser/VAL-CROSS-002-admin-login.png",
+          "document-management/cross-browser/VAL-CROSS-002-admin-dashboard.png",
+          "document-management/cross-browser/VAL-CROSS-002-bookings-list.png",
+          "document-management/cross-browser/VAL-CROSS-002-booking-selected.png",
+          "document-management/cross-browser/VAL-CROSS-002-staff-selected.png",
+          "document-management/cross-browser/VAL-CROSS-002-reassign-preview.png",
+          "document-management/cross-browser/VAL-CROSS-002-reassign-applied.png"
+        ],
+        "consoleErrors": "Internal server error displayed on UI after clicking Reasignar",
+        "network": "Reassignment API call returned 500 Internal Server Error"
+      },
+      "issues": "Bug found: Reassignment operation returns Internal Server Error when clicking 'Reasignar' button despite successful preview. The preview showed canReassign:true but actual reassignment failed. Additionally, no audit trail entry for 'reassign' action exists in audit_event table."
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "title": "Document lifecycle flow",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Navigate to admin panel at /admin/login",
+          "expected": "Login form displayed",
+          "observed": "Login form displayed"
+        },
+        {
+          "action": "Login with admin credentials testadmin@tranzit.local / testadmin123",
+          "expected": "Redirect to admin dashboard",
+          "observed": "Successfully redirected to /admin dashboard"
+        },
+        {
+          "action": "Navigate to citizen portal at /login",
+          "expected": "Citizen portal with booking/document management",
+          "observed": "Citizen logged in as testadmin@tranzit.local with role 'Ciudadano'. No citas (bookings) found: 'Aún no tienes citas registradas'"
+        },
+        {
+          "action": "Attempt to find document management UI in admin panel",
+          "expected": "Admin document review interface accessible",
+          "observed": "No dedicated document review page found. Admin routes checked: /admin/citas, /admin/reportes, /admin/usuarios, /admin/tramites, /admin/solicitudes (404). A DocumentReviewModal.tsx exists in source but no clear UI access path."
+        },
+        {
+          "action": "Check request_document table for pending documents",
+          "expected": "Pending documents exist for review",
+          "observed": "Found 1 pending document: doc_test_001 with requirement_key='id_document' for request cec34741-8b5f-4bef-b9ce-4fe89df2ecae"
+        },
+        {
+          "action": "Check Maildev for document approval confirmation emails",
+          "expected": "Confirmation email visible after document approval",
+          "observed": "Only OTP email found in Maildev. No document approval/rejection confirmation emails present."
+        }
+      ],
+      "evidence": {
+        "screenshots": [
+          "document-management/cross-browser/VAL-CROSS-003-citizen-login.png",
+          "document-management/cross-browser/VAL-CROSS-003-mi-perfil.png",
+          "document-management/cross-browser/VAL-CROSS-003-ver-perfil.png",
+          "document-management/cross-browser/VAL-CROSS-003-admin-login.png",
+          "document-management/cross-browser/VAL-CROSS-003-tramites.png",
+          "document-management/cross-browser/VAL-CROSS-003-usuarios.png",
+          "document-management/cross-browser/VAL-CROSS-003-citas.png",
+          "document-management/cross-browser/VAL-CROSS-003-reportes-scrolled.png"
+        ],
+        "consoleErrors": "None captured - UI blocked before document review",
+        "network": "Document review API not accessible through UI"
+      },
+      "issues": "Cannot complete document lifecycle test because: (1) No citizen account has active bookings/documents in the system to test with, (2) Admin document review UI path not discoverable through navigation - DocumentReviewModal.tsx exists in codebase but no route/menu access found, (3) Existing document review audit entries (document_approve, document_reject, document_start_review) suggest backend functionality exists but frontend UI access is unclear."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Admin login required creating test admin user via seed-admin.ts script since no credentials were documented",
+      "resolved": true,
+      "resolution": "Ran: ADMIN_EMAIL=testadmin@tranzit.local ADMIN_PASSWORD=testadmin123 bun run scripts/seed-admin.ts",
+      "affectedAssertions": ["VAL-CROSS-002", "VAL-CROSS-003"]
+    },
+    {
+      "description": "VAL-CROSS-002 preview succeeded but actual reassignment failed with Internal Server Error",
+      "resolved": false,
+      "resolution": "Bug in backend - needs investigation",
+      "affectedAssertions": ["VAL-CROSS-002"]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "VAL-CROSS-003: Admin document review UI not accessible through navigation. Source file DocumentReviewModal.tsx exists but no route or menu item provides access. Existing audit events show document review has been used but UI path is unclear.",
+      "affectedAssertions": ["VAL-CROSS-003"],
+      "quickFixAttempted": "Searched admin routes for document management, checked /admin/solicitudes (404), /admin/citas, /admin/reportes, /admin/usuarios, /admin/tramites - no dedicated document review section found"
+    },
+    {
+      "description": "VAL-CROSS-003: No citizen account with active service requests/documents to test the complete lifecycle. Test citizen account has no citas (bookings) and therefore no documents.",
+      "affectedAssertions": ["VAL-CROSS-003"],
+      "quickFixAttempted": "Checked Mi Perfil page - shows 'Aún no tienes citas registradas' for testadmin@tranzit.local"
+    }
+  ],
+  "summary": "Tested 2 cross-area flow assertions: VAL-CROSS-002 (Admin reassignment) failed with Internal Server Error when applying reassignment despite successful preview; VAL-CROSS-003 (Document lifecycle) blocked - admin document review UI not discoverable and no citizen bookings/documents available for testing. Both assertions require backend fixes and clearer UI paths."
+}
