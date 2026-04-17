@@ -269,6 +269,87 @@ describe("Citizen Document Upload", () => {
 		expect(dbDoc1?.isCurrent).toBe(false);
 	});
 
+	test("sets replacesDocumentId when uploading new version for same requirement", async () => {
+		// Upload first document
+		const input1: UploadDocumentInput = {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Documento de identidad",
+			deliveryMode: "digital",
+			fileName: "doc1.pdf",
+			mimeType: "application/pdf",
+			fileSizeBytes: 100,
+			content: createBase64Content(100),
+		};
+
+		const result1 = await uploadCitizenDocument(testUser.user.id, input1);
+		expect(result1.isCurrent).toBe(true);
+		expect(result1.replacesDocumentId).toBeNull();
+
+		// Upload second document for same requirement
+		const input2: UploadDocumentInput = {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Documento de identidad (nuevo)",
+			deliveryMode: "digital",
+			fileName: "doc2.pdf",
+			mimeType: "application/pdf",
+			fileSizeBytes: 100,
+			content: createBase64Content(100),
+		};
+
+		const result2 = await uploadCitizenDocument(testUser.user.id, input2);
+		expect(result2.isCurrent).toBe(true);
+		// VAL-DOC-012: New document should have replacesDocumentId pointing to the old document
+		expect(result2.replacesDocumentId).toBe(result1.id);
+
+		// Verify first document is no longer current
+		const dbDoc1 = await db.query.requestDocument.findFirst({
+			where: eq(schema.requestDocument.id, result1.id),
+		});
+		expect(dbDoc1?.isCurrent).toBe(false);
+
+		// Verify the replacement chain in the database
+		const dbDoc2 = await db.query.requestDocument.findFirst({
+			where: eq(schema.requestDocument.id, result2.id),
+		});
+		expect(dbDoc2?.replacesDocumentId).toBe(result1.id);
+	});
+
+	test("sets replacesDocumentId when declaring physical after digital upload", async () => {
+		// Upload digital document first
+		const input1: UploadDocumentInput = {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Documento de identidad",
+			deliveryMode: "digital",
+			fileName: "doc1.pdf",
+			mimeType: "application/pdf",
+			fileSizeBytes: 100,
+			content: createBase64Content(100),
+		};
+
+		const result1 = await uploadCitizenDocument(testUser.user.id, input1);
+		expect(result1.isCurrent).toBe(true);
+
+		// Declare physical for same requirement
+		const result2 = await declarePhysicalDocument(testUser.user.id, {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Documento de identidad (entrega física)",
+		});
+
+		expect(result2.isCurrent).toBe(true);
+		// VAL-DOC-012: Physical declaration should also set replacesDocumentId
+		expect(result2.replacesDocumentId).toBe(result1.id);
+
+		// Verify first document is no longer current
+		const dbDoc1 = await db.query.requestDocument.findFirst({
+			where: eq(schema.requestDocument.id, result1.id),
+		});
+		expect(dbDoc1?.isCurrent).toBe(false);
+	});
+
 	test("allows uploading multiple documents for different requirements", async () => {
 		const input1: UploadDocumentInput = {
 			requestId: testRequestId,
@@ -411,6 +492,39 @@ describe("Physical Document Declaration", () => {
 			where: eq(schema.requestDocument.id, result1.id),
 		});
 		expect(dbDoc1?.isCurrent).toBe(false);
+	});
+
+	test("sets replacesDocumentId when declaring second physical for same requirement", async () => {
+		// First physical declaration
+		const result1 = await declarePhysicalDocument(testUser.user.id, {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Documento de identidad (entrega física)",
+		});
+		expect(result1.isCurrent).toBe(true);
+		expect(result1.replacesDocumentId).toBeNull();
+
+		// Second physical declaration for same requirement
+		const result2 = await declarePhysicalDocument(testUser.user.id, {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Nuevo documento de identidad (entrega física)",
+		});
+		expect(result2.isCurrent).toBe(true);
+		// VAL-DOC-012: Second physical should have replacesDocumentId pointing to first
+		expect(result2.replacesDocumentId).toBe(result1.id);
+
+		// Verify first document is no longer current
+		const dbDoc1 = await db.query.requestDocument.findFirst({
+			where: eq(schema.requestDocument.id, result1.id),
+		});
+		expect(dbDoc1?.isCurrent).toBe(false);
+
+		// Verify the replacement chain in the database
+		const dbDoc2 = await db.query.requestDocument.findFirst({
+			where: eq(schema.requestDocument.id, result2.id),
+		});
+		expect(dbDoc2?.replacesDocumentId).toBe(result1.id);
 	});
 
 	test("allows multiple physical declarations for different requirements", async () => {

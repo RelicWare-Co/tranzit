@@ -40,6 +40,7 @@ export type UploadDocumentResult = {
 	fileSizeBytes: number;
 	status: string;
 	isCurrent: boolean;
+	replacesDocumentId: string | null;
 	createdAt: Date;
 };
 
@@ -55,6 +56,7 @@ export type DeclarePhysicalResult = {
 	fileSizeBytes: null;
 	status: string;
 	isCurrent: boolean;
+	replacesDocumentId: string | null;
 	createdAt: Date;
 };
 
@@ -163,11 +165,24 @@ function decodeContent(content: string): Buffer {
 
 /**
  * Marks previous documents for the same requirement as not current.
+ * Returns the ID of the document that was current before marking, or null if none existed.
+ * This ID should be used as replacesDocumentId when creating the new document.
  */
 async function markPreviousDocumentsAsNotCurrent(
 	requestId: string,
 	requirementKey: string,
-): Promise<void> {
+): Promise<string | null> {
+	// First, find the current document (if any) before marking as not current
+	const currentDoc = await db.query.requestDocument.findFirst({
+		where: and(
+			eq(schema.requestDocument.requestId, requestId),
+			eq(schema.requestDocument.requirementKey, requirementKey),
+			eq(schema.requestDocument.isCurrent, true),
+		),
+		columns: { id: true },
+	});
+
+	// Mark all documents for this requirement as not current
 	await db
 		.update(schema.requestDocument)
 		.set({
@@ -180,6 +195,8 @@ async function markPreviousDocumentsAsNotCurrent(
 				eq(schema.requestDocument.requirementKey, requirementKey),
 			),
 		);
+
+	return currentDoc?.id ?? null;
 }
 
 /**
@@ -258,8 +275,8 @@ export async function uploadCitizenDocument(
 	// Store file to disk
 	storeFile(storageKey, fileBuffer);
 
-	// Mark previous documents for this requirement as not current
-	await markPreviousDocumentsAsNotCurrent(requestId, requirementKey);
+	// Mark previous documents for this requirement as not current and capture the replaced document ID
+	const replacedDocumentId = await markPreviousDocumentsAsNotCurrent(requestId, requirementKey);
 
 	// Create the request_document row
 	const documentId = crypto.randomUUID();
@@ -279,6 +296,7 @@ export async function uploadCitizenDocument(
 			fileSizeBytes,
 			status: "pending",
 			isCurrent: true,
+			replacesDocumentId: replacedDocumentId,
 			createdAt: now,
 			updatedAt: now,
 		})
@@ -318,6 +336,7 @@ export async function uploadCitizenDocument(
 		fileSizeBytes: inserted[0].fileSizeBytes!,
 		status: inserted[0].status,
 		isCurrent: inserted[0].isCurrent,
+		replacesDocumentId: inserted[0].replacesDocumentId,
 		createdAt: inserted[0].createdAt,
 	};
 }
@@ -361,8 +380,8 @@ export async function declarePhysicalDocument(
 		);
 	}
 
-	// Mark previous documents for this requirement as not current
-	await markPreviousDocumentsAsNotCurrent(requestId, requirementKey);
+	// Mark previous documents for this requirement as not current and capture the replaced document ID
+	const replacedDocumentId = await markPreviousDocumentsAsNotCurrent(requestId, requirementKey);
 
 	// Create the request_document row
 	const documentId = crypto.randomUUID();
@@ -378,6 +397,7 @@ export async function declarePhysicalDocument(
 			deliveryMode: "physical",
 			status: "marked_as_physical",
 			isCurrent: true,
+			replacesDocumentId: replacedDocumentId,
 			storageKey: null,
 			fileName: null,
 			mimeType: null,
@@ -418,6 +438,7 @@ export async function declarePhysicalDocument(
 		fileSizeBytes: null,
 		status: inserted[0].status,
 		isCurrent: inserted[0].isCurrent,
+		replacesDocumentId: inserted[0].replacesDocumentId,
 		createdAt: inserted[0].createdAt,
 	};
 }
