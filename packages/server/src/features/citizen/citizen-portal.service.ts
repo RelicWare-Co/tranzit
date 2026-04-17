@@ -12,6 +12,7 @@ import { checkCapacity } from "../bookings/capacity-check.service";
 import {
 	sendBookingCancellationEmail,
 	sendBookingConfirmationEmail,
+	sendHoldExpirationEmail,
 } from "../notifications/notification.service";
 import type { TemplateContext } from "../notifications/notification-templates";
 import { isValidDateFormat } from "../schedule/schedule.schemas";
@@ -157,8 +158,36 @@ export async function expireStaleCitizenHolds() {
 		return 0;
 	}
 
+	// Send expiration emails and release capacity for each stale hold
 	await Promise.all(
-		staleHolds.map((booking) => releaseCapacity(booking.id, "expired")),
+		staleHolds.map(async (booking) => {
+			// Send hold expiration email (non-blocking, errors logged but not thrown)
+			try {
+				const citizenUser = booking.citizenUserId
+					? await db.query.user.findFirst({
+							where: eq(schema.user.id, booking.citizenUserId),
+						})
+					: null;
+
+				if (citizenUser?.email) {
+					const context = await buildNotificationContext(booking);
+					await sendHoldExpirationEmail({
+						bookingId: booking.id,
+						recipient: citizenUser.email,
+						context,
+					});
+				}
+			} catch (error) {
+				logger.error(
+					{ err: error, bookingId: booking.id },
+					"Failed to send hold expiration email",
+				);
+				// Do not throw - release should still proceed
+			}
+
+			// Release the capacity
+			await releaseCapacity(booking.id, "expired");
+		}),
 	);
 
 	return staleHolds.length;

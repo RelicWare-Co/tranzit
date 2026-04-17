@@ -1,11 +1,75 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
+import { logger } from "../../lib/logger";
 import { throwRpcError } from "../../orpc/shared";
+import {
+	sendHoldExpirationEmail,
+} from "../notifications/notification.service";
+import type { TemplateContext } from "../notifications/notification-templates";
 import {
 	confirmBooking,
 	consumeCapacity,
 	releaseCapacity,
 } from "./capacity-consume.service";
+
+/**
+ * Build the notification template context from a booking.
+ * Used for sending hold expiration emails.
+ */
+const buildNotificationContext = async (
+	booking: typeof schema.booking.$inferSelect,
+): Promise<TemplateContext> => {
+	const slot = await db.query.appointmentSlot.findFirst({
+		where: eq(schema.appointmentSlot.id, booking.slotId),
+	});
+
+	const procedure = booking.requestId
+		? await db.query.serviceRequest.findFirst({
+				where: eq(schema.serviceRequest.id, booking.requestId),
+				with: {
+					procedureType: true,
+				},
+			})
+		: null;
+
+	const staffUser = booking.staffUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.staffUserId),
+			})
+		: null;
+
+	const citizenUser = booking.citizenUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.citizenUserId),
+			})
+		: null;
+
+	const draftData =
+		procedure?.draftData && typeof procedure.draftData === "object"
+			? (procedure.draftData as Record<string, unknown>)
+			: null;
+
+	return {
+		procedureName: procedure?.procedureType?.name ?? "Trámite",
+		appointmentDate: slot?.slotDate ?? "",
+		appointmentTime: slot?.startTime ?? "",
+		appointmentEndTime: slot?.endTime,
+		staffName: staffUser?.name ?? null,
+		citizenName: citizenUser?.name ?? null,
+		bookingId: booking.id,
+		serviceRequest: {
+			applicantName:
+				typeof draftData?.applicantName === "string"
+					? draftData.applicantName
+					: null,
+			applicantDocument:
+				typeof draftData?.applicantDocument === "string"
+					? draftData.applicantDocument
+					: null,
+			plate: typeof draftData?.plate === "string" ? draftData.plate : null,
+		},
+	};
+};
 
 export interface CreateBookingInput {
 	slotId: string;
@@ -100,6 +164,33 @@ export async function createBooking(params: {
 export async function confirmExistingBooking(id: string) {
 	const result = await confirmBooking(id);
 	if (!result.success) {
+		// If the booking expired, send a hold expiration email before throwing
+		if (result.expiredBooking) {
+			try {
+				const booking = result.expiredBooking;
+				const citizenUser = booking.citizenUserId
+					? await db.query.user.findFirst({
+							where: eq(schema.user.id, booking.citizenUserId),
+						})
+					: null;
+
+				if (citizenUser?.email) {
+					const context = await buildNotificationContext(booking);
+					await sendHoldExpirationEmail({
+						bookingId: booking.id,
+						recipient: citizenUser.email,
+						context,
+					});
+				}
+			} catch (error) {
+				logger.error(
+					{ err: error, bookingId: id },
+					"Failed to send hold expiration email",
+				);
+				// Do not throw - the confirmation failure should still be reported
+			}
+		}
+
 		const code =
 			result.error === "Booking not found"
 				? "NOT_FOUND"

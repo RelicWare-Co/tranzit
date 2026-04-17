@@ -265,6 +265,7 @@ export async function confirmBooking(bookingId: string): Promise<{
 	success: boolean;
 	error?: string;
 	conflicts: CapacityConflict[];
+	expiredBooking?: typeof schema.booking.$inferSelect;
 }> {
 	const now = new Date();
 
@@ -305,6 +306,7 @@ export async function confirmBooking(bookingId: string): Promise<{
 			success: false,
 			error: "Booking hold expired",
 			conflicts: [],
+			expiredBooking: booking,
 		};
 	}
 

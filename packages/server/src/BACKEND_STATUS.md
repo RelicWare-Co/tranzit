@@ -1,6 +1,6 @@
 # Backend Status (Current Implementation)
 
-Last updated: 2026-04-16
+Last updated: 2026-04-17
 
 This document describes what the backend **really has implemented today**.
 Use it as an operational map before adding or changing backend behavior.
@@ -194,7 +194,9 @@ Key behavior already implemented:
 - **Email notifications on booking lifecycle events**:
   - `citizen.bookings.confirm` sends a confirmation email with procedure name, date/time, staff name, and applicant details
   - `citizen.bookings.cancel` sends a cancellation notification email
-  - Hold expiration triggers a notification (via `expireStaleCitizenHolds`)
+  - Hold expiration triggers a notification email in both paths:
+    - `expireStaleCitizenHolds()` sends email before releasing each expired hold
+    - `confirmBooking()` sends email when detecting an expired hold before returning error
 - All notification events create `notification_delivery` records with status tracking (`pending` → `sent`/`failed`)
 - Email sending is non-blocking; failures are logged but do not affect the booking operation
 - Templates include HTML and plain-text versions with inline styles for email compatibility
