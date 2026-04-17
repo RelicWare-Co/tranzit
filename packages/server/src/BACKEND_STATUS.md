@@ -201,6 +201,7 @@ Admin endpoints:
 - `documents.admin.list` — List all documents for a request with review fields
 - `documents.admin.get` — Get document details by ID
 - `documents.admin.download` — Download document file (oRPC handler)
+- `documents.admin.review` — Review a document (approve/reject/start_review) with notes
 
 HTTP endpoints:
 - `GET /api/admin/documents/:documentId/download` — Download document file with proper MIME headers
@@ -220,6 +221,12 @@ Key behavior already implemented:
 - Physical declaration also marks previous documents for same requirement as not current
 
 Key behavior already implemented:
+- review actions: approve (sets status=valid), reject (requires non-empty notes, sets status=rejected), start_review (sets status=in_review)
+- validates status transitions (e.g., cannot approve a document already approved)
+- physical-marked documents cannot be directly approved without prior state change
+- re-review allowed (can approve a previously rejected document)
+- creates audit_event on every review action
+- sets reviewedByUserId and reviewedAt on review
 - authenticated citizen booking lifecycle over OTP session (hold/confirm/cancel/list)
 - stale hold cleanup before citizen reads/mutations (automatic release on expiry)
 - automatic staff assignment for citizen holds using capacity checks

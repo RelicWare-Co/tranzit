@@ -1,5 +1,5 @@
 import { uploadCitizenDocument, listCitizenDocuments, declarePhysicalDocument } from "../../features/citizen/citizen-documents.service";
-import { downloadAdminDocument, listAdminDocuments, getAdminDocument } from "../../features/admin/admin-documents.service";
+import { downloadAdminDocument, listAdminDocuments, getAdminDocument, reviewDocument } from "../../features/admin/admin-documents.service";
 import { rpc } from "../context";
 import { requireAuthenticatedSession, requireAdminAccess } from "../shared";
 
@@ -57,6 +57,22 @@ export function createDocumentsRouter() {
 				});
 				const payload = input as { documentId: string };
 				return downloadAdminDocument(payload.documentId);
+			}),
+			review: rpc.handler(async ({ context, input }) => {
+				const session = await requireAdminAccess(context.headers, {
+					booking: ["read"],
+				});
+				const payload = input as {
+					documentId: string;
+					action: "approve" | "reject" | "start_review";
+					notes?: string;
+				};
+				return reviewDocument({
+					documentId: payload.documentId,
+					action: payload.action,
+					notes: payload.notes,
+					reviewerUserId: session.user.id,
+				});
 			}),
 		},
 	};
