@@ -1,36 +1,41 @@
 {
   "featureId": "end-to-end-validation",
-  "reviewedAt": "2026-04-17T19:30:00.000Z",
-  "commitId": "191c22c",
+  "reviewedAt": "2026-04-17T20:30:00.000Z",
+  "commitId": "3b1ef17",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
   "status": "pass",
   "codeReview": {
-    "summary": "End-to-end validation feature completed successfully. All verification steps executed and passed: bun run check (Biome), tsc --noEmit (TypeScript), 15 capacity tests, and browser automation for citizen and admin flows. Cross-area flows VAL-CROSS-001 through VAL-CROSS-005 validated. Audit trail verification confirmed via UI inspection and database query. The core fix (commit 7ccf1d9) properly adds audit_event creation to confirmBooking. No blocking issues identified.",
+    "summary": "End-to-end validation feature completed successfully. All verification steps executed and passed: bun run check (Biome), tsc --noEmit (TypeScript), 15 capacity tests, and browser automation for citizen and admin flows. Cross-area flows VAL-CROSS-001 through VAL-CROSS-005 validated. Audit trail verification confirmed via UI inspection and database query. No blocking issues identified.",
     "issues": []
   },
   "sharedStateObservations": [
     {
-      "area": "skills",
-      "observation": "Worker used browser automation (agent-browser skill) for citizen flow validation, which was appropriate for testing the full OTP→confirmation→email flow. This matches the verification steps in features.json. No issues.",
-      "evidence": "Handoff shows 'Browser automation: OTP login flow' and 'Browser automation: Citizen scheduling flow' under interactiveChecks"
+      "area": "conventions",
+      "observation": "Handoff commit ID mismatch: The handoff references commitId '191c22c' which is titled 'test: user testing validation for audit-trail milestone' and adds files to .factory/validation/audit-trail/. The actual commit for polish milestone scrutiny validation is '3b1ef17' titled 'test: scrutiny validation for polish milestone'. The end-to-end-validation work was performed by worker session 8c87d644 but the commit that created this review file is 3b1ef17.",
+      "evidence": "git log shows: 191c22c = audit-trail, 3b1ef17 = polish scrutiny. Handoff file lists commitId: 191c22c but review file was added in 3b1ef17."
     },
     {
       "area": "skills",
-      "observation": "Transcript skeleton is minimal - only one entry showing skill invocation (mission-worker-base followed by fullstack-admin-worker). The full validation procedure was executed as documented.",
-      "evidence": "Single transcript entry shows skill usage and final handoff with verification results"
+      "observation": "Worker used browser automation (agent-browser skill) for citizen flow validation and database inspection for schedule propagation - appropriate methods for testing full OTP→confirmation→email flow and verifying slot generation.",
+      "evidence": "Handoff interactiveChecks show: Browser automation: OTP login flow, Citizen scheduling flow, Confirmation email, Admin audit log, Admin schedule configuration"
+    },
+    {
+      "area": "skills",
+      "observation": "Worker used code analysis for VAL-CROSS-005 (hold expiration) rather than live testing, which is appropriate for verifying expiration logic without time-based testing.",
+      "evidence": "Handoff: 'Confirmed VAL-CROSS-005 (hold expiration) via code analysis' - verified expireStaleCitizenHolds() and confirmBooking() expiration detection"
     },
     {
       "area": "conventions",
-      "observation": "Commit 191c22c is actually user-testing validation documentation (adding .json evidence files and .txt files to .factory/validation/) rather than a code change. The actual code fix was in commit 7ccf1d9. This is appropriate for the end-to-end-validation feature which validates rather than implements.",
-      "evidence": "git show 191c22c shows only documentation/test evidence files added, no source code changes"
+      "observation": "No source code changes were made by this feature - it is a validation-only feature that tests existing functionality. This is appropriate for the feature type.",
+      "evidence": "git show 3b1ef17 shows only .factory/validation/ files added, no src/ code changes"
     },
     {
       "area": "conventions",
-      "observation": "No backend documentation updates needed - BACKEND_STATUS.md was already updated in commit 7ccf1d9 when the audit fix was made. Documentation is current.",
-      "evidence": "BACKEND_STATUS.md shows confirmBooking audit documentation from commit 7ccf1d9"
+      "observation": "Validation state correctly updated: VAL-CROSS-001, VAL-CROSS-004, VAL-CROSS-005 show 'validatedAtMilestone: polish' and 'status: passed'. VAL-CROSS-002 and VAL-CROSS-003 show 'status: pass' from earlier document-management milestone.",
+      "evidence": "validation-state.json lines 457-479 show cross-area flow validation statuses"
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "End-to-end validation PASSED. Worker executed all verification steps: lint (bun run check), typecheck (tsc --noEmit), 15 capacity tests, and browser automation for citizen OTP→confirmation flow and admin audit trail. All cross-area flows VAL-CROSS-001 through VAL-CROSS-005 are validated working. Core audit fix (commit 7ccf1d9) properly implemented. No regressions detected. No blocking issues."
+  "summary": "End-to-end validation PASSED. Worker executed all verification steps: lint (bun run check), typecheck (tsc --noEmit), 15 capacity tests, and browser automation for citizen OTP→confirmation flow and admin audit trail. All cross-area flows VAL-CROSS-001 through VAL-CROSS-005 are validated working. VAL-CROSS-001 and VAL-CROSS-004 and VAL-CROSS-005 were validated at polish milestone; VAL-CROSS-002 and VAL-CROSS-003 validated at document-management milestone (earlier). Note: Handoff commitId (191c22c) does not match the actual polish commit (3b1ef17) - the work was done correctly but the commit reference is wrong. No blocking issues."
 }
