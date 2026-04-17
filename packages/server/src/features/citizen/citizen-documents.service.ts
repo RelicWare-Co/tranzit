@@ -460,6 +460,10 @@ export async function listCitizenDocuments(
 		fileSizeBytes: doc.fileSizeBytes,
 		status: doc.status,
 		isCurrent: doc.isCurrent,
+		replacesDocumentId: doc.replacesDocumentId,
+		reviewedByUserId: doc.reviewedByUserId,
+		reviewedAt: doc.reviewedAt,
+		notes: doc.notes,
 		createdAt: doc.createdAt,
 		updatedAt: doc.updatedAt,
 	}));

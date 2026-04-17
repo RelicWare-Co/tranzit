@@ -140,6 +140,7 @@ describe("Admin Documents", () => {
 			expect(doc.mimeType).toBe("application/pdf");
 			expect(doc.status).toBe("pending");
 			expect(doc.isCurrent).toBe(true);
+			expect(doc.replacesDocumentId).toBeNull();
 			expect(doc.reviewedByUserId).toBeNull();
 			expect(doc.reviewedAt).toBeNull();
 			expect(doc.notes).toBeNull();

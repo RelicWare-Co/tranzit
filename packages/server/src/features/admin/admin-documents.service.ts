@@ -15,6 +15,7 @@ export type DocumentFileInfo = {
 	fileSizeBytes: number | null;
 	status: string;
 	isCurrent: boolean;
+	replacesDocumentId: string | null;
 	reviewedByUserId: string | null;
 	reviewedAt: Date | null;
 	notes: string | null;
@@ -52,6 +53,7 @@ export async function listAdminDocuments(requestId: string): Promise<DocumentFil
 		fileSizeBytes: doc.fileSizeBytes,
 		status: doc.status,
 		isCurrent: doc.isCurrent,
+		replacesDocumentId: doc.replacesDocumentId,
 		reviewedByUserId: doc.reviewedByUserId,
 		reviewedAt: doc.reviewedAt,
 		notes: doc.notes,
@@ -84,6 +86,7 @@ export async function getAdminDocument(documentId: string): Promise<DocumentFile
 		fileSizeBytes: document.fileSizeBytes,
 		status: document.status,
 		isCurrent: document.isCurrent,
+		replacesDocumentId: document.replacesDocumentId,
 		reviewedByUserId: document.reviewedByUserId,
 		reviewedAt: document.reviewedAt,
 		notes: document.notes,
