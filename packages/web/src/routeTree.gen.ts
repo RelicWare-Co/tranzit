@@ -21,6 +21,7 @@ import { Route as AdminReportesRouteImport } from './routes/admin/reportes'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin/configuracion'
 import { Route as AdminCitasRouteImport } from './routes/admin/citas'
+import { Route as AdminDocumentosIndexRouteImport } from './routes/admin/documentos/index'
 
 const MiPerfilRoute = MiPerfilRouteImport.update({
   id: '/mi-perfil',
@@ -82,6 +83,11 @@ const AdminCitasRoute = AdminCitasRouteImport.update({
   path: '/citas',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminDocumentosIndexRoute = AdminDocumentosIndexRouteImport.update({
+  id: '/documentos/',
+  path: '/documentos/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/admin/tramites': typeof AdminTramitesRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/documentos/': typeof AdminDocumentosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/admin/tramites': typeof AdminTramitesRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin': typeof AdminIndexRoute
+  '/admin/documentos': typeof AdminDocumentosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/admin/tramites': typeof AdminTramitesRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/documentos/': typeof AdminDocumentosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/admin/tramites'
     | '/admin/usuarios'
     | '/admin/'
+    | '/admin/documentos/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/admin/tramites'
     | '/admin/usuarios'
     | '/admin'
+    | '/admin/documentos'
   id:
     | '__root__'
     | '/'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/admin/tramites'
     | '/admin/usuarios'
     | '/admin/'
+    | '/admin/documentos/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -263,6 +275,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCitasRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/documentos/': {
+      id: '/admin/documentos/'
+      path: '/documentos'
+      fullPath: '/admin/documentos/'
+      preLoaderRoute: typeof AdminDocumentosIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
   }
 }
 
@@ -274,6 +293,7 @@ interface AdminRouteRouteChildren {
   AdminTramitesRoute: typeof AdminTramitesRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminDocumentosIndexRoute: typeof AdminDocumentosIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -284,6 +304,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminTramitesRoute: AdminTramitesRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminDocumentosIndexRoute: AdminDocumentosIndexRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

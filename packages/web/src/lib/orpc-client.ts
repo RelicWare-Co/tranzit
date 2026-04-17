@@ -591,6 +591,24 @@ type DocumentListInput = {
 	requestId: string;
 };
 
+type DocumentListAllInput = {
+	status?: string[];
+	isCurrent?: boolean;
+	limit?: number;
+};
+
+type DocumentWithRequestInfo = RequestDocument & {
+	serviceRequest?: {
+		id: string;
+		status: string;
+		procedure?: {
+			id: string;
+			slug: string;
+			name: string;
+		} | null;
+	} | null;
+};
+
 type AdminReservationSeries = {
 	id: string;
 	kind: string;
@@ -694,6 +712,7 @@ export interface TranzitRpcClient {
 		list: RpcProcedure<RequestDocument[], DocumentListInput>;
 		admin: {
 			list: RpcProcedure<RequestDocument[], DocumentListInput>;
+			listAll: RpcProcedure<DocumentWithRequestInfo[], DocumentListAllInput>;
 			get: RpcProcedure<RequestDocument, { documentId: string }>;
 			download: RpcProcedure<
 				{

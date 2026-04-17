@@ -134,7 +134,7 @@ export function AdminDocumentosPage() {
 		useState<DocumentWithReviewer | null>(null);
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 	const [notes, setNotes] = useState("");
-	const [statusFilter, setStatusFilter] = useState<string>("pending");
+	const [statusFilter, setStatusFilter] = useState<string | null>("pending");
 	const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
 	const loadDocuments = useCallback(async () => {
@@ -145,7 +145,7 @@ export function AdminDocumentosPage() {
 				isCurrent: true,
 			};
 
-			if (statusFilter !== "all") {
+			if (statusFilter && statusFilter !== "all") {
 				filters.status = [statusFilter];
 			}
 
