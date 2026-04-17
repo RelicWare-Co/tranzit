@@ -557,10 +557,12 @@ export async function executeBulkReassignments(
 	if (mode === "atomic") {
 		const results: BulkReassignmentResult["results"] = [];
 		const createdAuditEventIds: string[] = [];
+		let failedBookingId: string | undefined;
 
 		try {
 			await db.transaction(async (tx) => {
 				for (const { bookingId, targetStaffUserId } of requests) {
+					failedBookingId = bookingId;
 					const preview = await previewReassignmentWithTx(
 						tx,
 						bookingId,
@@ -598,36 +600,42 @@ export async function executeBulkReassignments(
 				results,
 			};
 		} catch (err: unknown) {
-			if (err && typeof err === "object" && "bookingId" in err) {
-				const errorObj = err as { bookingId: string; message: string };
+			// Ensure we have a bookingId for the error response
+			const errorBookingId =
+				err && typeof err === "object" && "bookingId" in err
+					? (err as { bookingId: string }).bookingId
+					: failedBookingId ?? requests[0]?.bookingId;
 
-				if (createdAuditEventIds.length > 0) {
-					try {
-						await db
-							.delete(schema.auditEvent)
-							.where(sql`${schema.auditEvent.id} IN ${createdAuditEventIds}`);
-					} catch {
-						// Best effort cleanup
-					}
+			const errorMessage =
+				err && typeof err === "object" && "message" in err
+					? (err as { message: string }).message
+					: err instanceof Error
+						? err.message
+						: "Unknown error during atomic reassignment";
+
+			if (createdAuditEventIds.length > 0) {
+				try {
+					await db
+						.delete(schema.auditEvent)
+						.where(sql`${schema.auditEvent.id} IN ${createdAuditEventIds}`);
+				} catch {
+					// Best effort cleanup
 				}
-
-				return {
-					appliedCount: 0,
-					failedCount: requests.length,
-					failures: [
-						{ bookingId: errorObj.bookingId, reason: errorObj.message },
-					],
-					results: requests.map((r) => ({
-						bookingId: r.bookingId,
-						success: false,
-						error:
-							r.bookingId === errorObj.bookingId
-								? errorObj.message
-								: "Transaction failed due to another item",
-					})),
-				};
 			}
-			throw err;
+
+			return {
+				appliedCount: 0,
+				failedCount: requests.length,
+				failures: [{ bookingId: errorBookingId, reason: errorMessage }],
+				results: requests.map((r) => ({
+					bookingId: r.bookingId,
+					success: false,
+					error:
+						r.bookingId === errorBookingId
+							? errorMessage
+							: "Transaction failed due to another item",
+				})),
+			};
 		}
 	}
 

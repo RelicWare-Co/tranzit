@@ -888,6 +888,72 @@ describe("Bulk reassignment operations", () => {
 		}
 	});
 
+	test("executeBulkReassignments with previewToken applies eligible items", async () => {
+		// Create two bookings with staff1
+		const result1 = await consumeCapacity(
+			slotId,
+			staffUserId1,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result1.success).toBe(true);
+		if (!result1.bookingId) throw new Error("bookingId should exist");
+		bookingIds.push(result1.bookingId);
+
+		// Create second slot and booking
+		const slotId2 = `slot2-${testPrefix}`;
+		await createTestSlot(slotId2, TEST_SLOT_DATE, 2, "10:00", "11:00");
+		const result2 = await consumeCapacity(
+			slotId2,
+			staffUserId1,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result2.success).toBe(true);
+		if (!result2.bookingId) throw new Error("bookingId2 should exist");
+		bookingIds.push(result2.bookingId);
+
+		// First get a preview token
+		const preview = await previewReassignments([
+			{ bookingId: result1.bookingId, targetStaffUserId: staffUserId2 },
+			{ bookingId: result2.bookingId, targetStaffUserId: staffUserId2 },
+		]);
+
+		expect(preview.previewToken).toBeDefined();
+		expect(preview.eligible).toContain(result1.bookingId);
+		expect(preview.eligible).toContain(result2.bookingId);
+
+		// Execute bulk reassignment with the preview token
+		const result = await executeBulkReassignments(
+			[
+				{ bookingId: result1.bookingId, targetStaffUserId: staffUserId2 },
+				{ bookingId: result2.bookingId, targetStaffUserId: staffUserId2 },
+			],
+			"best_effort",
+			preview.previewToken,
+		);
+
+		expect(result.appliedCount).toBe(2);
+		expect(result.failedCount).toBe(0);
+
+		// Clean up second slot
+		try {
+			await db
+				.delete(schema.appointmentSlot)
+				.where(eq(schema.appointmentSlot.id, slotId2));
+		} catch {
+			/* ignore */
+		}
+	});
+
 	test("executeBulkReassignments with atomic mode fails all if one fails", async () => {
 		// Create booking with staff1
 		const result1 = await consumeCapacity(
@@ -975,6 +1041,44 @@ describe("Bulk reassignment operations", () => {
 		} catch {
 			/* ignore */
 		}
+	});
+
+	test("executeBulkReassignments with atomic mode handles non-existent booking gracefully", async () => {
+		// Create a valid booking with staff1
+		const result1 = await consumeCapacity(
+			slotId,
+			staffUserId1,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result1.success).toBe(true);
+		if (!result1.bookingId) throw new Error("bookingId should exist");
+		bookingIds.push(result1.bookingId);
+
+		// Execute bulk reassignment with one valid and one non-existent booking
+		// This should NOT throw a 500 error, but return a proper error response
+		const result = await executeBulkReassignments(
+			[
+				{ bookingId: result1.bookingId, targetStaffUserId: staffUserId2 },
+				{ bookingId: "non-existent-booking-id", targetStaffUserId: staffUserId2 },
+			],
+			"atomic",
+		);
+
+		// Should return error response, not throw
+		expect(result.appliedCount).toBe(0);
+		expect(result.failedCount).toBe(2);
+		expect(result.results.every((r) => r.success === false)).toBe(true);
+
+		// Verify the valid booking was NOT modified (atomic rollback)
+		const booking1After = await db.query.booking.findFirst({
+			where: eq(schema.booking.id, result1.bookingId),
+		});
+		expect(booking1After?.staffUserId).toBe(staffUserId1);
 	});
 });
 

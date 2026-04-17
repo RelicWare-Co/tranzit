@@ -1,5 +1,5 @@
 import { uploadCitizenDocument, listCitizenDocuments, declarePhysicalDocument } from "../../features/citizen/citizen-documents.service";
-import { downloadAdminDocument, listAdminDocuments, getAdminDocument, reviewDocument } from "../../features/admin/admin-documents.service";
+import { downloadAdminDocument, listAdminDocuments, listAllAdminDocuments, getAdminDocument, reviewDocument } from "../../features/admin/admin-documents.service";
 import { rpc } from "../context";
 import { requireAuthenticatedSession, requireAdminAccess } from "../shared";
 
@@ -43,6 +43,17 @@ export function createDocumentsRouter() {
 				});
 				const payload = input as { requestId: string };
 				return listAdminDocuments(payload.requestId);
+			}),
+			listAll: rpc.handler(async ({ context, input }) => {
+				await requireAdminAccess(context.headers, {
+					booking: ["read"],
+				});
+				const payload = input as {
+					status?: string[];
+					isCurrent?: boolean;
+					limit?: number;
+				};
+				return listAllAdminDocuments(payload);
 			}),
 			get: rpc.handler(async ({ context, input }) => {
 				await requireAdminAccess(context.headers, {

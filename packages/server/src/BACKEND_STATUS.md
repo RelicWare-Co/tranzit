@@ -199,6 +199,7 @@ Citizen endpoints:
 
 Admin endpoints:
 - `documents.admin.list` — List all documents for a request with review fields
+- `documents.admin.listAll` — List all documents across requests (with optional status filter) for document review page
 - `documents.admin.get` — Get document details by ID
 - `documents.admin.download` — Download document file (oRPC handler)
 - `documents.admin.review` — Review a document (approve/reject/start_review) with notes

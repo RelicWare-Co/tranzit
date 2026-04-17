@@ -17,6 +17,7 @@ export function AdminLayout() {
 		const path = location.pathname;
 		if (path === "/admin") return "dashboard";
 		if (path.startsWith("/admin/citas")) return "citas";
+		if (path.startsWith("/admin/documentos")) return "documentos";
 		if (path.startsWith("/admin/usuarios")) return "usuarios";
 		if (path.startsWith("/admin/tramites")) return "tramites";
 		if (path.startsWith("/admin/reportes")) return "reportes";

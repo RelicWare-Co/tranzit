@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { readFile } from "../../lib/file-storage";
 import { logger } from "../../lib/logger";
@@ -22,6 +22,18 @@ export type DocumentFileInfo = {
 	notes: string | null;
 	createdAt: Date;
 	updatedAt: Date;
+};
+
+export type DocumentWithRequestInfo = DocumentFileInfo & {
+	serviceRequest?: {
+		id: string;
+		status: string;
+		procedure?: {
+			id: string;
+			slug: string;
+			name: string;
+		} | null;
+	} | null;
 };
 
 /**
@@ -60,6 +72,79 @@ export async function listAdminDocuments(requestId: string): Promise<DocumentFil
 		notes: doc.notes,
 		createdAt: doc.createdAt,
 		updatedAt: doc.updatedAt,
+	}));
+}
+
+export type ListAllDocumentsFilters = {
+	status?: string[];
+	isCurrent?: boolean;
+	limit?: number;
+};
+
+/**
+ * Lists all documents across all service requests (admin view for document review page).
+ * Includes related service request and procedure information.
+ */
+export async function listAllAdminDocuments(
+	filters: ListAllDocumentsFilters = {},
+): Promise<DocumentWithRequestInfo[]> {
+	const { status, isCurrent = true, limit = 100 } = filters;
+
+	// Build WHERE conditions for requestDocument
+	const conditions = [];
+	if (status && status.length > 0) {
+		conditions.push(inArray(schema.requestDocument.status, status));
+	}
+	if (isCurrent !== undefined) {
+		conditions.push(eq(schema.requestDocument.isCurrent, isCurrent));
+	}
+
+	const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+	const documents = await db.query.requestDocument.findMany({
+		where: whereClause,
+		limit,
+		orderBy: [desc(schema.requestDocument.createdAt)],
+		with: {
+			request: {
+				with: {
+					procedureType: true,
+				},
+			},
+		},
+	});
+
+	return documents.map((doc) => ({
+		id: doc.id,
+		requestId: doc.requestId,
+		requirementKey: doc.requirementKey,
+		label: doc.label,
+		deliveryMode: doc.deliveryMode,
+		storageKey: doc.storageKey,
+		fileName: doc.fileName,
+		mimeType: doc.mimeType,
+		fileSizeBytes: doc.fileSizeBytes,
+		status: doc.status,
+		isCurrent: doc.isCurrent,
+		replacesDocumentId: doc.replacesDocumentId,
+		reviewedByUserId: doc.reviewedByUserId,
+		reviewedAt: doc.reviewedAt,
+		notes: doc.notes,
+		createdAt: doc.createdAt,
+		updatedAt: doc.updatedAt,
+		serviceRequest: doc.request
+			? {
+					id: doc.request.id,
+					status: doc.request.status,
+					procedure: doc.request.procedureType
+						? {
+								id: doc.request.procedureType.id,
+								slug: doc.request.procedureType.slug,
+								name: doc.request.procedureType.name,
+							}
+						: null,
+				}
+			: null,
 	}));
 }
 
