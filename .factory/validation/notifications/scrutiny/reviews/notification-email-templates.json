@@ -1,0 +1,31 @@
+{
+  "featureId": "notification-email-templates",
+  "round": 1,
+  "status": "fail",
+  "codeReviewIssues": [
+    {
+      "file": "packages/server/src/features/bookings/capacity-consume.service.ts",
+      "line": 165,
+      "severity": "blocking",
+      "description": "When a hold expires during confirm (booking.holdExpiresAt <= now), releaseCapacity is called with reason='expired' but NO hold expiration email is sent. The sendHoldExpirationEmail function exists and is tested in isolation, but is never invoked in any code path."
+    },
+    {
+      "file": "packages/server/src/features/citizen/citizen-portal.service.ts",
+      "line": 380,
+      "severity": "blocking",
+      "description": "releaseExpiredHoldsAndReturnCount() releases stale holds via releaseCapacity(booking.id, 'expired') when reading citizen data or doing mutations, but NEVER sends hold expiration emails. The function explicitly says it 'cleans up stale holds before citizen reads/mutations' but only calls releaseCapacity without sending any notification."
+    },
+    {
+      "file": "packages/server/src/features/notifications/notification.service.ts",
+      "line": 169,
+      "severity": "non_blocking",
+      "description": "sendHoldExpirationEmail function exists and is exported, but is only called from tests - no production code path triggers it when a hold actually expires."
+    }
+  ],
+  "sharedStateObservations": [],
+  "blockingIssues": [
+    "Hold expiration email (booking-hold-expired template) is never sent when a hold actually expires. The confirmation and cancellation emails are properly integrated (citizen-portal.service.ts calls them), but the hold expiration notification has no trigger in production code.",
+    "releaseExpiredHoldsAndReturnCount() and the expired-hold check in confirmExistingBooking both call releaseCapacity with reason='expired' but neither sends a hold expiration email notification."
+  ],
+  "notes": "The confirmation and cancellation email integrations work correctly - sendBookingConfirmationEmail is called in confirmExistingBooking and sendBookingCancellationEmail is called in cancelBooking. All 9 tests pass. TypeScript compiles clean. However, the hold expiration email has a missing integration: the sendHoldExpirationEmail function exists and is tested, but no code path actually invokes it when a hold expires. This is a blocking issue because VAL-NOTIF assertions reference hold expiration notification but the feature description explicitly includes it."
+}
