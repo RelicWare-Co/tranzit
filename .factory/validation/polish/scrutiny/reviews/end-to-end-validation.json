@@ -1,41 +1,57 @@
 {
   "featureId": "end-to-end-validation",
-  "reviewedAt": "2026-04-17T20:30:00.000Z",
-  "commitId": "3b1ef17",
+  "reviewedAt": "2026-04-17T19:00:00.000Z",
+  "commitId": "191c22c",
   "transcriptSkeletonReviewed": true,
   "diffReviewed": true,
-  "status": "pass",
+  "status": "fail",
   "codeReview": {
-    "summary": "End-to-end validation feature completed successfully. All verification steps executed and passed: bun run check (Biome), tsc --noEmit (TypeScript), 15 capacity tests, and browser automation for citizen and admin flows. Cross-area flows VAL-CROSS-001 through VAL-CROSS-005 validated. Audit trail verification confirmed via UI inspection and database query. No blocking issues identified.",
-    "issues": []
+    "summary": "The handoff references commit 191c22c which is titled 'test: user testing validation for audit-trail milestone' and only contains audit-trail evidence files. The actual end-to-end-validation work for the polish milestone (cross-area flows VAL-CROSS-001 through VAL-CROSS-005) was performed by the worker session but evidence was not committed to this commit. The validation appears to have been completed based on transcript and handoff, but the commit does not contain the expected polish milestone cross-area validation evidence.",
+    "issues": [
+      {
+        "severity": "blocking",
+        "description": "Handoff references wrong commit: The handoff for end-to-end-validation (polish milestone) references commitId '191c22c' which is titled 'test: user testing validation for audit-trail milestone' and adds files to .factory/validation/audit-trail/ and evidence/audit-trail/. This commit does not contain any polish milestone or cross-area validation evidence.",
+        "location": "handoff commitId field"
+      },
+      {
+        "severity": "blocking",
+        "description": "Evidence not committed: The transcript shows extensive validation work was done (browser automation, capacity tests, database inspection), but the commit 191c22c only adds 3 audit-trail evidence files. No evidence for VAL-CROSS-001 through VAL-CROSS-005 was committed.",
+        "location": "commit 191c22c"
+      },
+      {
+        "severity": "suggestion",
+        "description": "Concurrent holds test not performed: The feature verificationSteps mentions 'concurrent holds: one winner one loser' test, but the handoff doesn't mention testing this scenario explicitly. The capacity tests cover capacity conflicts but not true concurrent hold races.",
+        "location": "feature verificationSteps"
+      }
+    ]
   },
   "sharedStateObservations": [
     {
       "area": "conventions",
-      "observation": "Handoff commit ID mismatch: The handoff references commitId '191c22c' which is titled 'test: user testing validation for audit-trail milestone' and adds files to .factory/validation/audit-trail/. The actual commit for polish milestone scrutiny validation is '3b1ef17' titled 'test: scrutiny validation for polish milestone'. The end-to-end-validation work was performed by worker session 8c87d644 but the commit that created this review file is 3b1ef17.",
-      "evidence": "git log shows: 191c22c = audit-trail, 3b1ef17 = polish scrutiny. Handoff file lists commitId: 191c22c but review file was added in 3b1ef17."
-    },
-    {
-      "area": "skills",
-      "observation": "Worker used browser automation (agent-browser skill) for citizen flow validation and database inspection for schedule propagation - appropriate methods for testing full OTP→confirmation→email flow and verifying slot generation.",
-      "evidence": "Handoff interactiveChecks show: Browser automation: OTP login flow, Citizen scheduling flow, Confirmation email, Admin audit log, Admin schedule configuration"
-    },
-    {
-      "area": "skills",
-      "observation": "Worker used code analysis for VAL-CROSS-005 (hold expiration) rather than live testing, which is appropriate for verifying expiration logic without time-based testing.",
-      "evidence": "Handoff: 'Confirmed VAL-CROSS-005 (hold expiration) via code analysis' - verified expireStaleCitizenHolds() and confirmBooking() expiration detection"
+      "observation": "Commit message mismatch: Commit 191c22c message says 'test: user testing validation for audit-trail milestone' but it's referenced for 'end-to-end-validation' feature in 'polish' milestone. The actual polish milestone scrutiny validation appears to be in commit 3b1ef17.",
+      "evidence": "git show 191c22c --stat shows .factory/validation/audit-trail/ and evidence/audit-trail/ files only"
     },
     {
       "area": "conventions",
-      "observation": "No source code changes were made by this feature - it is a validation-only feature that tests existing functionality. This is appropriate for the feature type.",
-      "evidence": "git show 3b1ef17 shows only .factory/validation/ files added, no src/ code changes"
+      "observation": "Evidence directory not tracked: The .factory/validation/polish/ directory appears to be in .gitignore as it exists locally but is not in the repository. This makes it difficult to verify validation evidence was actually produced.",
+      "evidence": "ls .factory/validation/ shows audit-trail, document-management, notifications, schedule-overrides, service-request-lifecycle but no polish/"
+    },
+    {
+      "area": "skills",
+      "observation": "Browser automation used appropriately: The worker used agent-browser skill for citizen OTP-to-confirmation flow (VAL-CROSS-001) which is the correct approach for end-to-end UI testing.",
+      "evidence": "Transcript shows agent-browser commands for OTP login, form filling, slot selection, and confirmation flow"
+    },
+    {
+      "area": "skills",
+      "observation": "Code analysis used for hold expiration: Worker verified VAL-CROSS-005 (hold expiration) via code analysis of expireStaleCitizenHolds() and confirmBooking() rather than live time-based testing. This is appropriate for expiration logic verification.",
+      "evidence": "Handoff: 'Confirmed VAL-CROSS-005 (hold expiration) via code analysis'"
     },
     {
       "area": "conventions",
-      "observation": "Validation state correctly updated: VAL-CROSS-001, VAL-CROSS-004, VAL-CROSS-005 show 'validatedAtMilestone: polish' and 'status: passed'. VAL-CROSS-002 and VAL-CROSS-003 show 'status: pass' from earlier document-management milestone.",
-      "evidence": "validation-state.json lines 457-479 show cross-area flow validation statuses"
+      "observation": "Duplicate audit events detected: The audit-trail evidence file VAL-AUDIT-002-audit-events.txt shows two audit events with action='confirm' for the same booking (IDs 7d14ae65 and 57d500d8). This suggests confirmBooking may be creating duplicate audit entries.",
+      "evidence": "evidence/audit-trail/VAL-AUDIT-002-audit-events.txt shows duplicate confirm audit events"
     }
   ],
   "addressesFailureFrom": null,
-  "summary": "End-to-end validation PASSED. Worker executed all verification steps: lint (bun run check), typecheck (tsc --noEmit), 15 capacity tests, and browser automation for citizen OTP→confirmation flow and admin audit trail. All cross-area flows VAL-CROSS-001 through VAL-CROSS-005 are validated working. VAL-CROSS-001 and VAL-CROSS-004 and VAL-CROSS-005 were validated at polish milestone; VAL-CROSS-002 and VAL-CROSS-003 validated at document-management milestone (earlier). Note: Handoff commitId (191c22c) does not match the actual polish commit (3b1ef17) - the work was done correctly but the commit reference is wrong. No blocking issues."
+  "summary": "FAIL - The handoff references commit 191c22c which is an audit-trail milestone commit, not a polish/end-to-end-validation commit. While the transcript shows validation work was performed (lint, typecheck, browser automation, capacity tests), the actual commit only contains audit-trail evidence files. The cross-area validation evidence for VAL-CROSS-001 through VAL-CROSS-005 is not in this commit. Either the wrong commit was referenced, or the validation evidence was not properly committed. Recommend verifying the actual commit containing polish cross-area validation evidence."
 }
