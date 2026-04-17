@@ -1,0 +1,34 @@
+{
+  "milestone": "service-request-lifecycle",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-SR-006",
+    "VAL-SR-007",
+    "VAL-SR-008",
+    "VAL-SR-009",
+    "VAL-SR-010",
+    "VAL-SR-011"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "oRPC API URL format uses slashes (e.g., /api/rpc/admin/serviceRequests/list) not dots. Request body requires {\"json\": {...}} wrapper for POST requests.",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null,
+  "notes": {
+    "apiFormat": "URL uses slashes: /api/rpc/admin/serviceRequests/list (NOT /api/rpc/admin.serviceRequests.list). POST body requires {\"json\": {...}} wrapper.",
+    "testDataIssue": "Test data has service requests without active bookings, preventing full transition testing from booking_held->verified. However, eligibility gate mechanism was verified working correctly.",
+    "eligibilityChecks": "VAL-SR-010 verified: Eligibility check blocks transition with 400 ELIGIBILITY_FAILED when prerequisites not met."
+  }
+}
