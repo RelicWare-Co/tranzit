@@ -1,5 +1,6 @@
 import { createBookingsRouter } from "./modules/bookings.router";
 import { createCitizenRouter } from "./modules/citizen.router";
+import { createDocumentsRouter } from "./modules/documents.router";
 import { createOnboardingRouter } from "./modules/onboarding.router";
 import { createProceduresRouter } from "./modules/procedures.router";
 import { createReservationSeriesRouter } from "./modules/reservation-series.router";
@@ -12,6 +13,7 @@ export function createTranzitRpcRouter() {
 	return {
 		session: createSessionRouter(),
 		citizen: createCitizenRouter(),
+		documents: createDocumentsRouter(),
 		admin: {
 			onboarding: createOnboardingRouter(),
 			schedule: createScheduleRouter(),

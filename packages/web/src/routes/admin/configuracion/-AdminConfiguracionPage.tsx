@@ -93,7 +93,10 @@ type StaffDateOverride = Awaited<
 
 const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 
-function validateTime(value: string | undefined, fieldName: string): string | null {
+function validateTime(
+	value: string | undefined,
+	fieldName: string,
+): string | null {
 	if (!value || value.trim() === "") return null;
 	if (!timeRegex.test(value)) return `${fieldName} debe tener formato HH:MM`;
 	return null;
@@ -116,7 +119,9 @@ function EmptyState({
 				<Icon className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
 			</Box>
 			<Text className="text-lg font-semibold text-slate-900 mb-1">{title}</Text>
-			<Text className="text-sm text-slate-500 max-w-sm mb-4">{description}</Text>
+			<Text className="text-sm text-slate-500 max-w-sm mb-4">
+				{description}
+			</Text>
 			{action}
 		</Box>
 	);
@@ -176,10 +181,7 @@ function SectionCard({
 					<Group gap={3}>
 						{Icon && (
 							<Box className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm">
-								<Icon
-									className="w-4 h-4 text-slate-600"
-									strokeWidth={1.5}
-								/>
+								<Icon className="w-4 h-4 text-slate-600" strokeWidth={1.5} />
 							</Box>
 						)}
 						<Box>
@@ -232,8 +234,10 @@ function TemplateSkeleton() {
 
 export function AdminConfiguracionPage() {
 	const queryClient = useQueryClient();
-	const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] =
-		useDisclosure(false);
+	const [
+		deleteModalOpened,
+		{ open: openDeleteModal, close: closeDeleteModal },
+	] = useDisclosure(false);
 	const [itemToDelete, setItemToDelete] = useState<{
 		type: "template" | "override" | "staffOverride";
 		id: string;
@@ -291,8 +295,7 @@ export function AdminConfiguracionPage() {
 			reason: "",
 		},
 		validate: {
-			overrideDate: (value) =>
-				!value ? "La fecha es obligatoria" : null,
+			overrideDate: (value) => (!value ? "La fecha es obligatoria" : null),
 			slotDurationMinutes: (value) =>
 				value !== undefined && value < 5 ? "Mínimo 5 minutos" : null,
 			bufferMinutes: (value) =>
@@ -313,8 +316,8 @@ export function AdminConfiguracionPage() {
 			maxDays: 31,
 		},
 		validate: {
-			dateFrom: (value) => !value ? "Fecha inicial requerida" : null,
-			dateTo: (value) => !value ? "Fecha final requerida" : null,
+			dateFrom: (value) => (!value ? "Fecha inicial requerida" : null),
+			dateTo: (value) => (!value ? "Fecha final requerida" : null),
 			maxDays: (value) =>
 				value < 1 || value > 365 ? "Debe estar entre 1 y 365" : null,
 		},
@@ -331,8 +334,7 @@ export function AdminConfiguracionPage() {
 			notes: "",
 		},
 		validate: {
-			overrideDate: (value) =>
-				!value ? "La fecha es obligatoria" : null,
+			overrideDate: (value) => (!value ? "La fecha es obligatoria" : null),
 			capacityOverride: (value) =>
 				value !== undefined && value < 1 ? "Debe ser mayor a 0" : null,
 			availableStartTime: (value) => validateTime(value, "Hora inicio"),
@@ -737,10 +739,7 @@ export function AdminConfiguracionPage() {
 		} catch (error) {
 			notifications.show({
 				title: "Error al guardar",
-				message: getErrorMessage(
-					error,
-					"No se pudo guardar la disponibilidad",
-				),
+				message: getErrorMessage(error, "No se pudo guardar la disponibilidad"),
 				color: "red",
 				icon: <AlertCircle size={16} />,
 			});
@@ -955,17 +954,18 @@ export function AdminConfiguracionPage() {
 									/>
 									<Group>
 										{isEditingTemplate && (
-											<Button
-												variant="default"
-												onClick={resetTemplateForm}
-											>
+											<Button variant="default" onClick={resetTemplateForm}>
 												Cancelar
 											</Button>
 										)}
 										<Button
 											onClick={() => void submitTemplate()}
 											leftSection={
-												isEditingTemplate ? <Edit3 size={16} /> : <Plus size={16} />
+												isEditingTemplate ? (
+													<Edit3 size={16} />
+												) : (
+													<Plus size={16} />
+												)
 											}
 										>
 											{isEditingTemplate ? "Actualizar" : "Crear template"}
@@ -1070,16 +1070,18 @@ export function AdminConfiguracionPage() {
 																{template.morningStart} - {template.morningEnd}
 															</Badge>
 														)}
-														{template.afternoonStart && template.afternoonEnd && (
-															<Badge
-																variant="light"
-																color="orange"
-																radius="sm"
-																size="sm"
-															>
-																{template.afternoonStart} - {template.afternoonEnd}
-															</Badge>
-														)}
+														{template.afternoonStart &&
+															template.afternoonEnd && (
+																<Badge
+																	variant="light"
+																	color="orange"
+																	radius="sm"
+																	size="sm"
+																>
+																	{template.afternoonStart} -{" "}
+																	{template.afternoonEnd}
+																</Badge>
+															)}
 													</Group>
 												</Table.Td>
 												<Table.Td>
@@ -1253,7 +1255,11 @@ export function AdminConfiguracionPage() {
 									<Button
 										onClick={() => void submitOverride()}
 										leftSection={
-											isEditingOverride ? <Edit3 size={16} /> : <Plus size={16} />
+											isEditingOverride ? (
+												<Edit3 size={16} />
+											) : (
+												<Plus size={16} />
+											)
 										}
 									>
 										{isEditingOverride ? "Actualizar" : "Crear excepción"}
@@ -1321,13 +1327,14 @@ export function AdminConfiguracionPage() {
 												className="hover:bg-slate-50/80 transition-colors"
 											>
 												<Table.Td className="font-medium">
-													{new Date(
-														override.overrideDate,
-													).toLocaleDateString("es-CO", {
-														weekday: "short",
-														day: "numeric",
-														month: "short",
-													})}
+													{new Date(override.overrideDate).toLocaleDateString(
+														"es-CO",
+														{
+															weekday: "short",
+															day: "numeric",
+															month: "short",
+														},
+													)}
 												</Table.Td>
 												<Table.Td>
 													{override.isClosed ? (
@@ -1633,7 +1640,8 @@ export function AdminConfiguracionPage() {
 															)}
 														</Table.Td>
 														<Table.Td className="text-sm">
-															{override.availableStartTime && override.availableEndTime ? (
+															{override.availableStartTime &&
+															override.availableEndTime ? (
 																<Badge
 																	variant="light"
 																	color="blue"
@@ -1750,8 +1758,7 @@ export function AdminConfiguracionPage() {
 			>
 				<Stack>
 					<Alert color="red" icon={<AlertCircle size={18} />}>
-						¿Estás seguro de eliminar{" "}
-						<strong>{itemToDelete?.name}</strong>?
+						¿Estás seguro de eliminar <strong>{itemToDelete?.name}</strong>?
 						<br />
 						Esta acción no se puede deshacer.
 					</Alert>

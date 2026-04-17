@@ -190,6 +190,20 @@ Key behavior already implemented:
 - `citizen.bookings.cancel`
 - `citizen.bookings.mine`
 
+### 2.7 Citizen documents module (`server/src/orpc/modules/documents.router.ts`)
+
+- `documents.upload` — Upload a document for a service request
+- `documents.list` — List documents for a service request
+
+Key behavior already implemented:
+- MIME type validation (PDF, PNG, JPG only)
+- File size limit (10MB maximum)
+- Base64 content encoding validation
+- Storage key generation with format: `documents/{requestId}/{timestamp}-{random}-{filename}`
+- Creates `request_document` row with `status=pending`, `isCurrent=true`
+- Automatically marks previous documents for same `requirementKey` as not current
+- Ownership verification (only service request owner can upload/view documents)
+
 Key behavior already implemented:
 - authenticated citizen booking lifecycle over OTP session (hold/confirm/cancel/list)
 - stale hold cleanup before citizen reads/mutations (automatic release on expiry)
@@ -236,7 +250,7 @@ Main guarantees implemented:
 Even with the current backend, this is still missing or partial:
 - advanced citizen API flow for:
   - full service request lifecycle beyond hold/confirm base
-  - citizen document upload/review APIs
+  - document review/approval workflow (upload is implemented)
 - complete notification orchestration beyond OTP email
 - richer audit event instrumentation in all admin mutations
 - richer audit/notification instrumentation for citizen mutations

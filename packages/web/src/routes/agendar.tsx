@@ -386,8 +386,9 @@ function AgendarPage() {
 	const serverHeldBooking = useMemo(() => {
 		const bookings = myBookingsQuery.data ?? [];
 		return (
-			bookings.find((booking) => booking.isActive && booking.status === "held") ??
-			null
+			bookings.find(
+				(booking) => booking.isActive && booking.status === "held",
+			) ?? null
 		);
 	}, [myBookingsQuery.data]);
 	const holdExpired =
