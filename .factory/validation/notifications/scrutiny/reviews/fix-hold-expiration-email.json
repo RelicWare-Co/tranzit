@@ -1,0 +1,28 @@
+{
+  "featureId": "fix-hold-expiration-email",
+  "reviewedAt": "2026-04-17T10:30:00.000Z",
+  "commitId": "e3fde60",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix correctly integrates sendHoldExpirationEmail into both hold expiration paths: expireStaleCitizenHolds() and confirmExistingBooking(). Email failures are gracefully handled (non-blocking with error logging) as per architecture. Tests cover the expireStaleCitizenHolds path.",
+    "issues": [
+      {
+        "file": "packages/server/src/features/bookings/bookings-mutations.service.ts",
+        "line": 12,
+        "severity": "non_blocking",
+        "description": "buildNotificationContext is defined here and also in citizen-portal.service.ts (line ~310). Both implementations are identical. While not a bug, duplication means future template context changes must be made in two places. Consider extracting to a shared module if the pattern grows."
+      },
+      {
+        "file": "packages/server/src/hold-expiration-email.test.ts",
+        "line": 1,
+        "severity": "non_blocking",
+        "description": "Test file only covers expireStaleCitizenHolds path. The confirmExistingBooking path (when hold expires during confirm) is not directly tested. However, both paths use identical buildNotificationContext + sendHoldExpirationEmail logic, and the confirm path was verified manually via backend health check + Maildev."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "The hold expiration email fix is complete and correct. Both hold expiration paths (expireStaleCitizenHolds and confirmExistingBooking) now send the booking-hold-expired email before releasing capacity. Email failures are non-blocking per architecture (logged but do not prevent booking release). The skill procedure was followed: TDD approach, typecheck clean, all 186 tests pass, manual Maildev verification done. Minor duplication of buildNotificationContext helper exists but is not a blocking issue."
+}

@@ -9,18 +9,24 @@
  */
 
 type TemplateContext = {
-	procedureName: string;
-	appointmentDate: string;
-	appointmentTime: string;
+	// Booking-specific fields (optional for OTP templates)
+	procedureName?: string;
+	appointmentDate?: string;
+	appointmentTime?: string;
 	appointmentEndTime?: string;
-	staffName: string | null;
-	citizenName: string | null;
+	staffName?: string | null;
+	citizenName?: string | null;
 	bookingId?: string;
 	serviceRequest?: {
 		applicantName?: string | null;
 		applicantDocument?: string | null;
 		plate?: string | null;
 	};
+	// OTP-specific fields
+	otp?: string;
+	subject?: string;
+	title?: string;
+	description?: string;
 };
 
 type EmailTemplate = {
@@ -36,15 +42,15 @@ const formatDateTime = (date: string, time: string): string => {
 };
 
 export const bookingConfirmationTemplate: EmailTemplate = {
-	subject: (ctx) => `Cita confirmada - ${ctx.procedureName}`,
+	subject: (ctx) => `Cita confirmada - ${ctx.procedureName!}`,
 	text: (ctx) => {
-		const dateTime = formatDateTime(ctx.appointmentDate, ctx.appointmentTime);
+		const dateTime = formatDateTime(ctx.appointmentDate!, ctx.appointmentTime!);
 		const lines = [
 			`Su cita ha sido confirmada exitosamente.`,
 			``,
 			`Detalles de la cita:`,
 			`- Trámite: ${ctx.procedureName}`,
-			`- Fecha y hora: ${dateTime}${ctx.appointmentEndTime ? ` - ${formatDateTime(ctx.appointmentDate, ctx.appointmentEndTime)}` : ""}`,
+			`- Fecha y hora: ${dateTime}${ctx.appointmentEndTime ? ` - ${formatDateTime(ctx.appointmentDate!, ctx.appointmentEndTime)}` : ""}`,
 			`- Funcionario asignado: ${ctx.staffName ?? "Por asignar"}`,
 			``,
 		];
@@ -71,7 +77,7 @@ export const bookingConfirmationTemplate: EmailTemplate = {
 		return lines.join("\n");
 	},
 	html: (ctx) => {
-		const dateTime = formatDateTime(ctx.appointmentDate, ctx.appointmentTime);
+		const dateTime = formatDateTime(ctx.appointmentDate!, ctx.appointmentTime!);
 		return `
 			<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827;">
 				<div style="background: #10b981; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
@@ -84,7 +90,7 @@ export const bookingConfirmationTemplate: EmailTemplate = {
 						<div style="display: grid; gap: 12px;">
 							<div>
 								<div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Fecha y Hora</div>
-								<div style="font-size: 16px; font-weight: 600;">${dateTime}${ctx.appointmentEndTime ? ` - ${formatDateTime(ctx.appointmentDate, ctx.appointmentEndTime)}` : ""}</div>
+								<div style="font-size: 16px; font-weight: 600;">${dateTime}${ctx.appointmentEndTime ? ` - ${formatDateTime(ctx.appointmentDate!, ctx.appointmentEndTime)}` : ""}</div>
 							</div>
 							<div>
 								<div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Funcionario</div>
@@ -121,9 +127,9 @@ export const bookingConfirmationTemplate: EmailTemplate = {
 };
 
 export const bookingCancellationTemplate: EmailTemplate = {
-	subject: (ctx) => `Cita cancelada - ${ctx.procedureName}`,
+	subject: (ctx) => `Cita cancelada - ${ctx.procedureName!}`,
 	text: (ctx) => {
-		const dateTime = formatDateTime(ctx.appointmentDate, ctx.appointmentTime);
+		const dateTime = formatDateTime(ctx.appointmentDate!, ctx.appointmentTime!);
 		const lines = [
 			`Su cita ha sido cancelada.`,
 			``,
@@ -145,7 +151,7 @@ export const bookingCancellationTemplate: EmailTemplate = {
 		return lines.join("\n");
 	},
 	html: (ctx) => {
-		const dateTime = formatDateTime(ctx.appointmentDate, ctx.appointmentTime);
+		const dateTime = formatDateTime(ctx.appointmentDate!, ctx.appointmentTime!);
 		return `
 			<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827;">
 				<div style="background: #ef4444; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
@@ -179,9 +185,9 @@ export const bookingCancellationTemplate: EmailTemplate = {
 };
 
 export const holdExpirationTemplate: EmailTemplate = {
-	subject: (ctx) => `Reserva temporal expirada - ${ctx.procedureName}`,
+	subject: (ctx) => `Reserva temporal expirada - ${ctx.procedureName!}`,
 	text: (ctx) => {
-		const dateTime = formatDateTime(ctx.appointmentDate, ctx.appointmentTime);
+		const dateTime = formatDateTime(ctx.appointmentDate!, ctx.appointmentTime!);
 		const lines = [
 			`Su reserva temporal ha expirado sin ser confirmada.`,
 			``,
@@ -197,7 +203,7 @@ export const holdExpirationTemplate: EmailTemplate = {
 		return lines.join("\n");
 	},
 	html: (ctx) => {
-		const dateTime = formatDateTime(ctx.appointmentDate, ctx.appointmentTime);
+		const dateTime = formatDateTime(ctx.appointmentDate!, ctx.appointmentTime!);
 		return `
 			<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827;">
 				<div style="background: #f59e0b; color: white; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
@@ -222,6 +228,44 @@ export const holdExpirationTemplate: EmailTemplate = {
 						</p>
 					</div>
 				</div>
+			</div>
+		`;
+	},
+};
+
+export const otpTemplate: EmailTemplate = {
+	subject: (ctx) => ctx.subject ?? "Codigo de acceso SIMUT Tulua",
+	text: (ctx) => {
+		const lines = [
+			ctx.description ?? "Use este codigo para continuar el ingreso o registro transparente en SIMUT Tulua.",
+			``,
+			`Codigo: ${ctx.otp}`,
+			``,
+			`Si usted no solicito este codigo, ignore este correo.`,
+		];
+		return lines.join("\n");
+	},
+	html: (ctx) => {
+		const title = ctx.title ?? "Codigo de acceso";
+		const description = ctx.description ?? "Use este codigo para continuar el ingreso o registro transparente en SIMUT Tulua.";
+
+		return `
+			<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827;">
+				<h1 style="font-size: 24px; margin-bottom: 16px;">${title}</h1>
+				<p style="font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+					${description}
+				</p>
+				<div style="background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+					<div style="font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px;">
+						Codigo OTP
+					</div>
+					<div style="font-size: 32px; font-weight: 700; letter-spacing: 0.24em; color: #111827;">
+						${ctx.otp}
+					</div>
+				</div>
+				<p style="font-size: 14px; color: #6b7280; line-height: 1.6;">
+					Si usted no solicito este codigo, ignore este correo.
+				</p>
 			</div>
 		`;
 	},

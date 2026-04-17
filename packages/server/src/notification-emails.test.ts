@@ -23,6 +23,7 @@ import {
 	sendBookingCancellationEmail,
 	sendBookingConfirmationEmail,
 	sendHoldExpirationEmail,
+	sendOtpNotification,
 } from "./features/notifications/notification.service";
 import type { TemplateContext } from "./features/notifications/notification-templates";
 import { db, schema } from "./lib/db";
@@ -368,6 +369,104 @@ describe("Notification Email System", () => {
 			expect(templateKeys).toContain("booking-confirmation");
 			expect(templateKeys).toContain("booking-cancellation");
 			expect(templateKeys).toContain("booking-hold-expired");
+		});
+	});
+
+	describe("sendOtpNotification", () => {
+		test("VAL-NOTIF-003: OTP notification creates notification_delivery record", async () => {
+			const email = `test-${randomUUID()}@example.com`;
+			const otp = "123456";
+
+			// Send OTP notification
+			await sendOtpNotification({
+				email,
+				otp,
+				type: "sign-in",
+			});
+
+			// Verify notification_delivery record was created
+			const notifications = await db.query.notificationDelivery.findMany({
+				where: eq(schema.notificationDelivery.recipient, email),
+			});
+
+			expect(notifications.length).toBeGreaterThan(0);
+
+			const notification = notifications.find(
+				(n) => n.templateKey === "otp-sign-in",
+			);
+			expect(notification).toBeDefined();
+			expect(notification?.recipient).toBe(email);
+			expect(notification?.status).toBe("sent");
+			expect(notification?.attemptCount).toBe(1);
+			expect(notification?.sentAt).toBeDefined();
+		});
+
+		test("VAL-NOTIF-003: OTP notification stores OTP in payload", async () => {
+			const email = `test-${randomUUID()}@example.com`;
+			const otp = "654321";
+
+			await sendOtpNotification({
+				email,
+				otp,
+				type: "sign-in",
+			});
+
+			// Verify the OTP is stored in the payload
+			const notifications = await db.query.notificationDelivery.findMany({
+				where: eq(schema.notificationDelivery.recipient, email),
+			});
+
+			const notification = notifications.find(
+				(n) => n.templateKey === "otp-sign-in",
+			);
+
+			expect(notification?.payload).toBeDefined();
+			const payload = notification?.payload as Record<string, unknown>;
+			expect(payload.otp).toBe(otp);
+		});
+
+		test("VAL-NOTIF-003: OTP notification uses correct template key for each type", async () => {
+			const email = `test-${randomUUID()}@example.com`;
+			const otp = "111111";
+
+			// Test all OTP types
+			await sendOtpNotification({ email, otp, type: "sign-in" });
+			await sendOtpNotification({ email, otp, type: "email-verification" });
+			await sendOtpNotification({ email, otp, type: "forget-password" });
+			await sendOtpNotification({ email, otp, type: "change-email" });
+
+			const notifications = await db.query.notificationDelivery.findMany({
+				where: eq(schema.notificationDelivery.recipient, email),
+			});
+
+			expect(notifications.length).toBe(4);
+
+			const templateKeys = notifications.map((n) => n.templateKey);
+			expect(templateKeys).toContain("otp-sign-in");
+			expect(templateKeys).toContain("otp-email-verification");
+			expect(templateKeys).toContain("otp-forget-password");
+			expect(templateKeys).toContain("otp-change-email");
+		});
+
+		test("VAL-NOTIF-003: OTP notification entityType is 'user'", async () => {
+			const email = `test-${randomUUID()}@example.com`;
+			const otp = "222222";
+
+			await sendOtpNotification({
+				email,
+				otp,
+				type: "sign-in",
+			});
+
+			const notifications = await db.query.notificationDelivery.findMany({
+				where: eq(schema.notificationDelivery.recipient, email),
+			});
+
+			const notification = notifications.find(
+				(n) => n.templateKey === "otp-sign-in",
+			);
+
+			expect(notification?.entityType).toBe("user");
 		});
 	});
 });

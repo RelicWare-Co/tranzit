@@ -207,12 +207,18 @@ Email notification service:
 - `sendBookingConfirmationEmail` — sends confirmation email with booking details
 - `sendBookingCancellationEmail` — sends cancellation email
 - `sendHoldExpirationEmail` — sends hold expiration notice
+- `sendOtpNotification` — sends OTP email (sign-in, email-verification, forget-password, change-email)
 - All functions create `notification_delivery` records with template key, recipient, status, and payload
 
 Templates:
 - `booking-confirmation` — includes procedure name, appointment date/time, staff name, applicant info
 - `booking-cancellation` — includes procedure name, cancelled appointment details
 - `booking-hold-expired` — informs citizen that hold expired without confirmation
+- `otp-sign-in`, `otp-email-verification`, `otp-forget-password`, `otp-change-email` — OTP templates with code display
+
+Key behavior:
+- **OTP notifications are tracked**: `sendVerificationOtpEmail` in `auth.mailer.ts` routes through `sendOtpNotification`, which creates `notification_delivery` records with `entityType=user` and `entityId=email`
+- All notification sends update status to `sent` or `failed` with attempt tracking
 
 ### 2.7 Citizen documents module (`server/src/orpc/modules/documents.router.ts`)
 

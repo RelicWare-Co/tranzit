@@ -7,6 +7,7 @@ import {
 	bookingCancellationTemplate,
 	bookingConfirmationTemplate,
 	holdExpirationTemplate,
+	otpTemplate,
 } from "./notification-templates";
 
 export type NotificationChannel = "email";
@@ -14,7 +15,11 @@ export type NotificationChannel = "email";
 export type NotificationTemplateKey =
 	| "booking-confirmation"
 	| "booking-cancellation"
-	| "booking-hold-expired";
+	| "booking-hold-expired"
+	| "otp-sign-in"
+	| "otp-email-verification"
+	| "otp-forget-password"
+	| "otp-change-email";
 
 export type NotificationStatus = "pending" | "sent" | "failed";
 
@@ -53,7 +58,9 @@ export async function sendNotification({
 			? bookingConfirmationTemplate
 			: templateKey === "booking-cancellation"
 				? bookingCancellationTemplate
-				: holdExpirationTemplate;
+				: templateKey === "booking-hold-expired"
+					? holdExpirationTemplate
+					: otpTemplate;
 
 	// Create the notification_delivery record with status=pending
 	const notificationId = crypto.randomUUID();
@@ -178,5 +185,74 @@ export async function sendHoldExpirationEmail(params: {
 		entityId: params.bookingId,
 		recipient: params.recipient,
 		context: params.context,
+	});
+}
+
+type OtpPurpose = "sign-in" | "email-verification" | "forget-password" | "change-email";
+
+const otpPurposeToTemplateKey: Record<OtpPurpose, NotificationTemplateKey> = {
+	"sign-in": "otp-sign-in",
+	"email-verification": "otp-email-verification",
+	"forget-password": "otp-forget-password",
+	"change-email": "otp-change-email",
+};
+
+const otpCopyByType: Record<
+	OtpPurpose,
+	{
+		subject: string;
+		title: string;
+		description: string;
+	}
+> = {
+	"sign-in": {
+		subject: "Codigo de acceso SIMUT Tulua",
+		title: "Codigo de acceso",
+		description:
+			"Use este codigo para continuar el ingreso o registro transparente en SIMUT Tulua.",
+	},
+	"email-verification": {
+		subject: "Verificacion de correo SIMUT Tulua",
+		title: "Verifique su correo",
+		description:
+			"Use este codigo para verificar su direccion de correo en SIMUT Tulua.",
+	},
+	"forget-password": {
+		subject: "Recuperacion de cuenta SIMUT Tulua",
+		title: "Recuperacion de cuenta",
+		description:
+			"Use este codigo para restablecer el acceso a su cuenta de SIMUT Tulua.",
+	},
+	"change-email": {
+		subject: "Cambio de correo SIMUT Tulua",
+		title: "Cambio de correo",
+		description:
+			"Use este codigo para confirmar el cambio de correo en SIMUT Tulua.",
+	},
+};
+
+/**
+ * Send an OTP email notification and record the delivery status in the database.
+ */
+export async function sendOtpNotification(params: {
+	email: string;
+	otp: string;
+	type: OtpPurpose;
+}): Promise<void> {
+	const { email, otp, type } = params;
+	const copy = otpCopyByType[type];
+
+	return sendNotification({
+		channel: "email",
+		templateKey: otpPurposeToTemplateKey[type],
+		entityType: "user",
+		entityId: email, // Use email as entity identifier for OTP since user may not exist yet
+		recipient: email,
+		context: {
+			otp,
+			subject: copy.subject,
+			title: copy.title,
+			description: copy.description,
+		},
 	});
 }
