@@ -1,13 +1,13 @@
 {
   "milestone": "polish",
-  "round": 3,
+  "round": 4,
   "status": "fail",
   "validatorsRun": {
     "test": {
-      "passed": false,
+      "passed": true,
       "command": "cd packages/server && bun vitest run --maxWorkers=1 --passWithNoTests",
-      "exitCode": 1,
-      "note": "217 tests passed, 6 failed. All failures are infrastructure-related (Maildev not running on port 1025). Tests run with --maxWorkers=1 avoid SQLite locking. Email notification tests (VAL-NOTIF-004, VAL-NOTIF-006, VAL-NOTIF-007, VAL-NOTIF-003, hold-expiration-email) fail with 'connect ECONNREFUSED 127.0.0.1:1025' because Maildev is not running. The production code is correct - this is an infrastructure issue."
+      "exitCode": 0,
+      "note": "223 tests passed across 16 test files. Maildev was started before running tests. All notification email tests (VAL-NOTIF-004, VAL-NOTIF-006, VAL-NOTIF-007, VAL-NOTIF-003, hold-expiration-email) now pass because Maildev is running on port 1025."
     },
     "typecheck": {
       "passed": true,
@@ -32,40 +32,25 @@
     {
       "featureId": "end-to-end-validation",
       "severity": "blocking",
-      "description": "Handoff references wrong commit: The handoff for end-to-end-validation (polish milestone) references commitId '191c22c' which is titled 'test: user testing validation for audit-trail milestone' and adds files to .factory/validation/audit-trail/ and evidence/audit-trail/. This commit does not contain any polish milestone or cross-area validation evidence. The actual polish validation appears to be in a different commit (3b1ef17).",
-      "suggestedFix": "Either: (1) Update the handoff to reference the correct commit containing polish cross-area validation evidence, or (2) Commit the actual polish validation evidence files to the repository."
+      "description": "Handoff references wrong commit: The handoff for end-to-end-validation (polish milestone) references commitId '191c22c' which is titled 'test: user testing validation for audit-trail milestone' and adds files to .factory/validation/audit-trail/ and evidence/audit-trail/. This commit does not contain any polish milestone or cross-area validation evidence (VAL-CROSS-001 through VAL-CROSS-005).",
+      "suggestedFix": "The actual validation work was performed by the worker (browser automation, capacity tests, typecheck/lint), but the evidence was committed to the wrong milestone. The orchestrator should either: (1) Update the handoff to reference the correct commit containing polish cross-area validation evidence, or (2) Have the worker re-commit the polish validation evidence to the correct location."
     }
   ],
   "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
       "target": "services.yaml",
-      "suggestion": "Add a note or depends_on relationship indicating that tests require Maildev to be running. The current test command does not document this dependency.",
-      "evidence": "6 tests fail with 'ECONNREFUSED 127.0.0.1:1025' because Maildev is not running. Workers must manually start maildev before running tests.",
+      "suggestion": "Document that tests require Maildev to be running as a dependency. The test command works correctly with --maxWorkers=1 but workers should be aware to start Maildev first.",
+      "evidence": "Round 3 showed 6 tests failing due to Maildev not running. This round shows all 223 tests passing when Maildev is started first.",
       "isSystemic": true
     }
   ],
-  "rejectedObservations": [
-    {
-      "observation": "Duplicate audit events detected - reviewer flagged that evidence shows two confirm audit events for same booking",
-      "reason": "The evidence file is from audit-trail milestone, not polish. The duplicate confirm audit issue was already addressed in fix-confirm-booking-audit (commit 7ccf1d9). This is not a new issue."
-    },
-    {
-      "observation": "Evidence directory .factory/validation/polish/ not tracked in git",
-      "reason": "The .factory directory is intentionally excluded from version control per AGENTS.md conventions. Review reports are written to local filesystem only and don't need to be committed."
-    }
-  ],
+  "rejectedObservations": [],
   "previousRound": ".factory/validation/polish/scrutiny/synthesis.json",
   "sharedStateObservations": [
     {
-      "observation": "Test infrastructure issue persists: Maildev not running causes email notification tests to fail",
-      "reason": "Maildev is a separate service (SMTP server on port 1025) that must be started before running email notification tests. This is an infrastructure issue, not a code defect.",
-      "suggestedFix": "Workers should run 'bun run maildev &' before executing tests, or CI pipeline should start Maildev as a service dependency."
-    },
-    {
-      "observation": "Feature description mismatch: fix-test-infrastructure description says '41 tests fail' but actual test count is 223",
-      "reason": "The description was based on initial observation before full investigation. The actual number of tests is higher but the infrastructure fix is the same.",
-      "suggestedFix": "Update feature description to reflect accurate test count if this feature is ever reworked."
+      "observation": "fix-test-infrastructure correctly resolved: The --maxWorkers=1 flag in vitest script prevents SQLite locking. All 223 tests pass when Maildev is running.",
+      "reason": "This was a known infrastructure issue from round 3 that is now resolved."
     }
   ]
 }
