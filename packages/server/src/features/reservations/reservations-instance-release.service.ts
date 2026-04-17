@@ -12,6 +12,7 @@ import {
 	throwIdempotencyAwareError,
 	throwRpcError,
 } from "../../orpc/shared";
+import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import { releaseCapacity } from "../bookings/capacity-consume.service";
 
 export async function releaseReservationInstance(params: {
@@ -117,6 +118,23 @@ export async function releaseReservationInstance(params: {
 	if (!updated) {
 		throwRpcError("NOT_FOUND", 404, "Reservation not found");
 	}
+
+	// Create audit event for instance release
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "booking",
+		entityId: payload.bookingId,
+		action: "release",
+		summary: buildBookingSummary("released", payload.bookingId, {
+			reason: payload.reason,
+		}),
+		payload: {
+			bookingId: payload.bookingId,
+			reason: payload.reason,
+			alreadyReleased: result.alreadyReleased,
+		},
+	});
+
 	const responseBody = {
 		booking: updated,
 		alreadyReleased: result.alreadyReleased,

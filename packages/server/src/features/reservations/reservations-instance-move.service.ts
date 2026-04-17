@@ -13,6 +13,7 @@ import {
 	throwIdempotencyAwareError,
 	throwRpcError,
 } from "../../orpc/shared";
+import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import type { CapacityConflict } from "../bookings/capacity.types";
 import {
 	countActiveSlotBookings,
@@ -269,6 +270,22 @@ export async function moveReservationInstance(params: {
 	if (!updated) {
 		throwRpcError("NOT_FOUND", 404, "Reservation not found");
 	}
+
+	// Create audit event for instance move
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "booking",
+		entityId: payload.bookingId,
+		action: "move",
+		summary: buildBookingSummary("moved", payload.bookingId, {
+			reason: `to slot ${payload.targetSlotId}`,
+		}),
+		payload: {
+			bookingId: payload.bookingId,
+			targetSlotId: payload.targetSlotId,
+			targetStaffUserId: payload.targetStaffUserId,
+		},
+	});
 
 	if (idempotencyKey) {
 		await storeIdempotencyKey(

@@ -5,6 +5,7 @@ import {
 	isDateOnOrAfter,
 	throwRpcError,
 } from "../../orpc/shared";
+import { buildSeriesSummary, createAuditEvent } from "../audit/audit.service";
 import type { CapacityConflict } from "../bookings/capacity.types";
 import { checkCapacity } from "../bookings/capacity-check.service";
 
@@ -126,6 +127,29 @@ export async function updateReservationSeries(params: {
 			.where(eq(schema.bookingSeries.id, payload.id));
 	}
 
+	// Create audit event for series update
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "booking_series",
+		entityId: payload.id,
+		action: "update",
+		summary: buildSeriesSummary("series updated", {
+			updatedCount: updatedIds.length,
+			staffUserId: payload.staffUserId,
+			notes: payload.notes,
+		}),
+		payload: {
+			id: payload.id,
+			staffUserId: payload.staffUserId,
+			notes: payload.notes ?? null,
+			metadata: payload.metadata ?? null,
+			force: payload.force ?? false,
+			updatedCount: updatedIds.length,
+			skippedCount: activeBookings.length - toUpdate.length,
+			updatedInstanceIds: updatedIds,
+		},
+	});
+
 	return {
 		seriesId: payload.id,
 		updatedCount: updatedIds.length,
@@ -213,6 +237,27 @@ export async function updateReservationSeriesFromDate(input: {
 				.where(eq(schema.booking.id, booking.id));
 		}
 	}
+
+	// Create audit event for series update from date
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "booking_series",
+		entityId: input.id,
+		action: "update",
+		summary: buildSeriesSummary("series updated from date", {
+			effectiveFrom: input.effectiveFrom,
+			updatedCount: updatedIds.length,
+			staffUserId: input.staffUserId,
+		}),
+		payload: {
+			id: input.id,
+			effectiveFrom: input.effectiveFrom,
+			staffUserId: input.staffUserId,
+			notes: input.notes ?? null,
+			updatedCount: updatedIds.length,
+			updatedInstanceIds: updatedIds,
+		},
+	});
 
 	return {
 		seriesId: input.id,

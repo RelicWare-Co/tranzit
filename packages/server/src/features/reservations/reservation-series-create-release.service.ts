@@ -13,8 +13,12 @@ import {
 	throwIdempotencyAwareError,
 	throwRpcError,
 } from "../../orpc/shared";
+import { buildSeriesSummary, createAuditEvent } from "../audit/audit.service";
 import type { CapacityConflict } from "../bookings/capacity.types";
-import { consumeCapacity, releaseCapacity } from "../bookings/capacity-consume.service";
+import {
+	consumeCapacity,
+	releaseCapacity,
+} from "../bookings/capacity-consume.service";
 
 export interface CreateReservationSeriesInput {
 	recurrenceRule?: RecurrenceRule | string;
@@ -337,6 +341,32 @@ export async function createReservationSeries(params: {
 				: [],
 	};
 
+	// Create audit event for series creation
+	await createAuditEvent({
+		actorType: "admin",
+		actorUserId: params.createdByUserId,
+		entityType: "booking_series",
+		entityId: seriesId,
+		action: "create",
+		summary: buildSeriesSummary("series created", {
+			recurrenceRule: recurrenceRule,
+			instanceCount: createdBookingIds.length,
+		}),
+		payload: {
+			id: seriesId,
+			kind: "administrative",
+			recurrenceRule,
+			timezone,
+			notes: body.notes ?? null,
+			instanceCount: createdBookingIds.length,
+			createdBookingIds,
+			warnings:
+				conflicts.length > 0
+					? ["Some instances could not be created due to capacity conflicts"]
+					: [],
+		},
+	});
+
 	if (idempotencyKey) {
 		await storeIdempotencyKey(
 			idempotencyKey,
@@ -419,6 +449,24 @@ export async function releaseReservationSeries(params: {
 			updatedAt: new Date(),
 		})
 		.where(eq(schema.bookingSeries.id, payload.id));
+
+	// Create audit event for series release
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "booking_series",
+		entityId: payload.id,
+		action: "release",
+		summary: buildSeriesSummary("series released", {
+			releasedCount: releasedIds.length,
+			reason: payload.reason,
+		}),
+		payload: {
+			id: payload.id,
+			reason: payload.reason ?? null,
+			releasedCount: releasedIds.length,
+			releasedInstanceIds: releasedIds,
+		},
+	});
 
 	const responseBody = {
 		seriesId: payload.id,

@@ -306,5 +306,3 @@ export async function checkCapacity(
 		conflicts,
 	};
 }
-
-

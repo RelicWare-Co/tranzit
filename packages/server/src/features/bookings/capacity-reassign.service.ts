@@ -18,6 +18,7 @@ import {
 	invalidatePreviewToken,
 	validatePreviewToken,
 } from "./capacity-hold.service";
+
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 type BookingLike = {
@@ -604,7 +605,7 @@ export async function executeBulkReassignments(
 			const errorBookingId =
 				err && typeof err === "object" && "bookingId" in err
 					? (err as { bookingId: string }).bookingId
-					: failedBookingId ?? requests[0]?.bookingId;
+					: (failedBookingId ?? requests[0]?.bookingId);
 
 			const errorMessage =
 				err && typeof err === "object" && "message" in err

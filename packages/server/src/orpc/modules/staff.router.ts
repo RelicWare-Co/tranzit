@@ -1,5 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import {
+	buildStaffSummary,
+	createAuditEvent,
+} from "../../features/audit/audit.service";
+import {
 	isValidDateFormat as isValidStaffDateFormat,
 	isValidTimeFormat as isValidStaffTimeFormat,
 	isValidTimeWindow as isValidStaffTimeWindow,
@@ -72,7 +76,7 @@ export function createStaffRouter() {
 			);
 		}),
 		create: rpc.handler(async ({ context, input }) => {
-			await requireAdminAccess(context.headers, {
+			const session = await requireAdminAccess(context.headers, {
 				staff: ["read"],
 			});
 			const body = (input ?? {}) as {
@@ -144,6 +148,24 @@ export function createStaffRouter() {
 				where: eq(schema.staffProfile.userId, body.userId),
 			});
 
+			// Create audit event for staff creation
+			await createAuditEvent({
+				actorType: "admin",
+				actorUserId: session.user.id,
+				entityType: "staff_profile",
+				entityId: body.userId,
+				action: "create",
+				summary: buildStaffSummary("profile created", {
+					staffName: staffUser.name,
+				}),
+				payload: {
+					userId: body.userId,
+					isActive: body.isActive ?? true,
+					isAssignable: body.isAssignable ?? true,
+					defaultDailyCapacity: parsedDefaultCapacity ?? 25,
+				},
+			});
+
 			return {
 				...created,
 				user: {
@@ -184,7 +206,7 @@ export function createStaffRouter() {
 			};
 		}),
 		update: rpc.handler(async ({ context, input }) => {
-			await requireAdminAccess(context.headers, {
+			const session = await requireAdminAccess(context.headers, {
 				staff: ["read"],
 			});
 			const payload = input as {
@@ -244,6 +266,22 @@ export function createStaffRouter() {
 				.set(updates)
 				.where(eq(schema.staffProfile.userId, payload.userId));
 
+			// Create audit event for staff update
+			await createAuditEvent({
+				actorType: "admin",
+				actorUserId: session.user.id,
+				entityType: "staff_profile",
+				entityId: payload.userId,
+				action: "update",
+				summary: buildStaffSummary("profile updated", {
+					staffName: existing.userId,
+				}),
+				payload: {
+					userId: payload.userId,
+					changes: updates,
+				},
+			});
+
 			const updated = await db.query.staffProfile.findFirst({
 				where: eq(schema.staffProfile.userId, payload.userId),
 			});
@@ -264,7 +302,7 @@ export function createStaffRouter() {
 			};
 		}),
 		remove: rpc.handler(async ({ context, input }) => {
-			await requireAdminAccess(context.headers, {
+			const session = await requireAdminAccess(context.headers, {
 				staff: ["read"],
 			});
 			const payload = input as { userId: string };
@@ -289,6 +327,22 @@ export function createStaffRouter() {
 					"Cannot delete staff profile with active bookings. Please reassign or cancel them first.",
 				);
 			}
+
+			// Create audit event before deletion
+			await createAuditEvent({
+				actorType: "admin",
+				actorUserId: session.user.id,
+				entityType: "staff_profile",
+				entityId: payload.userId,
+				action: "delete",
+				summary: buildStaffSummary("profile deleted", {
+					staffName: payload.userId,
+				}),
+				payload: {
+					userId: payload.userId,
+					wasActive: existing.isActive,
+				},
+			});
 
 			await db
 				.delete(schema.staffProfile)
@@ -454,6 +508,29 @@ export function createStaffRouter() {
 						.set(updates)
 						.where(eq(schema.staffDateOverride.id, existingOverride.id));
 
+					// Create audit event for override update
+					await createAuditEvent({
+						actorType: "admin",
+						actorUserId: session.user.id,
+						entityType: "staff_date_override",
+						entityId: existingOverride.id,
+						action: "update",
+						summary: buildStaffSummary("date override updated", {
+							date: payload.overrideDate,
+							isAvailable: payload.isAvailable ?? existingOverride.isAvailable,
+							capacity:
+								parsedCapacityOverride ??
+								existingOverride.capacityOverride ??
+								undefined,
+						}),
+						payload: {
+							id: existingOverride.id,
+							staffUserId: payload.userId,
+							overrideDate: payload.overrideDate,
+							changes: updates,
+						},
+					});
+
 					return await db.query.staffDateOverride.findFirst({
 						where: eq(schema.staffDateOverride.id, existingOverride.id),
 					});
@@ -472,6 +549,29 @@ export function createStaffRouter() {
 					createdByUserId: session.user.id,
 					createdAt: now,
 					updatedAt: now,
+				});
+
+				// Create audit event for override creation
+				await createAuditEvent({
+					actorType: "admin",
+					actorUserId: session.user.id,
+					entityType: "staff_date_override",
+					entityId: id,
+					action: "create",
+					summary: buildStaffSummary("date override created", {
+						date: payload.overrideDate,
+						isAvailable: payload.isAvailable ?? true,
+						capacity: parsedCapacityOverride ?? undefined,
+					}),
+					payload: {
+						staffUserId: payload.userId,
+						overrideDate: payload.overrideDate,
+						isAvailable: payload.isAvailable ?? true,
+						capacityOverride: parsedCapacityOverride ?? null,
+						availableStartTime,
+						availableEndTime,
+						notes: payload.notes ?? null,
+					},
 				});
 
 				return await db.query.staffDateOverride.findFirst({
@@ -504,7 +604,7 @@ export function createStaffRouter() {
 				return override;
 			}),
 			update: rpc.handler(async ({ context, input }) => {
-				await requireAdminAccess(context.headers, {
+				const session = await requireAdminAccess(context.headers, {
 					staff: ["read"],
 				});
 				const payload = input as {
@@ -639,12 +739,34 @@ export function createStaffRouter() {
 					.set(updates)
 					.where(eq(schema.staffDateOverride.id, payload.overrideId));
 
+				// Create audit event for override update
+				await createAuditEvent({
+					actorType: "admin",
+					actorUserId: session.user.id,
+					entityType: "staff_date_override",
+					entityId: payload.overrideId,
+					action: "update",
+					summary: buildStaffSummary("date override updated", {
+						date: updates.overrideDate ?? existing.overrideDate,
+						isAvailable: updates.isAvailable ?? existing.isAvailable,
+						capacity:
+							updates.capacityOverride ??
+							existing.capacityOverride ??
+							undefined,
+					}),
+					payload: {
+						id: payload.overrideId,
+						staffUserId: payload.userId,
+						changes: updates,
+					},
+				});
+
 				return await db.query.staffDateOverride.findFirst({
 					where: eq(schema.staffDateOverride.id, payload.overrideId),
 				});
 			}),
 			remove: rpc.handler(async ({ context, input }) => {
-				await requireAdminAccess(context.headers, {
+				const session = await requireAdminAccess(context.headers, {
 					staff: ["read"],
 				});
 				const payload = input as { userId: string; overrideId: string };
@@ -665,6 +787,25 @@ export function createStaffRouter() {
 				if (!existing) {
 					throwRpcError("NOT_FOUND", 404, "Staff date override not found");
 				}
+
+				// Create audit event before deletion
+				await createAuditEvent({
+					actorType: "admin",
+					actorUserId: session.user.id,
+					entityType: "staff_date_override",
+					entityId: payload.overrideId,
+					action: "delete",
+					summary: buildStaffSummary("date override deleted", {
+						date: existing.overrideDate,
+						isAvailable: existing.isAvailable,
+					}),
+					payload: {
+						id: payload.overrideId,
+						staffUserId: payload.userId,
+						overrideDate: existing.overrideDate,
+						wasAvailable: existing.isAvailable,
+					},
+				});
 
 				await db
 					.delete(schema.staffDateOverride)

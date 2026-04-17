@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { throwRpcError } from "../../orpc/shared";
+import { buildScheduleSummary, createAuditEvent } from "../audit/audit.service";
 import {
 	isValidTimeFormat as isValidScheduleTimeFormat,
 	isValidTimeWindow as isValidScheduleTimeWindow,
@@ -133,6 +134,30 @@ export async function createScheduleTemplate(
 		notes: body.notes ?? null,
 		createdAt: now,
 		updatedAt: now,
+	});
+
+	// Create audit event for template creation
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "schedule_template",
+		entityId: id,
+		action: "create",
+		summary: buildScheduleSummary("template", "created", {
+			weekday,
+			isEnabled: body.isEnabled ?? true,
+		}),
+		payload: {
+			weekday,
+			isEnabled: body.isEnabled ?? true,
+			slotDurationMinutes,
+			bufferMinutes: body.bufferMinutes ?? 0,
+			slotCapacityLimit: body.slotCapacityLimit ?? null,
+			morningStart,
+			morningEnd,
+			afternoonStart,
+			afternoonEnd,
+			notes: body.notes ?? null,
+		},
 	});
 
 	return await db.query.scheduleTemplate.findFirst({
@@ -319,6 +344,22 @@ export async function updateScheduleTemplate(
 		.set(updates)
 		.where(eq(schema.scheduleTemplate.id, payload.id));
 
+	// Create audit event for template update
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "schedule_template",
+		entityId: payload.id,
+		action: "update",
+		summary: buildScheduleSummary("template", "updated", {
+			weekday: updates.weekday ?? existing.weekday,
+			isEnabled: updates.isEnabled ?? existing.isEnabled,
+		}),
+		payload: {
+			id: payload.id,
+			changes: updates,
+		},
+	});
+
 	return await db.query.scheduleTemplate.findFirst({
 		where: eq(schema.scheduleTemplate.id, payload.id),
 	});
@@ -331,6 +372,22 @@ export async function removeScheduleTemplate(id: string) {
 	if (!existing) {
 		throwRpcError("NOT_FOUND", 404, "Schedule template not found");
 	}
+
+	// Create audit event before deletion
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "schedule_template",
+		entityId: id,
+		action: "delete",
+		summary: buildScheduleSummary("template", "deleted", {
+			weekday: existing.weekday,
+		}),
+		payload: {
+			id,
+			weekday: existing.weekday,
+			wasEnabled: existing.isEnabled,
+		},
+	});
 
 	await db
 		.delete(schema.scheduleTemplate)

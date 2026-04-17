@@ -10,6 +10,7 @@ import {
 	throwIdempotencyAwareError,
 	throwRpcError,
 } from "../../orpc/shared";
+import { buildSeriesSummary, createAuditEvent } from "../audit/audit.service";
 import type { CapacityConflict } from "../bookings/capacity.types";
 import {
 	countActiveSlotBookings,
@@ -297,6 +298,20 @@ export async function moveReservationSeries(params: {
 		targetSlotId: payload.targetSlotId,
 		targetStaffUserId: payload.targetStaffUserId,
 	};
+
+	// Create audit event for series move
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "booking_series",
+		entityId: payload.id,
+		action: "move",
+		summary: buildSeriesSummary("series moved", {
+			movedCount: movedIds.length,
+			targetSlotId: payload.targetSlotId,
+			targetStaffUserId: payload.targetStaffUserId,
+		}),
+		payload: responseBody,
+	});
 
 	if (idempotencyKey) {
 		await storeIdempotencyKey(

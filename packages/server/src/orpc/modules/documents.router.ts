@@ -1,7 +1,17 @@
-import { uploadCitizenDocument, listCitizenDocuments, declarePhysicalDocument } from "../../features/citizen/citizen-documents.service";
-import { downloadAdminDocument, listAdminDocuments, listAllAdminDocuments, getAdminDocument, reviewDocument } from "../../features/admin/admin-documents.service";
+import {
+	downloadAdminDocument,
+	getAdminDocument,
+	listAdminDocuments,
+	listAllAdminDocuments,
+	reviewDocument,
+} from "../../features/admin/admin-documents.service";
+import {
+	declarePhysicalDocument,
+	listCitizenDocuments,
+	uploadCitizenDocument,
+} from "../../features/citizen/citizen-documents.service";
 import { rpc } from "../context";
-import { requireAuthenticatedSession, requireAdminAccess } from "../shared";
+import { requireAdminAccess, requireAuthenticatedSession } from "../shared";
 
 export function createDocumentsRouter() {
 	return {

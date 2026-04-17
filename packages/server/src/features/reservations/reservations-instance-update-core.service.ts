@@ -7,6 +7,7 @@ import {
 	throwCapacityConflict,
 	throwRpcError,
 } from "../../orpc/shared";
+import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import { checkCapacity } from "../bookings/capacity-check.service";
 
 export async function updateReservationInstance(input: {
@@ -58,6 +59,24 @@ export async function updateReservationInstance(input: {
 		.update(schema.booking)
 		.set(updates)
 		.where(eq(schema.booking.id, input.bookingId));
+
+	// Create audit event for instance update
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "booking",
+		entityId: input.bookingId,
+		action: "update",
+		summary: buildBookingSummary("updated", input.bookingId, {
+			staffName: input.staffUserId,
+			reason: input.notes,
+		}),
+		payload: {
+			bookingId: input.bookingId,
+			staffUserId: input.staffUserId,
+			notes: input.notes ?? null,
+			detachedFromSeries: booking.seriesKey,
+		},
+	});
 
 	return await db.query.booking.findFirst({
 		where: eq(schema.booking.id, input.bookingId),

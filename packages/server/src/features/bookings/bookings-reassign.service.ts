@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { throwRpcError } from "../../orpc/shared";
+import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import {
 	executeBulkReassignments,
 	previewReassignment,
@@ -74,9 +75,42 @@ export async function reassignExistingBooking(input: {
 		throwRpcError("REASSIGNMENT_FAILED", 422, result.error ?? "Unknown error");
 	}
 
-	return await db.query.booking.findFirst({
+	const booking = await db.query.booking.findFirst({
 		where: eq(schema.booking.id, input.id),
 	});
+
+	// Create audit event for booking reassignment
+	if (booking) {
+		const targetStaffUser = await db.query.user.findFirst({
+			where: eq(schema.user.id, input.targetStaffUserId),
+		});
+		const slot = await db.query.appointmentSlot.findFirst({
+			where: eq(schema.appointmentSlot.id, booking.slotId),
+		});
+
+		await createAuditEvent({
+			actorType: booking.kind === "citizen" ? "citizen" : "admin",
+			actorUserId: booking.createdByUserId,
+			entityType: "booking",
+			entityId: booking.id,
+			action: "reassign",
+			summary: buildBookingSummary("reassigned", booking.id, {
+				kind: booking.kind,
+				status: booking.status,
+				slotDate: slot?.slotDate,
+				startTime: slot?.startTime,
+				targetStaffName: targetStaffUser?.name,
+			}),
+			payload: {
+				slotId: booking.slotId,
+				previousStaffUserId: booking.staffUserId,
+				newStaffUserId: input.targetStaffUserId,
+				kind: booking.kind,
+			},
+		});
+	}
+
+	return booking;
 }
 
 export async function previewBookingReassignment(input: {

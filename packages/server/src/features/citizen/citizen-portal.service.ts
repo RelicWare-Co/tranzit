@@ -4,6 +4,10 @@ import { db, schema } from "../../lib/db";
 import { logger } from "../../lib/logger";
 import { throwCapacityConflict, throwRpcError } from "../../orpc/shared";
 import {
+	createAuditEvent,
+	buildBookingSummary,
+} from "../audit/audit.service";
+import {
 	confirmExistingBooking,
 	createBooking,
 } from "../bookings/bookings-mutations.service";
@@ -698,14 +702,46 @@ export async function cancelCitizenBooking(userId: string, bookingId: string) {
 			.where(eq(schema.serviceRequest.id, booking.requestId));
 	}
 
+	// Create audit event for booking cancellation
+	const staffUser = booking.staffUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.staffUserId),
+			})
+		: null;
+	const citizenUser = booking.citizenUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.citizenUserId),
+			})
+		: null;
+	const slot = await db.query.appointmentSlot.findFirst({
+		where: eq(schema.appointmentSlot.id, booking.slotId),
+	});
+
+	await createAuditEvent({
+		actorType: "citizen",
+		actorUserId: userId,
+		entityType: "booking",
+		entityId: booking.id,
+		action: "cancel",
+		summary: buildBookingSummary("cancelled", booking.id, {
+			kind: booking.kind,
+			status: "cancelled",
+			slotDate: slot?.slotDate,
+			startTime: slot?.startTime,
+			staffName: staffUser?.name,
+			citizenName: citizenUser?.name,
+			reason: "cancelled",
+		}),
+		payload: {
+			slotId: booking.slotId,
+			staffUserId: booking.staffUserId,
+			kind: booking.kind,
+			reason: "cancelled",
+		},
+	});
+
 	// Send cancellation email notification (non-blocking, errors logged but not thrown)
 	try {
-		const citizenUser = booking.citizenUserId
-			? await db.query.user.findFirst({
-					where: eq(schema.user.id, booking.citizenUserId),
-				})
-			: null;
-
 		if (citizenUser?.email) {
 			const context = await buildNotificationContext(booking);
 			await sendBookingCancellationEmail({

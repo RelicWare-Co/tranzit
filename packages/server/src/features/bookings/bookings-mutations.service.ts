@@ -2,9 +2,8 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { logger } from "../../lib/logger";
 import { throwRpcError } from "../../orpc/shared";
-import {
-	sendHoldExpirationEmail,
-} from "../notifications/notification.service";
+import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
+import { sendHoldExpirationEmail } from "../notifications/notification.service";
 import type { TemplateContext } from "../notifications/notification-templates";
 import {
 	confirmBooking,
@@ -156,9 +155,42 @@ export async function createBooking(params: {
 		throwRpcError("INTERNAL_ERROR", 500, "Booking ID not returned");
 	}
 
-	return await db.query.booking.findFirst({
+	const booking = await db.query.booking.findFirst({
 		where: eq(schema.booking.id, result.bookingId),
 	});
+
+	// Create audit event for booking creation
+	if (booking) {
+		const staffUser = booking.staffUserId
+			? await db.query.user.findFirst({
+					where: eq(schema.user.id, booking.staffUserId),
+				})
+			: null;
+
+		await createAuditEvent({
+			actorType: payload.kind === "citizen" ? "citizen" : "admin",
+			actorUserId: params.createdByUserId,
+			entityType: "booking",
+			entityId: booking.id,
+			action: "create",
+			summary: buildBookingSummary("created", booking.id, {
+				kind: payload.kind,
+				status: booking.status,
+				slotDate: slot.slotDate,
+				startTime: slot.startTime,
+				staffName: staffUser?.name,
+			}),
+			payload: {
+				slotId: payload.slotId,
+				staffUserId: payload.staffUserId,
+				kind: payload.kind,
+				requestId: payload.requestId,
+				holdExpiresAt: payload.holdExpiresAt,
+			},
+		});
+	}
+
+	return booking;
 }
 
 export async function confirmExistingBooking(id: string) {
@@ -202,9 +234,50 @@ export async function confirmExistingBooking(id: string) {
 		);
 	}
 
-	return await db.query.booking.findFirst({
+	const booking = await db.query.booking.findFirst({
 		where: eq(schema.booking.id, id),
 	});
+
+	// Create audit event for booking confirmation
+	if (booking) {
+		const staffUser = booking.staffUserId
+			? await db.query.user.findFirst({
+					where: eq(schema.user.id, booking.staffUserId),
+				})
+			: null;
+		const citizenUser = booking.citizenUserId
+			? await db.query.user.findFirst({
+					where: eq(schema.user.id, booking.citizenUserId),
+				})
+			: null;
+		const slot = await db.query.appointmentSlot.findFirst({
+			where: eq(schema.appointmentSlot.id, booking.slotId),
+		});
+
+		await createAuditEvent({
+			actorType: booking.kind === "citizen" ? "citizen" : "admin",
+			actorUserId: booking.createdByUserId,
+			entityType: "booking",
+			entityId: booking.id,
+			action: "confirm",
+			summary: buildBookingSummary("confirmed", booking.id, {
+				kind: booking.kind,
+				status: booking.status,
+				slotDate: slot?.slotDate,
+				startTime: slot?.startTime,
+				staffName: staffUser?.name,
+				citizenName: citizenUser?.name,
+			}),
+			payload: {
+				slotId: booking.slotId,
+				staffUserId: booking.staffUserId,
+				kind: booking.kind,
+				confirmedAt: booking.confirmedAt,
+			},
+		});
+	}
+
+	return booking;
 }
 
 export async function releaseExistingBooking(input: {
@@ -237,6 +310,47 @@ export async function releaseExistingBooking(input: {
 	const booking = await db.query.booking.findFirst({
 		where: eq(schema.booking.id, input.id),
 	});
+
+	// Create audit event for booking release
+	if (booking) {
+		const staffUser = booking.staffUserId
+			? await db.query.user.findFirst({
+					where: eq(schema.user.id, booking.staffUserId),
+				})
+			: null;
+		const citizenUser = booking.citizenUserId
+			? await db.query.user.findFirst({
+					where: eq(schema.user.id, booking.citizenUserId),
+				})
+			: null;
+		const slot = await db.query.appointmentSlot.findFirst({
+			where: eq(schema.appointmentSlot.id, booking.slotId),
+		});
+
+		await createAuditEvent({
+			actorType: booking.kind === "citizen" ? "citizen" : "admin",
+			actorUserId: booking.createdByUserId,
+			entityType: "booking",
+			entityId: booking.id,
+			action: "release",
+			summary: buildBookingSummary("released", booking.id, {
+				kind: booking.kind,
+				status: "inactive",
+				slotDate: slot?.slotDate,
+				startTime: slot?.startTime,
+				staffName: staffUser?.name,
+				citizenName: citizenUser?.name,
+				reason,
+			}),
+			payload: {
+				slotId: booking.slotId,
+				staffUserId: booking.staffUserId,
+				kind: booking.kind,
+				reason,
+				alreadyReleased: result.alreadyReleased,
+			},
+		});
+	}
 
 	return {
 		booking,

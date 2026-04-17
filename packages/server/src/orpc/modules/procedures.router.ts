@@ -1,4 +1,8 @@
 import { eq } from "drizzle-orm";
+import {
+	buildProcedureSummary,
+	createAuditEvent,
+} from "../../features/audit/audit.service";
 import { db, schema } from "../../lib/db";
 import { rpc } from "../context";
 import { requireAdminAccess, throwRpcError } from "../shared";
@@ -78,7 +82,7 @@ export function createProceduresRouter() {
 		}),
 
 		create: rpc.handler(async ({ context, input }) => {
-			await requireAdminAccess(context.headers, {
+			const session = await requireAdminAccess(context.headers, {
 				booking: ["create"],
 			});
 			const payload = input as {
@@ -133,11 +137,35 @@ export function createProceduresRouter() {
 
 			await db.insert(schema.procedureType).values(newProcedure);
 
+			// Create audit event for procedure creation
+			await createAuditEvent({
+				actorType: "admin",
+				actorUserId: session.user.id,
+				entityType: "procedure_type",
+				entityId: newProcedure.id,
+				action: "create",
+				summary: buildProcedureSummary("created", {
+					procedureName: parsedName,
+					slug: sanitizedSlug,
+					isActive: true,
+					configVersion: 1,
+				}),
+				payload: {
+					id: newProcedure.id,
+					name: parsedName,
+					slug: sanitizedSlug,
+					description: payload.description ?? null,
+					requiresVehicle: payload.requiresVehicle ?? false,
+					allowsPhysicalDocuments: payload.allowsPhysicalDocuments ?? true,
+					allowsDigitalDocuments: payload.allowsDigitalDocuments ?? true,
+				},
+			});
+
 			return newProcedure;
 		}),
 
 		update: rpc.handler(async ({ context, input }) => {
-			await requireAdminAccess(context.headers, {
+			const session = await requireAdminAccess(context.headers, {
 				booking: ["update"],
 			});
 			const payload = input as {
@@ -212,6 +240,28 @@ export function createProceduresRouter() {
 				.update(schema.procedureType)
 				.set(updates)
 				.where(eq(schema.procedureType.id, payload.id));
+
+			// Create audit event for procedure update
+			await createAuditEvent({
+				actorType: "admin",
+				actorUserId: session.user.id,
+				entityType: "procedure_type",
+				entityId: payload.id,
+				action: "update",
+				summary: buildProcedureSummary("updated", {
+					procedureName: (updates.name as string | undefined) ?? existing.name,
+					slug: existing.slug,
+					isActive:
+						(updates.isActive as boolean | undefined) ?? existing.isActive,
+					configVersion:
+						(updates.configVersion as number | undefined) ??
+						existing.configVersion,
+				}),
+				payload: {
+					id: payload.id,
+					changes: updates,
+				},
+			});
 
 			return await db.query.procedureType.findFirst({
 				where: eq(schema.procedureType.id, payload.id),

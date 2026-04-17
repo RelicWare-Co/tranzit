@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { throwRpcError } from "../../orpc/shared";
+import { buildScheduleSummary, createAuditEvent } from "../audit/audit.service";
 import {
 	isValidDateFormat as isValidScheduleDateFormat,
 	isValidTimeFormat as isValidScheduleTimeFormat,
@@ -168,6 +169,29 @@ export async function createCalendarOverride(params: {
 		createdByUserId: params.createdByUserId,
 		createdAt: now,
 		updatedAt: now,
+	});
+
+	// Create audit event for override creation
+	await createAuditEvent({
+		actorType: "admin",
+		actorUserId: params.createdByUserId,
+		entityType: "calendar_override",
+		entityId: id,
+		action: "create",
+		summary: buildScheduleSummary("override", "created", {
+			date: body.overrideDate,
+			isClosed,
+		}),
+		payload: {
+			overrideDate: body.overrideDate,
+			isClosed,
+			morningEnabled: body.morningEnabled ?? true,
+			afternoonEnabled: body.afternoonEnabled ?? true,
+			slotDurationMinutes: body.slotDurationMinutes ?? null,
+			bufferMinutes: body.bufferMinutes ?? null,
+			slotCapacityLimit: body.slotCapacityLimit ?? null,
+			reason: body.reason ?? null,
+		},
 	});
 
 	return await db.query.calendarOverride.findFirst({
@@ -380,6 +404,22 @@ export async function updateCalendarOverride(
 		.set(updates)
 		.where(eq(schema.calendarOverride.id, payload.id));
 
+	// Create audit event for override update
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "calendar_override",
+		entityId: payload.id,
+		action: "update",
+		summary: buildScheduleSummary("override", "updated", {
+			date: updates.overrideDate ?? existing.overrideDate,
+			isClosed: updates.isClosed ?? existing.isClosed,
+		}),
+		payload: {
+			id: payload.id,
+			changes: updates,
+		},
+	});
+
 	return await db.query.calendarOverride.findFirst({
 		where: eq(schema.calendarOverride.id, payload.id),
 	});
@@ -392,6 +432,23 @@ export async function removeCalendarOverride(id: string) {
 	if (!existing) {
 		throwRpcError("NOT_FOUND", 404, "Calendar override not found");
 	}
+
+	// Create audit event before deletion
+	await createAuditEvent({
+		actorType: "admin",
+		entityType: "calendar_override",
+		entityId: id,
+		action: "delete",
+		summary: buildScheduleSummary("override", "deleted", {
+			date: existing.overrideDate,
+			isClosed: existing.isClosed,
+		}),
+		payload: {
+			id,
+			overrideDate: existing.overrideDate,
+			wasClosed: existing.isClosed,
+		},
+	});
 
 	await db
 		.delete(schema.calendarOverride)
