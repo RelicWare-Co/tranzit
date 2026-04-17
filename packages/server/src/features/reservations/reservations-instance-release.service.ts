@@ -18,6 +18,8 @@ import { releaseCapacity } from "../bookings/capacity-consume.service";
 export async function releaseReservationInstance(params: {
 	input: { bookingId: string; reason?: string };
 	idempotencyKeyHeader?: string | null;
+	ipAddress?: string | null;
+	userAgent?: string | null;
 }) {
 	const payload = params.input;
 	const idempotencyKey = parseIdempotencyKey(params.idempotencyKeyHeader);
@@ -133,6 +135,8 @@ export async function releaseReservationInstance(params: {
 			reason: payload.reason,
 			alreadyReleased: result.alreadyReleased,
 		},
+		ipAddress: params.ipAddress ?? null,
+		userAgent: params.userAgent ?? null,
 	});
 
 	const responseBody = {

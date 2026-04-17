@@ -33,6 +33,7 @@ export interface CreateScheduleTemplateInput {
 
 export async function createScheduleTemplate(
 	input: CreateScheduleTemplateInput,
+	options?: { ipAddress?: string | null; userAgent?: string | null },
 ) {
 	const body = input;
 	if (body.weekday === undefined || body.slotDurationMinutes === undefined) {
@@ -158,6 +159,8 @@ export async function createScheduleTemplate(
 			afternoonEnd,
 			notes: body.notes ?? null,
 		},
+		ipAddress: options?.ipAddress ?? null,
+		userAgent: options?.userAgent ?? null,
 	});
 
 	return await db.query.scheduleTemplate.findFirst({
@@ -193,6 +196,7 @@ export interface UpdateScheduleTemplateInput {
 
 export async function updateScheduleTemplate(
 	payload: UpdateScheduleTemplateInput,
+	options?: { ipAddress?: string | null; userAgent?: string | null },
 ) {
 	const existing = await db.query.scheduleTemplate.findFirst({
 		where: eq(schema.scheduleTemplate.id, payload.id),
@@ -358,6 +362,8 @@ export async function updateScheduleTemplate(
 			id: payload.id,
 			changes: updates,
 		},
+		ipAddress: options?.ipAddress ?? null,
+		userAgent: options?.userAgent ?? null,
 	});
 
 	return await db.query.scheduleTemplate.findFirst({
@@ -365,7 +371,10 @@ export async function updateScheduleTemplate(
 	});
 }
 
-export async function removeScheduleTemplate(id: string) {
+export async function removeScheduleTemplate(
+	id: string,
+	options?: { ipAddress?: string | null; userAgent?: string | null },
+) {
 	const existing = await db.query.scheduleTemplate.findFirst({
 		where: eq(schema.scheduleTemplate.id, id),
 	});
@@ -387,6 +396,8 @@ export async function removeScheduleTemplate(id: string) {
 			weekday: existing.weekday,
 			wasEnabled: existing.isEnabled,
 		},
+		ipAddress: options?.ipAddress ?? null,
+		userAgent: options?.userAgent ?? null,
 	});
 
 	await db

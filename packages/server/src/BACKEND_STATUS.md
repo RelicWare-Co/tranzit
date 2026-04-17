@@ -154,6 +154,7 @@ Key behavior already implemented:
 - create with slug validation and deduplication
 - update with config version increment on schema-impacting changes
 - remove with soft-delete guard when service requests exist
+- **audit events for all mutations**: create, update, and delete (both soft and hard delete) create `audit_event` entries with `action` and `payload`
 
 ### 2.5 Reservation series module (`server/src/orpc/modules/reservation-series.router.ts`, `server/src/orpc/modules/reservations.router.ts`)
 
@@ -301,6 +302,32 @@ Key behavior already implemented:
 - Config version (`procedureConfigVersion`) captured at request creation time
 - Procedure snapshot preserved at request creation
 
+### 2.9 Audit module (`server/src/orpc/modules/audit.router.ts`)
+
+- `admin.audit.list` — List audit events with pagination and filters
+- `admin.audit.get` — Get a single audit event by ID
+
+Input filters for `list`:
+- `entityType` (string) — Filter by entity type (e.g., "booking", "procedure", "service_request")
+- `entityId` (string) — Filter by specific entity ID
+- `actorUserId` (string) — Filter by actor user ID
+- `action` (string) — Filter by action (e.g., "create", "confirm", "cancel")
+- `dateFrom` (string, YYYY-MM-DD) — Filter events from this date (inclusive)
+- `dateTo` (string, YYYY-MM-DD) — Filter events until this date (inclusive)
+- `limit` (number, default 50, max 200) — Page size
+- `offset` (number, default 0) — Page offset
+- `orderBy` ("createdAt" | "action" | "entityType", default "createdAt")
+- `orderDir` ("asc" | "desc", default "desc")
+
+Key behavior already implemented:
+- Uses `audit_event_entity_idx` index for entityType+entityId queries
+- Uses `audit_event_actor_idx` index for actorUserId queries
+- All entries include non-empty `summary` and `payload` fields
+- Filters combine with AND semantics
+- Date range validation (dateTo must be >= dateFrom)
+- Pagination limits enforced (1-200 for limit, non-negative offset)
+- Requires `audit: ["read"]` permission (admin and auditor roles have this)
+
 ## 3) Capacity engine (core business logic)
 
 Implemented across:
@@ -337,8 +364,6 @@ Even with the current backend, this is still missing or partial:
 - advanced citizen API flow for:
   - full service request lifecycle beyond hold/confirm base
   - document review/approval workflow (upload with file persistence is implemented, review API pending)
-- richer audit event instrumentation in all admin mutations
-- richer audit/notification instrumentation for citizen mutations (booking confirm/cancel notifications implemented)
 - full E2E test coverage for citizen frontend-backend integration
 
 ## 5) Quality baseline currently passing

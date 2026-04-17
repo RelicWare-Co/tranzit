@@ -35,6 +35,8 @@ export async function createReservationSeries(params: {
 	input: CreateReservationSeriesInput;
 	createdByUserId: string;
 	idempotencyKeyHeader?: string | null;
+	ipAddress?: string | null;
+	userAgent?: string | null;
 }) {
 	const body = params.input;
 	const idempotencyKey = parseIdempotencyKey(params.idempotencyKeyHeader);
@@ -365,6 +367,8 @@ export async function createReservationSeries(params: {
 					? ["Some instances could not be created due to capacity conflicts"]
 					: [],
 		},
+		ipAddress: params.ipAddress ?? null,
+		userAgent: params.userAgent ?? null,
 	});
 
 	if (idempotencyKey) {
@@ -384,6 +388,8 @@ export async function createReservationSeries(params: {
 export async function releaseReservationSeries(params: {
 	input: { id: string; reason?: string };
 	idempotencyKeyHeader?: string | null;
+	ipAddress?: string | null;
+	userAgent?: string | null;
 }) {
 	const payload = params.input;
 	const idempotencyKey = parseIdempotencyKey(params.idempotencyKeyHeader);
@@ -466,6 +472,8 @@ export async function releaseReservationSeries(params: {
 			releasedCount: releasedIds.length,
 			releasedInstanceIds: releasedIds,
 		},
+		ipAddress: params.ipAddress ?? null,
+		userAgent: params.userAgent ?? null,
 	});
 
 	const responseBody = {

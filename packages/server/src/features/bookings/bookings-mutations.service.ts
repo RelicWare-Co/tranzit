@@ -83,6 +83,8 @@ export interface CreateBookingInput {
 export async function createBooking(params: {
 	input: CreateBookingInput;
 	createdByUserId: string;
+	ipAddress?: string | null;
+	userAgent?: string | null;
 }) {
 	const payload = params.input;
 
@@ -187,13 +189,18 @@ export async function createBooking(params: {
 				requestId: payload.requestId,
 				holdExpiresAt: payload.holdExpiresAt,
 			},
+			ipAddress: params.ipAddress ?? null,
+			userAgent: params.userAgent ?? null,
 		});
 	}
 
 	return booking;
 }
 
-export async function confirmExistingBooking(id: string) {
+export async function confirmExistingBooking(
+	id: string,
+	options?: { ipAddress?: string | null; userAgent?: string | null },
+) {
 	const result = await confirmBooking(id);
 	if (!result.success) {
 		// If the booking expired, send a hold expiration email before throwing
@@ -274,16 +281,21 @@ export async function confirmExistingBooking(id: string) {
 				kind: booking.kind,
 				confirmedAt: booking.confirmedAt,
 			},
+			ipAddress: options?.ipAddress ?? null,
+			userAgent: options?.userAgent ?? null,
 		});
 	}
 
 	return booking;
 }
 
-export async function releaseExistingBooking(input: {
-	id: string;
-	reason: string;
-}) {
+export async function releaseExistingBooking(
+	input: {
+		id: string;
+		reason: string;
+	},
+	options?: { ipAddress?: string | null; userAgent?: string | null },
+) {
 	if (
 		!input.reason ||
 		!["cancelled", "expired", "attended"].includes(input.reason)
@@ -349,6 +361,8 @@ export async function releaseExistingBooking(input: {
 				reason,
 				alreadyReleased: result.alreadyReleased,
 			},
+			ipAddress: options?.ipAddress ?? null,
+			userAgent: options?.userAgent ?? null,
 		});
 	}
 

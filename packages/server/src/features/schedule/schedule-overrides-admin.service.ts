@@ -49,6 +49,8 @@ export interface CreateCalendarOverrideInput {
 export async function createCalendarOverride(params: {
 	input: CreateCalendarOverrideInput;
 	createdByUserId: string;
+	ipAddress?: string | null;
+	userAgent?: string | null;
 }) {
 	const body = params.input;
 	if (!body.overrideDate) {
@@ -192,6 +194,8 @@ export async function createCalendarOverride(params: {
 			slotCapacityLimit: body.slotCapacityLimit ?? null,
 			reason: body.reason ?? null,
 		},
+		ipAddress: params.ipAddress ?? null,
+		userAgent: params.userAgent ?? null,
 	});
 
 	return await db.query.calendarOverride.findFirst({
@@ -229,6 +233,7 @@ export interface UpdateCalendarOverrideInput {
 
 export async function updateCalendarOverride(
 	payload: UpdateCalendarOverrideInput,
+	options?: { ipAddress?: string | null; userAgent?: string | null },
 ) {
 	const existing = await db.query.calendarOverride.findFirst({
 		where: eq(schema.calendarOverride.id, payload.id),
@@ -418,6 +423,8 @@ export async function updateCalendarOverride(
 			id: payload.id,
 			changes: updates,
 		},
+		ipAddress: options?.ipAddress ?? null,
+		userAgent: options?.userAgent ?? null,
 	});
 
 	return await db.query.calendarOverride.findFirst({
@@ -425,7 +432,10 @@ export async function updateCalendarOverride(
 	});
 }
 
-export async function removeCalendarOverride(id: string) {
+export async function removeCalendarOverride(
+	id: string,
+	options?: { ipAddress?: string | null; userAgent?: string | null },
+) {
 	const existing = await db.query.calendarOverride.findFirst({
 		where: eq(schema.calendarOverride.id, id),
 	});
@@ -448,6 +458,8 @@ export async function removeCalendarOverride(id: string) {
 			overrideDate: existing.overrideDate,
 			wasClosed: existing.isClosed,
 		},
+		ipAddress: options?.ipAddress ?? null,
+		userAgent: options?.userAgent ?? null,
 	});
 
 	await db

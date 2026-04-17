@@ -60,6 +60,8 @@ export async function updateReservationSeries(params: {
 		force?: boolean;
 	};
 	ifMatch: string | null;
+	ipAddress?: string | null;
+	userAgent?: string | null;
 }) {
 	const payload = params.input;
 	const series = await db.query.bookingSeries.findFirst({
@@ -148,6 +150,8 @@ export async function updateReservationSeries(params: {
 			skippedCount: activeBookings.length - toUpdate.length,
 			updatedInstanceIds: updatedIds,
 		},
+		ipAddress: params.ipAddress ?? null,
+		userAgent: params.userAgent ?? null,
 	});
 
 	return {
@@ -158,12 +162,15 @@ export async function updateReservationSeries(params: {
 	};
 }
 
-export async function updateReservationSeriesFromDate(input: {
-	id: string;
-	effectiveFrom?: string;
-	staffUserId?: string;
-	notes?: string | null;
-}) {
+export async function updateReservationSeriesFromDate(
+	input: {
+		id: string;
+		effectiveFrom?: string;
+		staffUserId?: string;
+		notes?: string | null;
+	},
+	options?: { ipAddress?: string | null; userAgent?: string | null },
+) {
 	if (!input.effectiveFrom) {
 		throwRpcError(
 			"MISSING_REQUIRED_FIELDS",
@@ -257,6 +264,8 @@ export async function updateReservationSeriesFromDate(input: {
 			updatedCount: updatedIds.length,
 			updatedInstanceIds: updatedIds,
 		},
+		ipAddress: options?.ipAddress ?? null,
+		userAgent: options?.userAgent ?? null,
 	});
 
 	return {

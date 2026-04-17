@@ -685,7 +685,11 @@ export async function confirmCitizenBooking(userId: string, bookingId: string) {
 	return await getBookingSummaryById(booking.id);
 }
 
-export async function cancelCitizenBooking(userId: string, bookingId: string) {
+export async function cancelCitizenBooking(
+	userId: string,
+	bookingId: string,
+	options?: { ipAddress?: string | null; userAgent?: string | null },
+) {
 	await expireStaleCitizenHolds();
 	const booking = await getOwnedCitizenBooking(userId, bookingId);
 
@@ -738,6 +742,8 @@ export async function cancelCitizenBooking(userId: string, bookingId: string) {
 			kind: booking.kind,
 			reason: "cancelled",
 		},
+		ipAddress: options?.ipAddress ?? null,
+		userAgent: options?.userAgent ?? null,
 	});
 
 	// Send cancellation email notification (non-blocking, errors logged but not thrown)

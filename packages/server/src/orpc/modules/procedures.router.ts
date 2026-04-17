@@ -5,7 +5,7 @@ import {
 } from "../../features/audit/audit.service";
 import { db, schema } from "../../lib/db";
 import { rpc } from "../context";
-import { requireAdminAccess, throwRpcError } from "../shared";
+import { extractClientInfo, requireAdminAccess, throwRpcError } from "../shared";
 
 // Input validation helpers
 function generateId(): string {
@@ -85,6 +85,7 @@ export function createProceduresRouter() {
 			const session = await requireAdminAccess(context.headers, {
 				booking: ["create"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			const payload = input as {
 				name: string;
 				slug: string;
@@ -159,6 +160,8 @@ export function createProceduresRouter() {
 					allowsPhysicalDocuments: payload.allowsPhysicalDocuments ?? true,
 					allowsDigitalDocuments: payload.allowsDigitalDocuments ?? true,
 				},
+				ipAddress: clientInfo.ipAddress,
+				userAgent: clientInfo.userAgent,
 			});
 
 			return newProcedure;
@@ -168,6 +171,7 @@ export function createProceduresRouter() {
 			const session = await requireAdminAccess(context.headers, {
 				booking: ["update"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			const payload = input as {
 				id: string;
 				name?: string;
@@ -261,6 +265,8 @@ export function createProceduresRouter() {
 					id: payload.id,
 					changes: updates,
 				},
+				ipAddress: clientInfo.ipAddress,
+				userAgent: clientInfo.userAgent,
 			});
 
 			return await db.query.procedureType.findFirst({
@@ -269,9 +275,10 @@ export function createProceduresRouter() {
 		}),
 
 		remove: rpc.handler(async ({ context, input }) => {
-			await requireAdminAccess(context.headers, {
+			const session = await requireAdminAccess(context.headers, {
 				booking: ["delete"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			const payload = input as { id: string };
 
 			if (!payload?.id) {
@@ -298,6 +305,30 @@ export function createProceduresRouter() {
 					.set({ isActive: false, updatedAt: new Date() })
 					.where(eq(schema.procedureType.id, payload.id));
 
+				// Create audit event for soft delete
+				await createAuditEvent({
+					actorType: "admin",
+					actorUserId: session.user.id,
+					entityType: "procedure_type",
+					entityId: payload.id,
+					action: "delete",
+					summary: buildProcedureSummary("deleted (soft)", {
+						procedureName: existing.name,
+						slug: existing.slug,
+						isActive: false,
+						configVersion: existing.configVersion,
+					}),
+					payload: {
+						id: payload.id,
+						name: existing.name,
+						slug: existing.slug,
+						mode: "soft",
+						reason: "has_existing_requests",
+					},
+					ipAddress: clientInfo.ipAddress,
+					userAgent: clientInfo.userAgent,
+				});
+
 				return {
 					success: true,
 					message: "Procedure marked as inactive due to existing requests",
@@ -309,6 +340,30 @@ export function createProceduresRouter() {
 			await db
 				.delete(schema.procedureType)
 				.where(eq(schema.procedureType.id, payload.id));
+
+			// Create audit event for hard delete
+			await createAuditEvent({
+				actorType: "admin",
+				actorUserId: session.user.id,
+				entityType: "procedure_type",
+				entityId: payload.id,
+				action: "delete",
+				summary: buildProcedureSummary("deleted (hard)", {
+					procedureName: existing.name,
+					slug: existing.slug,
+					isActive: existing.isActive,
+					configVersion: existing.configVersion,
+				}),
+				payload: {
+					id: payload.id,
+					name: existing.name,
+					slug: existing.slug,
+					mode: "hard",
+					reason: "no_existing_requests",
+				},
+				ipAddress: clientInfo.ipAddress,
+				userAgent: clientInfo.userAgent,
+			});
 
 			return {
 				success: true,

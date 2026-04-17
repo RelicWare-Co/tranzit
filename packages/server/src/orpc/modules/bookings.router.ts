@@ -16,7 +16,7 @@ import {
 	reassignExistingBooking,
 } from "../../features/bookings/bookings-reassign.service";
 import { rpc } from "../context";
-import { requireAdminAccess } from "../shared";
+import { extractClientInfo, requireAdminAccess } from "../shared";
 
 export function createBookingsRouter() {
 	return {
@@ -24,9 +24,11 @@ export function createBookingsRouter() {
 			const session = await requireAdminAccess(context.headers, {
 				booking: ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return createBooking({
 				input: input as Parameters<typeof createBooking>[0]["input"],
 				createdByUserId: session.user.id,
+				...clientInfo,
 			});
 		}),
 		list: rpc.handler(async ({ context, input }) => {
@@ -54,22 +56,27 @@ export function createBookingsRouter() {
 				booking: ["read"],
 			});
 			const payload = input as { id: string };
-			return confirmExistingBooking(payload.id);
+			const clientInfo = extractClientInfo(context.headers);
+			return confirmExistingBooking(payload.id, clientInfo);
 		}),
 		release: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
 				booking: ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return releaseExistingBooking(
 				input as Parameters<typeof releaseExistingBooking>[0],
+				clientInfo,
 			);
 		}),
 		reassign: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
 				booking: ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return reassignExistingBooking(
 				input as Parameters<typeof reassignExistingBooking>[0],
+				clientInfo,
 			);
 		}),
 		reassignPreview: rpc.handler(async ({ context, input }) => {

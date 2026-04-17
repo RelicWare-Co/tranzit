@@ -11,7 +11,7 @@ import {
 } from "../../features/staff/staff.schemas";
 import { db, schema } from "../../lib/db";
 import { rpc } from "../context";
-import { requireAdminAccess, throwRpcError } from "../shared";
+import { extractClientInfo, requireAdminAccess, throwRpcError } from "../shared";
 
 function parseDefaultCapacity(value: unknown): number {
 	const capacity = Number(value);
@@ -79,6 +79,7 @@ export function createStaffRouter() {
 			const session = await requireAdminAccess(context.headers, {
 				staff: ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			const body = (input ?? {}) as {
 				userId?: string;
 				isActive?: boolean;
@@ -164,6 +165,8 @@ export function createStaffRouter() {
 					isAssignable: body.isAssignable ?? true,
 					defaultDailyCapacity: parsedDefaultCapacity ?? 25,
 				},
+				ipAddress: clientInfo.ipAddress,
+				userAgent: clientInfo.userAgent,
 			});
 
 			return {
@@ -209,6 +212,7 @@ export function createStaffRouter() {
 			const session = await requireAdminAccess(context.headers, {
 				staff: ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			const payload = input as {
 				userId: string;
 				isActive?: boolean;
@@ -280,6 +284,8 @@ export function createStaffRouter() {
 					userId: payload.userId,
 					changes: updates,
 				},
+				ipAddress: clientInfo.ipAddress,
+				userAgent: clientInfo.userAgent,
 			});
 
 			const updated = await db.query.staffProfile.findFirst({
@@ -305,6 +311,7 @@ export function createStaffRouter() {
 			const session = await requireAdminAccess(context.headers, {
 				staff: ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			const payload = input as { userId: string };
 
 			const existing = await db.query.staffProfile.findFirst({
@@ -342,6 +349,8 @@ export function createStaffRouter() {
 					userId: payload.userId,
 					wasActive: existing.isActive,
 				},
+				ipAddress: clientInfo.ipAddress,
+				userAgent: clientInfo.userAgent,
 			});
 
 			await db
@@ -389,6 +398,7 @@ export function createStaffRouter() {
 				const session = await requireAdminAccess(context.headers, {
 					staff: ["read"],
 				});
+				const clientInfo = extractClientInfo(context.headers);
 				const payload = input as {
 					userId: string;
 					overrideDate?: string;
@@ -529,6 +539,8 @@ export function createStaffRouter() {
 							overrideDate: payload.overrideDate,
 							changes: updates,
 						},
+						ipAddress: clientInfo.ipAddress,
+						userAgent: clientInfo.userAgent,
 					});
 
 					return await db.query.staffDateOverride.findFirst({
@@ -572,6 +584,8 @@ export function createStaffRouter() {
 						availableEndTime,
 						notes: payload.notes ?? null,
 					},
+					ipAddress: clientInfo.ipAddress,
+					userAgent: clientInfo.userAgent,
 				});
 
 				return await db.query.staffDateOverride.findFirst({
@@ -607,6 +621,7 @@ export function createStaffRouter() {
 				const session = await requireAdminAccess(context.headers, {
 					staff: ["read"],
 				});
+				const clientInfo = extractClientInfo(context.headers);
 				const payload = input as {
 					userId: string;
 					overrideId: string;
@@ -759,6 +774,8 @@ export function createStaffRouter() {
 						staffUserId: payload.userId,
 						changes: updates,
 					},
+					ipAddress: clientInfo.ipAddress,
+					userAgent: clientInfo.userAgent,
 				});
 
 				return await db.query.staffDateOverride.findFirst({
@@ -769,6 +786,7 @@ export function createStaffRouter() {
 				const session = await requireAdminAccess(context.headers, {
 					staff: ["read"],
 				});
+				const clientInfo = extractClientInfo(context.headers);
 				const payload = input as { userId: string; overrideId: string };
 
 				const staffProfile = await db.query.staffProfile.findFirst({
@@ -805,6 +823,8 @@ export function createStaffRouter() {
 						overrideDate: existing.overrideDate,
 						wasAvailable: existing.isAvailable,
 					},
+					ipAddress: clientInfo.ipAddress,
+					userAgent: clientInfo.userAgent,
 				});
 
 				await db

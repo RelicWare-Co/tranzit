@@ -28,6 +28,8 @@ export async function moveReservationInstance(params: {
 		targetStaffUserId?: string;
 	};
 	idempotencyKeyHeader?: string | null;
+	ipAddress?: string | null;
+	userAgent?: string | null;
 }) {
 	const payload = params.input;
 	const idempotencyKey = parseIdempotencyKey(params.idempotencyKeyHeader);
@@ -285,6 +287,8 @@ export async function moveReservationInstance(params: {
 			targetSlotId: payload.targetSlotId,
 			targetStaffUserId: payload.targetStaffUserId,
 		},
+		ipAddress: params.ipAddress ?? null,
+		userAgent: params.userAgent ?? null,
 	});
 
 	if (idempotencyKey) {

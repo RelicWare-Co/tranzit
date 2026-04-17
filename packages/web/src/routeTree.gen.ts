@@ -21,6 +21,7 @@ import { Route as AdminReportesRouteImport } from './routes/admin/reportes'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin/configuracion'
 import { Route as AdminCitasRouteImport } from './routes/admin/citas'
+import { Route as AdminAuditoriaRouteImport } from './routes/admin/auditoria'
 import { Route as AdminDocumentosIndexRouteImport } from './routes/admin/documentos/index'
 
 const MiPerfilRoute = MiPerfilRouteImport.update({
@@ -83,6 +84,11 @@ const AdminCitasRoute = AdminCitasRouteImport.update({
   path: '/citas',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminDocumentosIndexRoute = AdminDocumentosIndexRouteImport.update({
   id: '/documentos/',
   path: '/documentos/',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/agendar': typeof AgendarRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/citas': typeof AdminCitasRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/login': typeof AdminLoginRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/agendar': typeof AgendarRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/citas': typeof AdminCitasRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/login': typeof AdminLoginRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/agendar': typeof AgendarRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/citas': typeof AdminCitasRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/login': typeof AdminLoginRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/login'
     | '/mi-perfil'
+    | '/admin/auditoria'
     | '/admin/citas'
     | '/admin/configuracion'
     | '/admin/login'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/login'
     | '/mi-perfil'
+    | '/admin/auditoria'
     | '/admin/citas'
     | '/admin/configuracion'
     | '/admin/login'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/agendar'
     | '/login'
     | '/mi-perfil'
+    | '/admin/auditoria'
     | '/admin/citas'
     | '/admin/configuracion'
     | '/admin/login'
@@ -275,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCitasRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/auditoria': {
+      id: '/admin/auditoria'
+      path: '/auditoria'
+      fullPath: '/admin/auditoria'
+      preLoaderRoute: typeof AdminAuditoriaRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/documentos/': {
       id: '/admin/documentos/'
       path: '/documentos'
@@ -286,6 +305,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteRouteChildren {
+  AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminCitasRoute: typeof AdminCitasRoute
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -297,6 +317,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminCitasRoute: AdminCitasRoute,
   AdminConfiguracionRoute: AdminConfiguracionRoute,
   AdminLoginRoute: AdminLoginRoute,

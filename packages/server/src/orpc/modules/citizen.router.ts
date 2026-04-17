@@ -7,7 +7,7 @@ import {
 	listCitizenSlotsRange,
 } from "../../features/citizen/citizen-portal.service";
 import { rpc } from "../context";
-import { requireAuthenticatedSession } from "../shared";
+import { extractClientInfo, requireAuthenticatedSession } from "../shared";
 
 export function createCitizenRouter() {
 	return {
@@ -44,7 +44,8 @@ export function createCitizenRouter() {
 			cancel: rpc.handler(async ({ context, input }) => {
 				const session = await requireAuthenticatedSession(context.headers);
 				const payload = input as { bookingId: string };
-				return cancelCitizenBooking(session.user.id, payload.bookingId);
+				const clientInfo = extractClientInfo(context.headers);
+				return cancelCitizenBooking(session.user.id, payload.bookingId, clientInfo);
 			}),
 			mine: rpc.handler(async ({ context, input }) => {
 				const session = await requireAuthenticatedSession(context.headers);

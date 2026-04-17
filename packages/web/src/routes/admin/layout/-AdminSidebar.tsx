@@ -6,6 +6,7 @@ import {
 	FileText,
 	LayoutDashboard,
 	Settings,
+	ShieldCheck,
 	Users,
 } from "lucide-react";
 import { SidebarItem } from "./-SidebarItem";
@@ -75,6 +76,12 @@ export function AdminSidebar({ activeSection }: { activeSection: string }) {
 				<Text component="p" className={sectionClass}>
 					Sistema
 				</Text>
+				<SidebarItem
+					icon={ShieldCheck}
+					label="Auditoría"
+					isActive={activeSection === "auditoria"}
+					to="/admin/auditoria"
+				/>
 				<SidebarItem
 					icon={Settings}
 					label="Configuración"

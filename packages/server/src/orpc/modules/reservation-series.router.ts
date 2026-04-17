@@ -13,7 +13,7 @@ import {
 	updateReservationSeriesFromDate,
 } from "../../features/reservations/reservation-series-update.service";
 import { rpc } from "../context";
-import { parseIfMatch, requireAdminAccess } from "../shared";
+import { extractClientInfo, parseIfMatch, requireAdminAccess } from "../shared";
 
 export function createReservationSeriesRouter() {
 	return {
@@ -21,12 +21,14 @@ export function createReservationSeriesRouter() {
 			const session = await requireAdminAccess(context.headers, {
 				"reservation-series": ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return createReservationSeries({
 				input: (input ?? {}) as Parameters<
 					typeof createReservationSeries
 				>[0]["input"],
 				createdByUserId: session.user.id,
 				idempotencyKeyHeader: context.headers.get("idempotency-key"),
+				...clientInfo,
 			});
 		}),
 		list: rpc.handler(async ({ context, input }) => {
@@ -57,35 +59,43 @@ export function createReservationSeriesRouter() {
 				"reservation-series": ["read"],
 			});
 			const ifMatch = parseIfMatch(context.headers.get("if-match"));
+			const clientInfo = extractClientInfo(context.headers);
 			return updateReservationSeries({
 				input: input as Parameters<typeof updateReservationSeries>[0]["input"],
 				ifMatch,
+				...clientInfo,
 			});
 		}),
 		updateFromDate: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
 				"reservation-series": ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return updateReservationSeriesFromDate(
 				input as Parameters<typeof updateReservationSeriesFromDate>[0],
+				clientInfo,
 			);
 		}),
 		release: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
 				"reservation-series": ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return releaseReservationSeries({
 				input: input as Parameters<typeof releaseReservationSeries>[0]["input"],
 				idempotencyKeyHeader: context.headers.get("idempotency-key"),
+				...clientInfo,
 			});
 		}),
 		move: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
 				"reservation-series": ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return moveReservationSeries({
 				input: input as Parameters<typeof moveReservationSeries>[0]["input"],
 				idempotencyKeyHeader: context.headers.get("idempotency-key"),
+				...clientInfo,
 			});
 		}),
 	};

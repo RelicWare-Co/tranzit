@@ -11,10 +11,13 @@ import {
 
 const MAX_BATCH_SIZE = 100;
 
-export async function reassignExistingBooking(input: {
-	id: string;
-	targetStaffUserId: string;
-}) {
+export async function reassignExistingBooking(
+	input: {
+		id: string;
+		targetStaffUserId: string;
+	},
+	options?: { ipAddress?: string | null; userAgent?: string | null },
+) {
 	if (!input.targetStaffUserId) {
 		throwRpcError(
 			"MISSING_REQUIRED_FIELDS",
@@ -107,6 +110,8 @@ export async function reassignExistingBooking(input: {
 				newStaffUserId: input.targetStaffUserId,
 				kind: booking.kind,
 			},
+			ipAddress: options?.ipAddress ?? null,
+			userAgent: options?.userAgent ?? null,
 		});
 	}
 

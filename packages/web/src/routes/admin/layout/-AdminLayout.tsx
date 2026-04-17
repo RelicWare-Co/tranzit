@@ -21,6 +21,7 @@ export function AdminLayout() {
 		if (path.startsWith("/admin/usuarios")) return "usuarios";
 		if (path.startsWith("/admin/tramites")) return "tramites";
 		if (path.startsWith("/admin/reportes")) return "reportes";
+		if (path.startsWith("/admin/auditoria")) return "auditoria";
 		if (path.startsWith("/admin/configuracion")) return "configuracion";
 		return "dashboard";
 	}, [location.pathname]);

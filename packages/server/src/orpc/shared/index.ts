@@ -36,3 +36,4 @@ export {
 } from "./optimistic-concurrency";
 export type { RecurrenceRule } from "./rrule";
 export { generateOccurrences, isDateOnOrAfter, parseRRule } from "./rrule";
+export { extractClientInfo } from "./client-info";

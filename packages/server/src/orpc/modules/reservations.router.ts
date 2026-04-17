@@ -3,7 +3,7 @@ import { getReservationInstance } from "../../features/reservations/reservations
 import { releaseReservationInstance } from "../../features/reservations/reservations-instance-release.service";
 import { updateReservationInstance } from "../../features/reservations/reservations-instance-update-core.service";
 import { rpc } from "../context";
-import { parseIfMatch, requireAdminAccess } from "../shared";
+import { extractClientInfo, parseIfMatch, requireAdminAccess } from "../shared";
 
 export function createReservationsRouter() {
 	return {
@@ -19,6 +19,7 @@ export function createReservationsRouter() {
 				"reservation-series": ["read"],
 			});
 			const ifMatch = parseIfMatch(context.headers.get("if-match"));
+			const clientInfo = extractClientInfo(context.headers);
 			const payload = input as {
 				bookingId: string;
 				staffUserId?: string;
@@ -27,26 +28,30 @@ export function createReservationsRouter() {
 			return updateReservationInstance({
 				...payload,
 				ifMatch,
-			});
+			}, clientInfo);
 		}),
 		release: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
 				"reservation-series": ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return releaseReservationInstance({
 				input: input as Parameters<
 					typeof releaseReservationInstance
 				>[0]["input"],
 				idempotencyKeyHeader: context.headers.get("idempotency-key"),
+				...clientInfo,
 			});
 		}),
 		move: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {
 				"reservation-series": ["read"],
 			});
+			const clientInfo = extractClientInfo(context.headers);
 			return moveReservationInstance({
 				input: input as Parameters<typeof moveReservationInstance>[0]["input"],
 				idempotencyKeyHeader: context.headers.get("idempotency-key"),
+				...clientInfo,
 			});
 		}),
 	};

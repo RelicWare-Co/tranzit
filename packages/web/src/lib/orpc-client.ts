@@ -776,6 +776,46 @@ type ServiceRequestUpdateStatusResponse = {
 	auditEventId: string;
 };
 
+// Audit types
+type AuditEvent = {
+	id: string;
+	actorType: string;
+	actorUserId: string | null;
+	entityType: string;
+	entityId: string;
+	action: string;
+	summary: string;
+	payload: Record<string, unknown>;
+	ipAddress: string | null;
+	userAgent: string | null;
+	createdAt: string | Date;
+};
+
+type AuditEventListInput = {
+	entityType?: string;
+	entityId?: string;
+	actorUserId?: string;
+	action?: string;
+	dateFrom?: string;
+	dateTo?: string;
+	limit?: number;
+	offset?: number;
+	orderBy?: "createdAt" | "action" | "entityType";
+	orderDir?: "asc" | "desc";
+};
+
+type AuditEventListResponse = {
+	entries: AuditEvent[];
+	total: number;
+	limit: number;
+	offset: number;
+	hasMore: boolean;
+};
+
+type AuditEventGetInput = {
+	id: string;
+};
+
 export interface TranzitRpcClient {
 	// biome-ignore lint/suspicious/noExplicitAny: required to satisfy @orpc NestedClient generic constraint
 	[key: string]: any;
@@ -978,6 +1018,10 @@ export interface TranzitRpcClient {
 			update: RpcProcedure<unknown, AdminReservationInstanceUpdateInput>;
 			release: RpcProcedure<unknown, AdminReservationInstanceReleaseInput>;
 			move: RpcProcedure<unknown, AdminReservationInstanceMoveInput>;
+		};
+		audit: {
+			list: RpcProcedure<AuditEventListResponse, AuditEventListInput>;
+			get: RpcProcedure<AuditEvent, AuditEventGetInput>;
 		};
 	};
 }

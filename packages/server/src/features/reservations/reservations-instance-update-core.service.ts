@@ -10,12 +10,15 @@ import {
 import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import { checkCapacity } from "../bookings/capacity-check.service";
 
-export async function updateReservationInstance(input: {
-	bookingId: string;
-	staffUserId?: string;
-	notes?: string | null;
-	ifMatch: string | null;
-}) {
+export async function updateReservationInstance(
+	input: {
+		bookingId: string;
+		staffUserId?: string;
+		notes?: string | null;
+		ifMatch: string | null;
+	},
+	options?: { ipAddress?: string | null; userAgent?: string | null },
+) {
 	const booking = await db.query.booking.findFirst({
 		where: eq(schema.booking.id, input.bookingId),
 	});
@@ -76,6 +79,8 @@ export async function updateReservationInstance(input: {
 			notes: input.notes ?? null,
 			detachedFromSeries: booking.seriesKey,
 		},
+		ipAddress: options?.ipAddress ?? null,
+		userAgent: options?.userAgent ?? null,
 	});
 
 	return await db.query.booking.findFirst({

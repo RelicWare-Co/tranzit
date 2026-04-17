@@ -372,6 +372,11 @@ Admin avanzado conectado con UI funcional premium en frontend:
   - Características UX: filtros de citas con badges de estado, selección visual de items,
     formularios de series con validación RRULE, confirmaciones antes de acciones destructivas,
     estados de carga con skeletons, empty states ilustrativos.
+- `src/routes/admin/auditoria.tsx` y `src/routes/admin/auditoria/-AdminAuditoriaPage.tsx`:
+  - `admin.audit.list` con filtros por tipo de entidad, actor, acción y rango de fechas,
+  - visualización de eventos de auditoría en tabla con paginación,
+  - viewer colapsable de payload JSON para cada entrada,
+  - badges de estado por tipo de acción y actor.
 
 Ciudadano conectado hoy en frontend:
 - `src/routes/login.tsx`:

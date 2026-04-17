@@ -17,7 +17,7 @@ import {
 	updateScheduleTemplate,
 } from "../../features/schedule/schedule-templates-admin.service";
 import { rpc } from "../context";
-import { requireAdminAccess } from "../shared";
+import { extractClientInfo, requireAdminAccess } from "../shared";
 
 export function createScheduleRouter() {
 	return {
@@ -32,8 +32,10 @@ export function createScheduleRouter() {
 				await requireAdminAccess(context.headers, {
 					schedule: ["read"],
 				});
+				const clientInfo = extractClientInfo(context.headers);
 				return createScheduleTemplate(
 					(input ?? {}) as Parameters<typeof createScheduleTemplate>[0],
+					clientInfo,
 				);
 			}),
 			get: rpc.handler(async ({ context, input }) => {
@@ -47,8 +49,10 @@ export function createScheduleRouter() {
 				await requireAdminAccess(context.headers, {
 					schedule: ["read"],
 				});
+				const clientInfo = extractClientInfo(context.headers);
 				return updateScheduleTemplate(
 					input as Parameters<typeof updateScheduleTemplate>[0],
+					clientInfo,
 				);
 			}),
 			remove: rpc.handler(async ({ context, input }) => {
@@ -56,7 +60,8 @@ export function createScheduleRouter() {
 					schedule: ["read"],
 				});
 				const payload = input as { id: string };
-				return removeScheduleTemplate(payload.id);
+				const clientInfo = extractClientInfo(context.headers);
+				return removeScheduleTemplate(payload.id, clientInfo);
 			}),
 		},
 		overrides: {
@@ -72,11 +77,13 @@ export function createScheduleRouter() {
 				const session = await requireAdminAccess(context.headers, {
 					schedule: ["read"],
 				});
+				const clientInfo = extractClientInfo(context.headers);
 				return createCalendarOverride({
 					input: (input ?? {}) as Parameters<
 						typeof createCalendarOverride
 					>[0]["input"],
 					createdByUserId: session.user.id,
+					...clientInfo,
 				});
 			}),
 			get: rpc.handler(async ({ context, input }) => {
@@ -90,8 +97,10 @@ export function createScheduleRouter() {
 				await requireAdminAccess(context.headers, {
 					schedule: ["read"],
 				});
+				const clientInfo = extractClientInfo(context.headers);
 				return updateCalendarOverride(
 					input as Parameters<typeof updateCalendarOverride>[0],
+					clientInfo,
 				);
 			}),
 			remove: rpc.handler(async ({ context, input }) => {
@@ -99,7 +108,8 @@ export function createScheduleRouter() {
 					schedule: ["read"],
 				});
 				const payload = input as { id: string };
-				return removeCalendarOverride(payload.id);
+				const clientInfo = extractClientInfo(context.headers);
+				return removeCalendarOverride(payload.id, clientInfo);
 			}),
 		},
 		slots: {

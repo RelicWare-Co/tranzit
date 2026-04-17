@@ -1,3 +1,4 @@
+import { createAuditRouter } from "./modules/audit.router";
 import { createBookingsRouter } from "./modules/bookings.router";
 import { createCitizenRouter } from "./modules/citizen.router";
 import { createDocumentsRouter } from "./modules/documents.router";
@@ -24,6 +25,7 @@ export function createTranzitRpcRouter() {
 			serviceRequests: createServiceRequestsRouter(),
 			reservationSeries: createReservationSeriesRouter(),
 			reservations: createReservationsRouter(),
+			audit: createAuditRouter(),
 		},
 	};
 }
