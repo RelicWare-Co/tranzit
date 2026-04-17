@@ -16,6 +16,19 @@ export type BookingWithRelations = {
 		name: string | null;
 		email: string;
 	} | null;
+	request?: {
+		id: string;
+		status: string;
+		plate: string | null;
+		applicantName: string | null;
+		applicantDocument: string | null;
+		procedure?: {
+			id: string;
+			slug: string;
+			name: string;
+			description: string | null;
+		} | null;
+	} | null;
 };
 
 export type StaffProfile = {
@@ -47,4 +60,40 @@ export type ProcedureType = {
 	slug: string;
 	name: string;
 	isActive: boolean;
+};
+
+export type RequestDocument = {
+	id: string;
+	requestId: string;
+	requirementKey: string;
+	label: string;
+	deliveryMode: "digital" | "physical";
+	storageKey: string | null;
+	fileName: string | null;
+	mimeType: string | null;
+	fileSizeBytes: number | null;
+	status: DocumentStatus;
+	isCurrent: boolean;
+	replacesDocumentId: string | null;
+	reviewedByUserId: string | null;
+	reviewedAt: string | Date | null;
+	notes: string | null;
+	createdAt: string | Date;
+	updatedAt: string | Date;
+};
+
+export type DocumentStatus =
+	| "pending"
+	| "in_review"
+	| "valid"
+	| "rejected"
+	| "marked_as_physical";
+
+export type DocumentReviewAction = "approve" | "reject" | "start_review";
+
+export type User = {
+	id: string;
+	name: string | null;
+	email: string;
+	role: string | null;
 };

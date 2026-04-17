@@ -692,6 +692,39 @@ export interface TranzitRpcClient {
 			DocumentDeclarePhysicalInput
 		>;
 		list: RpcProcedure<RequestDocument[], DocumentListInput>;
+		admin: {
+			list: RpcProcedure<RequestDocument[], DocumentListInput>;
+			get: RpcProcedure<RequestDocument, { documentId: string }>;
+			download: RpcProcedure<
+				{
+					content: ArrayBuffer;
+					fileName: string;
+					mimeType: string;
+					fileSizeBytes: number;
+				},
+				{ documentId: string }
+			>;
+			review: RpcProcedure<
+				{
+					id: string;
+					requestId: string;
+					requirementKey: string;
+					label: string;
+					deliveryMode: string;
+					status: string;
+					notes: string | null;
+					reviewedByUserId: string | null;
+					reviewedAt: string | Date | null;
+					isCurrent: boolean;
+					updatedAt: string | Date;
+				},
+				{
+					documentId: string;
+					action: "approve" | "reject" | "start_review";
+					notes?: string;
+				}
+			>;
+		};
 	};
 	citizen: {
 		procedures: {
