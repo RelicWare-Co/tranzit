@@ -9,6 +9,11 @@ import {
 } from "../bookings/bookings-mutations.service";
 import { releaseCapacity } from "../bookings/capacity-consume.service";
 import { checkCapacity } from "../bookings/capacity-check.service";
+import {
+	sendBookingCancellationEmail,
+	sendBookingConfirmationEmail,
+} from "../notifications/notification.service";
+import type { TemplateContext } from "../notifications/notification-templates";
 import { isValidDateFormat } from "../schedule/schedule.schemas";
 import { formatDateLocal } from "../schedule/schedule.service";
 import { listScheduleSlotsByDate } from "../schedule/schedule-slots-admin.service";
@@ -359,6 +364,65 @@ const getBookingSummaryById = async (bookingId: string) => {
 	return summaries[0];
 };
 
+/**
+ * Build the notification template context from a booking.
+ * Used for sending confirmation and cancellation emails.
+ */
+const buildNotificationContext = async (
+	booking: typeof schema.booking.$inferSelect,
+): Promise<TemplateContext> => {
+	const slot = await db.query.appointmentSlot.findFirst({
+		where: eq(schema.appointmentSlot.id, booking.slotId),
+	});
+
+	const procedure = booking.requestId
+		? await db.query.serviceRequest.findFirst({
+				where: eq(schema.serviceRequest.id, booking.requestId),
+				with: {
+					procedureType: true,
+				},
+			})
+		: null;
+
+	const staffUser = booking.staffUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.staffUserId),
+			})
+		: null;
+
+	const citizenUser = booking.citizenUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.citizenUserId),
+			})
+		: null;
+
+	const draftData =
+		procedure?.draftData && typeof procedure.draftData === "object"
+			? (procedure.draftData as Record<string, unknown>)
+			: null;
+
+	return {
+		procedureName: procedure?.procedureType?.name ?? "Trámite",
+		appointmentDate: slot?.slotDate ?? "",
+		appointmentTime: slot?.startTime ?? "",
+		appointmentEndTime: slot?.endTime,
+		staffName: staffUser?.name ?? null,
+		citizenName: citizenUser?.name ?? null,
+		bookingId: booking.id,
+		serviceRequest: {
+			applicantName:
+				typeof draftData?.applicantName === "string"
+					? draftData.applicantName
+					: null,
+			applicantDocument:
+				typeof draftData?.applicantDocument === "string"
+					? draftData.applicantDocument
+					: null,
+			plate: typeof draftData?.plate === "string" ? draftData.plate : null,
+		},
+	};
+};
+
 export async function listCitizenProcedures() {
 	return await db.query.procedureType.findMany({
 		where: eq(schema.procedureType.isActive, true),
@@ -561,6 +625,30 @@ export async function confirmCitizenBooking(userId: string, bookingId: string) {
 			.where(eq(schema.serviceRequest.id, booking.requestId));
 	}
 
+	// Send confirmation email notification (non-blocking, errors logged but not thrown)
+	try {
+		const citizenUser = booking.citizenUserId
+			? await db.query.user.findFirst({
+					where: eq(schema.user.id, booking.citizenUserId),
+				})
+			: null;
+
+		if (citizenUser?.email) {
+			const context = await buildNotificationContext(booking);
+			await sendBookingConfirmationEmail({
+				bookingId: booking.id,
+				recipient: citizenUser.email,
+				context,
+			});
+		}
+	} catch (error) {
+		logger.error(
+			{ err: error, bookingId, userId },
+			"Failed to send booking confirmation email",
+		);
+		// Do not throw - confirmation succeeded, email is secondary
+	}
+
 	return await getBookingSummaryById(booking.id);
 }
 
@@ -579,6 +667,30 @@ export async function cancelCitizenBooking(userId: string, bookingId: string) {
 				updatedAt: new Date(),
 			})
 			.where(eq(schema.serviceRequest.id, booking.requestId));
+	}
+
+	// Send cancellation email notification (non-blocking, errors logged but not thrown)
+	try {
+		const citizenUser = booking.citizenUserId
+			? await db.query.user.findFirst({
+					where: eq(schema.user.id, booking.citizenUserId),
+				})
+			: null;
+
+		if (citizenUser?.email) {
+			const context = await buildNotificationContext(booking);
+			await sendBookingCancellationEmail({
+				bookingId: booking.id,
+				recipient: citizenUser.email,
+				context,
+			});
+		}
+	} catch (error) {
+		logger.error(
+			{ err: error, bookingId, userId },
+			"Failed to send booking cancellation email",
+		);
+		// Do not throw - cancellation succeeded, email is secondary
 	}
 
 	return await getBookingSummaryById(booking.id);

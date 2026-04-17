@@ -190,6 +190,28 @@ Key behavior already implemented:
 - `citizen.bookings.cancel`
 - `citizen.bookings.mine`
 
+Key behavior already implemented:
+- **Email notifications on booking lifecycle events**:
+  - `citizen.bookings.confirm` sends a confirmation email with procedure name, date/time, staff name, and applicant details
+  - `citizen.bookings.cancel` sends a cancellation notification email
+  - Hold expiration triggers a notification (via `expireStaleCitizenHolds`)
+- All notification events create `notification_delivery` records with status tracking (`pending` → `sent`/`failed`)
+- Email sending is non-blocking; failures are logged but do not affect the booking operation
+- Templates include HTML and plain-text versions with inline styles for email compatibility
+
+### 2.6.1 Notification module (`server/src/features/notifications/`)
+
+Email notification service:
+- `sendBookingConfirmationEmail` — sends confirmation email with booking details
+- `sendBookingCancellationEmail` — sends cancellation email
+- `sendHoldExpirationEmail` — sends hold expiration notice
+- All functions create `notification_delivery` records with template key, recipient, status, and payload
+
+Templates:
+- `booking-confirmation` — includes procedure name, appointment date/time, staff name, applicant info
+- `booking-cancellation` — includes procedure name, cancelled appointment details
+- `booking-hold-expired` — informs citizen that hold expired without confirmation
+
 ### 2.7 Citizen documents module (`server/src/orpc/modules/documents.router.ts`)
 
 Citizen endpoints:
@@ -238,6 +260,39 @@ Key behavior already implemented:
 - `citizen.bookings.hold` rejects whitespace-only required identity fields (`applicantName`, `applicantDocument`)
 - `citizen.bookings.hold` applies normalized/validated Zod output for downstream persistence and booking creation
 
+### 2.8 Service Requests module (`server/src/orpc/modules/service-requests.router.ts`)
+
+- `admin.serviceRequests.list` — List all service requests with pagination and filters
+- `admin.serviceRequests.get` — Get full details of a single service request including snapshots and linked booking
+- `admin.serviceRequests.updateStatus` — Transition service request status with eligibility checks
+
+Input filters for `list`:
+- `status` (string | string[]) — Filter by one or more statuses
+- `procedureTypeId` (string) — Filter by procedure type
+- `citizenUserId` (string) — Filter by citizen user
+- `email` (string) — Filter by email
+- `limit` (number, default 50) — Page size
+- `offset` (number, default 0) — Page offset
+- `orderBy` ("createdAt" | "updatedAt" | "status", default "createdAt")
+- `orderDir` ("asc" | "desc", default "desc")
+
+Status transition rules:
+- Valid transitions: `draft → booking_held → verified → pending_confirmation → confirmed`
+- Any status can transition to `cancelled`
+- `confirmed` and `cancelled` are terminal states
+
+Eligibility checks:
+- `verified` requires: `booking_confirmed` (active booking status = "confirmed") and `documents_valid` (all current documents for the request are valid or marked_as_physical)
+- `pending_confirmation` requires: `eligibility_passed` (explicit eligibility data with `passed: true`)
+
+Key behavior already implemented:
+- Atomic status + timestamp updates (verifiedAt, confirmedAt, cancelledAt set appropriately)
+- Creates `audit_event` on every status change with action `status_<from>_to_<to>`
+- Returns 400 with `INVALID_TRANSITION` for disallowed state changes
+- Returns 400 with `ELIGIBILITY_FAILED` when eligibility checks fail
+- Config version (`procedureConfigVersion`) captured at request creation time
+- Procedure snapshot preserved at request creation
+
 ## 3) Capacity engine (core business logic)
 
 Implemented across:
@@ -274,9 +329,8 @@ Even with the current backend, this is still missing or partial:
 - advanced citizen API flow for:
   - full service request lifecycle beyond hold/confirm base
   - document review/approval workflow (upload with file persistence is implemented, review API pending)
-- complete notification orchestration beyond OTP email
 - richer audit event instrumentation in all admin mutations
-- richer audit/notification instrumentation for citizen mutations
+- richer audit/notification instrumentation for citizen mutations (booking confirm/cancel notifications implemented)
 - full E2E test coverage for citizen frontend-backend integration
 
 ## 5) Quality baseline currently passing
