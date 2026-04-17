@@ -6,18 +6,22 @@
  * - Invalid MIME type returns 400 with supported types list
  * - Oversized file returns 400 with size limit
  * - Storage key generated and file persisted to disk
+ * - File content matches uploaded content
  *
  * Run with: cd server && bun test src/citizen-documents.test.ts
  */
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
 	uploadCitizenDocument,
 	listCitizenDocuments,
+	declarePhysicalDocument,
 	type UploadDocumentInput,
 } from "./features/citizen/citizen-documents.service";
+import { resolveStoragePath } from "./lib/file-storage";
 import { db, schema } from "./lib/db";
 
 // ---------------------------------------------------------------------------
@@ -132,6 +136,33 @@ describe("Citizen Document Upload", () => {
 		expect(dbDoc).toBeDefined();
 		expect(dbDoc?.status).toBe("pending");
 		expect(dbDoc?.isCurrent).toBe(true);
+	});
+
+	test("persists file to disk at storage key path", async () => {
+		const fileContent = "Test file content for persistence verification";
+		const base64Content = Buffer.from(fileContent).toString("base64");
+
+		const input: UploadDocumentInput = {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Documento de identidad",
+			deliveryMode: "digital",
+			fileName: "persist-test.pdf",
+			mimeType: "application/pdf",
+			fileSizeBytes: fileContent.length,
+			content: base64Content,
+		};
+
+		const result = await uploadCitizenDocument(testUser.user.id, input);
+
+		// Verify file exists on disk at the storage key path
+		const filePath = resolveStoragePath(result.storageKey);
+		expect(existsSync(filePath)).toBe(true);
+
+		// Verify the file content matches what was uploaded
+		const fs = await import("node:fs");
+		const diskContent = fs.readFileSync(filePath, "utf-8");
+		expect(diskContent).toBe(fileContent);
 	});
 
 	test("rejects upload with unsupported MIME type", async () => {
@@ -302,5 +333,160 @@ describe("Citizen Document Upload", () => {
 		};
 
 		await expect(uploadCitizenDocument(testUser.user.id, input)).rejects.toThrow();
+	});
+});
+
+describe("Physical Document Declaration", () => {
+	let testUser: any;
+	let testProcedureId: string;
+	let testRequestId: string;
+
+	beforeEach(async () => {
+		// Create test user
+		testUser = await createTestUser();
+
+		// Create test procedure
+		testProcedureId = await createTestProcedure();
+
+		// Create test service request
+		testRequestId = await createTestServiceRequest(testUser.user.id, testProcedureId);
+	});
+
+	afterEach(async () => {
+		// Clean up test data
+		await db.delete(schema.requestDocument).where(eq(schema.requestDocument.requestId, testRequestId));
+		await db.delete(schema.serviceRequest).where(eq(schema.serviceRequest.id, testRequestId));
+		await db.delete(schema.procedureType).where(eq(schema.procedureType.id, testProcedureId));
+		await db.delete(schema.user).where(eq(schema.user.id, testUser.user.id));
+	});
+
+	test("creates physical declaration with deliveryMode=physical and status=marked_as_physical", async () => {
+		const result = await declarePhysicalDocument(testUser.user.id, {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Documento de identidad (entrega física)",
+		});
+
+		expect(result.id).toBeDefined();
+		expect(result.requestId).toBe(testRequestId);
+		expect(result.requirementKey).toBe("identification");
+		expect(result.label).toBe("Documento de identidad (entrega física)");
+		expect(result.deliveryMode).toBe("physical");
+		expect(result.status).toBe("marked_as_physical");
+		expect(result.isCurrent).toBe(true);
+		expect(result.storageKey).toBeNull();
+		expect(result.fileName).toBeNull();
+		expect(result.mimeType).toBeNull();
+		expect(result.fileSizeBytes).toBeNull();
+
+		// Verify database row
+		const dbDoc = await db.query.requestDocument.findFirst({
+			where: eq(schema.requestDocument.id, result.id),
+		});
+		expect(dbDoc).toBeDefined();
+		expect(dbDoc?.deliveryMode).toBe("physical");
+		expect(dbDoc?.status).toBe("marked_as_physical");
+		expect(dbDoc?.storageKey).toBeNull();
+	});
+
+	test("second declaration for same requirement marks previous as not current", async () => {
+		// First physical declaration
+		const result1 = await declarePhysicalDocument(testUser.user.id, {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Documento de identidad (entrega física)",
+		});
+		expect(result1.isCurrent).toBe(true);
+
+		// Second physical declaration for same requirement
+		const result2 = await declarePhysicalDocument(testUser.user.id, {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "Nuevo documento de identidad (entrega física)",
+		});
+		expect(result2.isCurrent).toBe(true);
+
+		// Verify first document is no longer current
+		const dbDoc1 = await db.query.requestDocument.findFirst({
+			where: eq(schema.requestDocument.id, result1.id),
+		});
+		expect(dbDoc1?.isCurrent).toBe(false);
+	});
+
+	test("allows multiple physical declarations for different requirements", async () => {
+		const result1 = await declarePhysicalDocument(testUser.user.id, {
+			requestId: testRequestId,
+			requirementKey: "identification",
+			label: "ID (físico)",
+		});
+
+		const result2 = await declarePhysicalDocument(testUser.user.id, {
+			requestId: testRequestId,
+			requirementKey: "proof_of_address",
+			label: "Proof of Address (físico)",
+		});
+
+		expect(result1.isCurrent).toBe(true);
+		expect(result2.isCurrent).toBe(true);
+
+		// Both should still be current since they're for different requirements
+		const docs = await listCitizenDocuments(testUser.user.id, testRequestId);
+		const currentDocs = docs.filter((d) => d.isCurrent);
+		expect(currentDocs.length).toBe(2);
+	});
+
+	test("rejects declaration when user is not owner of service request", async () => {
+		// Create another user
+		const otherUser = await createTestUser();
+
+		await expect(
+			declarePhysicalDocument(otherUser.user.id, {
+				requestId: testRequestId,
+				requirementKey: "identification",
+				label: "Documento",
+			}),
+		).rejects.toThrow();
+
+		// Cleanup other user
+		await db.delete(schema.user).where(eq(schema.user.id, otherUser.user.id));
+	});
+
+	test("rejects declaration when service request does not exist", async () => {
+		await expect(
+			declarePhysicalDocument(testUser.user.id, {
+				requestId: randomUUID(),
+				requirementKey: "identification",
+				label: "Documento",
+			}),
+		).rejects.toThrow();
+	});
+
+	test("rejects declaration with missing required fields", async () => {
+		// Missing requestId
+		await expect(
+			declarePhysicalDocument(testUser.user.id, {
+				requestId: "",
+				requirementKey: "identification",
+				label: "Documento",
+			}),
+		).rejects.toThrow();
+
+		// Missing requirementKey
+		await expect(
+			declarePhysicalDocument(testUser.user.id, {
+				requestId: testRequestId,
+				requirementKey: "",
+				label: "Documento",
+			}),
+		).rejects.toThrow();
+
+		// Missing label
+		await expect(
+			declarePhysicalDocument(testUser.user.id, {
+				requestId: testRequestId,
+				requirementKey: "identification",
+				label: "",
+			}),
+		).rejects.toThrow();
 	});
 });

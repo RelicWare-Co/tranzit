@@ -192,17 +192,32 @@ Key behavior already implemented:
 
 ### 2.7 Citizen documents module (`server/src/orpc/modules/documents.router.ts`)
 
+Citizen endpoints:
 - `documents.upload` — Upload a document for a service request
+- `documents.declarePhysical` — Declare a document as physically delivered (creates row with deliveryMode=physical, status=marked_as_physical)
 - `documents.list` — List documents for a service request
+
+Admin endpoints:
+- `documents.admin.list` — List all documents for a request with review fields
+- `documents.admin.get` — Get document details by ID
+- `documents.admin.download` — Download document file (oRPC handler)
+
+HTTP endpoints:
+- `GET /api/admin/documents/:documentId/download` — Download document file with proper MIME headers
 
 Key behavior already implemented:
 - MIME type validation (PDF, PNG, JPG only)
 - File size limit (10MB maximum)
 - Base64 content encoding validation
 - Storage key generation with format: `documents/{requestId}/{timestamp}-{random}-{filename}`
+- **File persistence to disk** at storage key path (e.g., `uploads/documents/{requestId}/{timestamp}-{random}-{filename}`)
 - Creates `request_document` row with `status=pending`, `isCurrent=true`
 - Automatically marks previous documents for same `requirementKey` as not current
 - Ownership verification (only service request owner can upload/view documents)
+- Admin document download serves file with correct `Content-Type` header
+- Admin download requires admin/staff/auditor role
+- Physical declaration (`declarePhysical`) creates row with `deliveryMode=physical`, `status=marked_as_physical`, no storageKey
+- Physical declaration also marks previous documents for same requirement as not current
 
 Key behavior already implemented:
 - authenticated citizen booking lifecycle over OTP session (hold/confirm/cancel/list)
@@ -250,7 +265,7 @@ Main guarantees implemented:
 Even with the current backend, this is still missing or partial:
 - advanced citizen API flow for:
   - full service request lifecycle beyond hold/confirm base
-  - document review/approval workflow (upload is implemented)
+  - document review/approval workflow (upload with file persistence is implemented, review API pending)
 - complete notification orchestration beyond OTP email
 - richer audit event instrumentation in all admin mutations
 - richer audit/notification instrumentation for citizen mutations
