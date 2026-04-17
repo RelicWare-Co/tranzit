@@ -1,33 +1,42 @@
 {
   "milestone": "audit-trail",
-  "round": 2,
+  "round": 3,
   "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
       "command": "cd packages/server && bun vitest run --maxWorkers=1",
       "exitCode": 0,
-      "note": "All 219 tests pass. Tests added for procedure delete audit events (5 tests) and audit query API (24 tests)."
+      "note": "All 219 tests pass. Test suite includes 15 test files covering staff-auth, notifications, slot-generation, auth-hardening, admin-auth, bookings-capacity, reassignment, reservation-idempotency, hold-expiration-email, service-requests, admin-documents, citizen-documents, audit-query, procedure-delete-audit, file-storage."
     },
     "typecheck": {
       "passed": true,
-      "command": "bun run --filter=@tranzit/web check",
+      "command": "bun run --filter=@tranzit/web check && cd packages/server && bunx tsc --noEmit",
       "exitCode": 0,
-      "note": "Both web and server typecheck pass"
+      "note": "Both web and server typecheck pass with no errors"
     },
     "lint": {
       "passed": true,
       "command": "bun run --filter=@tranzit/web lint",
       "exitCode": 0,
-      "note": "Biome lint passes with 0 errors"
+      "note": "Biome lint passes with 0 errors on 71 files"
     }
   },
   "reviewsSummary": {
-    "total": 1,
-    "passed": 1,
+    "total": 4,
+    "passed": 4,
     "failed": 0,
     "failedFeatures": [],
-    "fixFeaturesReviewed": ["fix-audit-procedure-delete"]
+    "featuresReviewed": [
+      "audit-event-instrumentation",
+      "audit-log-query-api", 
+      "admin-audit-log-ui",
+      "fix-audit-procedure-delete"
+    ],
+    "fixFeaturesReviewed": [
+      "fix-audit-procedure-delete",
+      "fix-audit-ip-and-useragent (addressed in same commit as fix-audit-procedure-delete)"
+    ]
   },
   "blockingIssuesFromPriorRound": [
     {
@@ -36,7 +45,7 @@
       "status": "resolved",
       "fixFeature": "fix-audit-procedure-delete",
       "commitId": "b5c5f1c254df64d6314c65333feafaf2b4b302a0",
-      "resolution": "Both soft delete (when service requests exist) and hard delete (when no service requests exist) now create audit_event entries with action='delete'. 5 tests added."
+      "resolution": "Both soft delete (when service requests exist) and hard delete (when no service requests exist) now create audit_event entries with action='delete'. 5 tests added in procedure-delete-audit.test.ts."
     },
     {
       "featureId": "audit-event-instrumentation",
@@ -49,32 +58,25 @@
   ],
   "blockingIssues": [],
   "appliedUpdates": [],
-  "suggestedGuidanceUpdates": [
-    {
-      "target": "AGENTS.md",
-      "suggestion": "Clarify that 'update' documentation rule in governance section applies to ALL mutations including delete/remove operations. The prior audit-event-instrumentation handoff claimed complete coverage but missed delete paths.",
-      "evidence": "audit-event-instrumentation handoff said 'Added audit events to procedure CRUD' but delete/remove was missing. VAL-AUDIT-012 specifically requires procedure delete to be logged.",
-      "isSystemic": true
-    }
-  ],
+  "suggestedGuidanceUpdates": [],
   "rejectedObservations": [],
-  "previousRound": ".factory/validation/audit-trail/scrutiny/synthesis.json (round 1)",
+  "previousRound": ".factory/validation/audit-trail/scrutiny/synthesis.json (round 2)",
   "validationState": {
     "assertionsCovered": {
-      "VAL-AUDIT-001": "covered by audit-event-instrumentation",
-      "VAL-AUDIT-002": "covered by audit-event-instrumentation",
-      "VAL-AUDIT-003": "covered by audit-event-instrumentation",
-      "VAL-AUDIT-004": "covered by audit-event-instrumentation",
-      "VAL-AUDIT-005": "covered by audit-event-instrumentation",
-      "VAL-AUDIT-006": "covered by audit-event-instrumentation",
-      "VAL-AUDIT-007": "covered by audit-log-query-api",
-      "VAL-AUDIT-008": "covered by audit-log-query-api",
-      "VAL-AUDIT-009": "covered by audit-log-query-api",
-      "VAL-AUDIT-010": "FIXED - ipAddress and userAgent now populated via extractClientInfo()",
-      "VAL-AUDIT-011": "covered by audit-event-instrumentation",
-      "VAL-AUDIT-012": "FIXED - procedure delete now creates audit events",
-      "VAL-AUDIT-013": "covered by audit-event-instrumentation",
-      "VAL-AUDIT-014": "covered by audit-event-instrumentation"
+      "VAL-AUDIT-001": "covered by audit-event-instrumentation - booking create creates audit_event with action=create",
+      "VAL-AUDIT-002": "covered by audit-event-instrumentation - booking confirm creates audit_event with action=confirm",
+      "VAL-AUDIT-003": "covered by audit-event-instrumentation - booking cancel creates audit_event with action=cancel",
+      "VAL-AUDIT-004": "covered by audit-event-instrumentation - booking reassign creates audit_event with action=reassign",
+      "VAL-AUDIT-005": "covered by audit-event-instrumentation - schedule template create creates audit_event",
+      "VAL-AUDIT-006": "covered by audit-event-instrumentation - calendar override create creates audit_event",
+      "VAL-AUDIT-007": "covered by audit-log-query-api - entityType+entityId query uses audit_event_entity_idx",
+      "VAL-AUDIT-008": "covered by audit-log-query-api - actorUserId query uses audit_event_actor_idx",
+      "VAL-AUDIT-009": "covered by audit-log-query-api - dateFrom/dateTo range query works",
+      "VAL-AUDIT-010": "FIXED - ipAddress and userAgent now populated via extractClientInfo() helper",
+      "VAL-AUDIT-011": "covered by audit-event-instrumentation - staff profile and date override mutations create audit entries",
+      "VAL-AUDIT-012": "FIXED - procedure delete (both soft and hard) now creates audit_event entries",
+      "VAL-AUDIT-013": "covered by audit-event-instrumentation - reservation series and instance mutations create audit entries",
+      "VAL-AUDIT-014": "covered by audit-event-instrumentation - citizen actions logged with actorType=citizen"
     }
   }
 }
