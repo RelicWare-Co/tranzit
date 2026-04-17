@@ -23,3 +23,6 @@ packages/server/sqlite.db
 *.db-shm
 *.db-wal
 .soulforge
+
+# File uploads (test artifacts and user-uploaded content)
+packages/server/uploads/
