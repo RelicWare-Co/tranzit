@@ -1,0 +1,26 @@
+{
+  "featureId": "fix-audit-procedure-delete",
+  "reviewedAt": "2026-04-17T17:15:00.000Z",
+  "commitId": "b5c5f1c254df64d6314c65333feafaf2b4b302a0",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Fix adequately addresses VAL-AUDIT-012. Both soft delete (marking inactive when service requests exist) and hard delete (when no service requests exist) now create audit_event entries. The implementation uses createAuditEvent with action='delete', proper entityType='procedure_type', actorType='admin', and includes ipAddress/userAgent from extractClientInfo. A test file with 5 tests covers both delete paths and queryability.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The handoff mentions BACKEND_STATUS.md was updated to document audit behavior for procedures. Checking the diff confirms the update at line 157 adds: '- **audit events for all mutations**: create, update, and delete (both soft and hard delete) create `audit_event` entries with `action` and `payload`'. This follows the governance rule to update BACKEND_STATUS.md when backend behavior changes.",
+      "evidence": "BACKEND_STATUS.md diff shows documentation added in procedures section (around line 157)"
+    },
+    {
+      "area": "skills",
+      "observation": "SkillFeedback indicates followedProcedure=true with no deviations. The worker used the backend-domain-worker skill and followed the documented procedure correctly.",
+      "evidence": "skillFeedback.followedProcedure=true, skillFeedback.deviations=[]"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fix-audit-procedure-delete successfully resolves VAL-AUDIT-012. The remove handler in procedures.router.ts now instruments both soft delete (when hasRequests=true) and hard delete (when hasRequests=false) paths with createAuditEvent calls. Each audit event includes actorType='admin', entityType='procedure_type', action='delete', descriptive summary via buildProcedureSummary, and payload with mode/reason indicators. The commit also adds client info tracking (ipAddress, userAgent) to all audit events across the codebase, plus a new audit router with list/get endpoints, and a comprehensive audit page UI. Five tests were added to verify the procedure delete audit behavior."
+}
