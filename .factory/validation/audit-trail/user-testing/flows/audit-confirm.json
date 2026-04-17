@@ -1,0 +1,62 @@
+{
+  "groupId": "audit-confirm",
+  "testedAt": "2026-04-17T18:05:00.000Z",
+  "isolation": {
+    "backend": "http://localhost:3001",
+    "database": "packages/server/sqlite.db",
+    "maildev": "http://localhost:1080",
+    "workingDirectory": "/Users/verzach3/Projects/tranzit"
+  },
+  "toolsUsed": ["curl", "sqlite3"],
+  "assertions": [
+    {
+      "id": "VAL-AUDIT-002",
+      "title": "Booking confirmation logged",
+      "status": "pass",
+      "steps": [
+        { "action": "Send OTP via /api/auth/email-otp/send-verification-otp", "expected": "OTP sent successfully", "observed": "OTP sent successfully - code 030518" },
+        { "action": "Check Maildev for OTP", "expected": "OTP received in inbox", "observed": "Maildev started; OTP retrieved via /email endpoint" },
+        { "action": "Sign in via /api/auth/sign-in/email-otp", "expected": "Session cookie created", "observed": "Session cookie created successfully" },
+        { "action": "Get available slots via /api/rpc/citizen/slots/range", "expected": "Slots returned", "observed": "Slots returned successfully" },
+        { "action": "Create staff profile (required for hold)", "expected": "Staff profile created", "observed": "Staff profile inserted directly into database for user 84Z6FncmeArtI8Jl7qszSNFSnO69YKRS" },
+        { "action": "Create booking hold via /api/rpc/citizen/bookings/hold", "expected": "Hold created with booking ID", "observed": "Hold created - bookingId: 70be9b5f-b392-4588-ab35-c14f2b285da2, requestId: 25917793-aa1b-4290-9963-554eb97d91ce" },
+        { "action": "Confirm booking via /api/rpc/citizen/bookings/confirm", "expected": "Booking confirmed", "observed": "Booking confirmed successfully - status: confirmed, confirmedAt: 2026-04-17T18:04:19.662Z" },
+        { "action": "Query audit_event table for action='confirm'", "expected": "Row exists with entityId matching booking ID", "observed": "Found audit_event with entity_type=booking, entity_id=70be9b5f-b392-4588-ab35-c14f2b285da2, action=confirm, summary='Booking confirmed (citizen) → status: confirmed for 2026-04-18 09:00 with Test Staff'" }
+      ],
+      "evidence": {
+        "network": [
+          "POST /api/auth/email-otp/send-verification-otp -> 200",
+          "GET /api/auth/sign-in/email-otp -> 200 (OTP retrieved: 030518)",
+          "POST /api/auth/sign-in/email-otp -> 200 (session created)",
+          "POST /api/rpc/citizen/slots/range -> 200 (slots returned)",
+          "POST /api/rpc/citizen/bookings/hold -> 200 (hold created)",
+          "POST /api/rpc/citizen/bookings/confirm -> 200 (booking confirmed)"
+        ],
+        "database": "audit_event rows found: id=7d14ae65-c365-4a99-a0a8-be00a04797e2, entity_type=booking, entity_id=70be9b5f-b392-4588-ab35-c14f2b285da2, action=confirm"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Maildev was not running at start of test",
+      "resolved": true,
+      "resolution": "Started Maildev via 'bun run maildev'",
+      "affectedAssertions": ["VAL-AUDIT-002"]
+    },
+    {
+      "description": "oRPC endpoint requires input wrapped in 'json' object (e.g., '{\"json\":{...}}') not direct body",
+      "resolved": true,
+      "resolution": "Used correct wrapper format after discovering the issue through testing",
+      "affectedAssertions": ["VAL-AUDIT-002"]
+    },
+    {
+      "description": "No staff profiles existed in database initially - manually inserted a staff profile to enable booking flow",
+      "resolved": true,
+      "resolution": "Inserted staff_profile row for test user to enable booking hold creation",
+      "affectedAssertions": ["VAL-AUDIT-002"]
+    }
+  ],
+  "blockers": [],
+  "summary": "VAL-AUDIT-002 PASSED: After confirming a booking via citizen.bookings.confirm, an audit_event row was created with action='confirm' and entity_id matching the confirmed booking ID (70be9b5f-b392-4588-ab35-c14f2b285da2). The audit event correctly logs 'Booking confirmed (citizen) → status: confirmed for 2026-04-18 09:00 with Test Staff'."
+}
