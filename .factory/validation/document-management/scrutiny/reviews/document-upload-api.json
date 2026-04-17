@@ -1,0 +1,39 @@
+{
+  "featureId": "document-upload-api",
+  "reviewedAt": "2026-04-17T07:02:00.000Z",
+  "commitId": "7bd7b6f",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The document upload API is substantially implemented with MIME validation, size limits, storage key generation, and DB row creation. However, there is a critical bug in the document versioning logic: `markPreviousDocumentsAsNotCurrent` filters by `requirementKey` only, missing `requestId` filter. This could incorrectly mark documents from OTHER service requests as not current if they share the same requirementKey.",
+    "issues": [
+      {
+        "file": "packages/server/src/features/citizen/citizen-documents.service.ts",
+        "line": 116,
+        "severity": "blocking",
+        "description": "Function `markPreviousDocumentsAsNotCurrent` has incorrect WHERE clause. It filters by `requirementKey` only but does NOT filter by `requestId`. This means if two different service requests share the same `requirementKey` value (e.g., both have 'identification'), uploading a document to one request will incorrectly mark previous documents in the OTHER request as not current. The WHERE clause should be: `and(eq(schema.requestDocument.requestId, requestId), eq(schema.requestDocument.requirementKey, requirementKey))`"
+      },
+      {
+        "file": "packages/server/src/features/citizen/citizen-documents.service.ts",
+        "line": 196,
+        "severity": "non_blocking",
+        "description": "The function `markPreviousDocumentsAsNotCurrent` is used inside `uploadCitizenDocument` but it only marks previous documents as not current for the same `requirementKey` within the request. However due to the bug at line 116, it actually marks ALL documents across ALL requests with matching `requirementKey` as not current. This is a semantic bug — the intent is per-request versioning but the implementation does global versioning per requirementKey."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Worker updated BACKEND_STATUS.md as required by governance rules, but did not document the document versioning behavior with `isCurrent` flag. AGENTS.md rule says 'si el cambio afecta rutas, contratos o comportamiento backend, actualiza BACKEND_STATUS.md' — this was done. However, the versioning semantics (marking previous docs as not current by requirementKey) could warrant a schema documentation update in SCHEMA.md since it involves document lifecycle rules.",
+      "evidence": "BACKEND_STATUS.md section 2.7 was added, but SCHEMA.md was not updated despite the document lifecycle behavior being a domain invariant change."
+    },
+    {
+      "area": "skills",
+      "observation": "Worker followed backend-domain-worker skill procedure correctly (implemented, tested with 9 cases, verified with typecheck + lint + tests). No deviations noted. However, the skill did not catch the missing requestId filter in the versioning logic during implementation.",
+      "evidence": "Transcript shows worker created 9 tests covering valid uploads, MIME rejection, size limits, ownership checks, document versioning, and extension/MIME mismatch. All 9 tests passed. The bug in markPreviousDocumentsAsNotCurrent would NOT be caught by these tests because the test creates a fresh serviceRequest for each test case and doesn't test cross-request interaction."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Implementation covers MIME validation (PDF/PNG/JPG), 10MB size limit, storage key generation, file persistence, and request_document row creation with status=pending and isCurrent=true. However, there is a blocking bug in the document versioning logic: `markPreviousDocumentsAsNotCurrent` at line 116 filters by requirementKey only, missing requestId — this can cause documents from different service requests to be incorrectly marked as not current if they share a requirementKey. The fix requires adding `requestId` to the WHERE clause."
+}

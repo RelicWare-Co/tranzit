@@ -1,0 +1,82 @@
+{
+  "milestone": "document-management",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun run test -- --passWithNoTests --maxWorkers=1", "exitCode": 0, "note": "No tests defined, passWithNoTests allowed" },
+    "typecheck": { "passed": true, "command": "bun run tsc", "exitCode": 0 },
+    "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [
+    {
+      "featureId": "document-upload-api",
+      "severity": "blocking",
+      "description": "markPreviousDocumentsAsNotCurrent had incorrect WHERE clause - filtered by requirementKey only, missing requestId. Could incorrectly mark documents from OTHER service requests as not current.",
+      "fixedInRound": 1,
+      "fixCommit": "Blocking bug fixed in citizen-documents.service.ts: added requestId to WHERE clause using and(eq(...requestId), eq(...requirementKey))"
+    },
+    {
+      "featureId": "document-physical-declaration-api",
+      "severity": "blocking",
+      "description": "Same markPreviousDocumentsAsNotCurrent bug - missing requestId filter. Could affect documents from different requests sharing the same requirementKey.",
+      "fixedInRound": 1,
+      "fixCommit": "Same fix applied - both features share the same helper function"
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "services.yaml",
+      "description": "No changes needed - services.yaml already correctly documents frontend (port 3000), backend (port 3001), and maildev (port 1080)"
+    },
+    {
+      "target": "library",
+      "description": "No new knowledge entries - the blocking bug was a simple missing filter in an existing function, not a new pattern requiring documentation"
+    }
+  ],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [
+    {
+      "observation": "document-listing-api worker didn't update BACKEND_STATUS.md after adding replacesDocumentId field",
+      "reason": "Change was minimal (adding one field to existing responses) and endpoints were already documented. Non-blocking."
+    }
+  ],
+  "sharedStateObservationsTriaged": [
+    {
+      "observation": "markPreviousDocumentsAsNotCurrent missing requestId filter affects document versioning across different service requests sharing requirementKey",
+      " "sourceFeature": "document-upload-api, document-physical-declaration-api",
+      "triage": "Fixed directly - added requestId to WHERE clause in citizen-documents.service.ts"
+    },
+    {
+      "observation": "drag-over visual state not updating (handleDragOver doesn't set dragOver map)",
+      "sourceFeature": "citizen-document-upload-ui",
+      "triage": "Non-blocking - cosmetic issue, CSS hover still works"
+    },
+    {
+      "observation": "progress interval cleared before mutation resolves",
+      "sourceFeature": "citizen-document-upload-ui",
+      "triage": "Non-blocking - cosmetic issue, mutation callback sets progress correctly"
+    },
+    {
+      "observation": "onDocumentsChange prop never called",
+      "sourceFeature": "citizen-document-upload-ui",
+      "triage": "Non-blocking - listDocumentsMutation refetches on mount ensuring documents appear"
+    },
+    {
+      "observation": "URL.createObjectURL memory leak in preview",
+      "sourceFeature": "admin-document-review-ui",
+      "triage": "Non-blocking - minor memory issue, only affects many previews"
+    },
+    {
+      "observation": "stale closure pattern in reviewers state",
+      "sourceFeature": "admin-document-review-ui",
+      "triage": "Non-blocking - edge case, reviewer display still functional"
+    }
+  ],
+  "previousRound": null
+}

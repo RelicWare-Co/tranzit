@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../../lib/db";
 import { storeFile } from "../../lib/file-storage";
@@ -175,7 +175,10 @@ async function markPreviousDocumentsAsNotCurrent(
 			updatedAt: new Date(),
 		})
 		.where(
-			eq(schema.requestDocument.requirementKey, requirementKey),
+			and(
+				eq(schema.requestDocument.requestId, requestId),
+				eq(schema.requestDocument.requirementKey, requirementKey),
+			),
 		);
 }
 

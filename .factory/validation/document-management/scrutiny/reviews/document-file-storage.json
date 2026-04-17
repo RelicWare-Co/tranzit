@@ -1,0 +1,34 @@
+{
+  "featureId": "document-file-storage",
+  "reviewedAt": "2026-04-17T07:30:00.000Z",
+  "commitId": "b4a0e958cec1a26646505c1ed477e411ca268ca0",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation is complete and correctly implements all three expected behaviors: (1) Files are actually written to disk via storeFile() called in uploadCitizenDocument(), (2) File retrieval endpoint exists via downloadAdminDocument() and the HTTP route GET /api/admin/documents/:documentId/download, (3) Authorization checks are in place via requireAdminAccess for oRPC handlers and requireRole + sessionMiddleware for the HTTP route. However, a minor discrepancy exists between the handoff's stated storage key format (uploads/{requestId}/{documentId}/{filename}) and the actual implementation (documents/{requestId}/{timestamp}-{random}-{filename}), though the actual format is documented in BACKEND_STATUS.md.",
+    "issues": [
+      {
+        "file": "packages/server/src/features/citizen/citizen-documents.service.ts",
+        "line": 174,
+        "severity": "non_blocking",
+        "description": "The markPreviousDocumentsAsNotCurrent function does not filter by requestId when marking previous documents as not current. It only uses requirementKey, which could affect documents from other requests sharing the same requirementKey. This is a pre-existing bug but affects the document-file-storage feature since it calls this function."
+      },
+      {
+        "file": "packages/server/src/orpc/modules/documents.router.ts",
+        "line": 47,
+        "severity": "non_blocking",
+        "description": "The admin.review handler calls requireAdminAccess (which returns session) but the returned session is not used for the reviewerUserId - instead the handler passes undefined to reviewDocument. Actually looking more closely, the session.user.id IS passed via reviewerUserId. This is correct."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The handoff states storage key format as 'uploads/{requestId}/{documentId}/{filename}' but the actual implementation uses 'documents/{requestId}/{timestamp}-{random}-{filename}'. This discrepancy exists in the handoff itself but BACKEND_STATUS.md correctly documents the actual format.",
+      "evidence": "Handoff section 'whatWasImplemented' item 1 says 'write/read files to ./uploads directory' with storage key 'documents/{requestId}/...' — this is internally consistent but inconsistent with the feature description expectation"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The document-file-storage feature passes scrutiny. The implementation correctly: (1) persists files to disk via storeFile() in uploadCitizenDocument(), (2) provides a file retrieval endpoint (downloadAdminDocument) with both oRPC and HTTP interfaces, (3) serves files with correct MIME Content-Type and Content-Disposition headers via the HTTP route, and (4) enforces authorization (requireAdminAccess for oRPC, requireRole for HTTP route). Tests exist covering file storage round-trip and admin document download. Minor pre-existing bug in markPreviousDocumentsAsNotCurrent (missing requestId filter) does not block this feature's approval."
+}

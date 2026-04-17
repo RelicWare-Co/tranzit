@@ -16,6 +16,7 @@ import {
 	Text,
 	Textarea,
 	TextInput,
+	ThemeIcon,
 	Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
@@ -140,36 +141,6 @@ function getDocumentRequirements(
 	// Check if procedure allows any document mode
 	if (!procedure.allowsDigitalDocuments && !procedure.allowsPhysicalDocuments) {
 		return [];
-	}
-
-	// Try to extract requirements from documentSchema
-	const docSchema = procedure.documentSchema as
-		| Record<string, unknown>
-		| undefined;
-	if (docSchema && typeof docSchema === "object") {
-		// Check for required array
-		const required = (docSchema.required as string[] | undefined) || [];
-		// Check for properties
-		const properties =
-			(docSchema.properties as
-				| Record<string, { title?: string; description?: string }>
-				| undefined) || {};
-
-		if (required.length > 0) {
-			return required.map((key) => ({
-				key,
-				label: properties[key]?.title || properties[key]?.description || key,
-			}));
-		}
-
-		// If no required array, list all properties
-		const keys = Object.keys(properties);
-		if (keys.length > 0) {
-			return keys.map((key) => ({
-				key,
-				label: properties[key]?.title || properties[key]?.description || key,
-			}));
-		}
 	}
 
 	// Default: provide generic document requirement based on procedure

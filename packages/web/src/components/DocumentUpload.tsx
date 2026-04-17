@@ -14,7 +14,7 @@ import {
 } from "@mantine/core";
 import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, FileText, Upload, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { orpcClient } from "../lib/orpc-client";
 
 export type DocumentItem = {
@@ -119,6 +119,7 @@ export function DocumentUpload({
 			mimeType: string;
 			fileSizeBytes: number;
 			content: string;
+			deliveryMode: "digital" | "physical";
 		}) => {
 			return await orpcClient.documents.upload(payload);
 		},
@@ -230,20 +231,19 @@ export function DocumentUpload({
 		},
 		onSuccess: (data) => {
 			// Only keep current documents
-			const currentDocs = data.filter((d) => d.isCurrent);
+			const currentDocs = data
+				.filter((d) => d.isCurrent)
+				.map((d) => ({
+					...d,
+					deliveryMode: d.deliveryMode as "digital" | "physical",
+				}));
 			setDocuments(currentDocs);
-			// Set delivery mode based on existing documents
-			const modes: Record<string, "digital" | "physical"> = {};
-			currentDocs.forEach((d) => {
-				modes[d.requirementKey] = d.deliveryMode as "digital" | "physical";
-			});
-			setSelectedDeliveryMode(modes);
 		},
 	});
 
 	// Load existing documents on mount
-	const _handleLoadDocuments = useCallback(() => {
-		void listDocumentsMutation.mutate();
+	useEffect(() => {
+		listDocumentsMutation.mutate();
 	}, [listDocumentsMutation.mutate]);
 
 	const validateFile = useCallback(
@@ -301,6 +301,7 @@ export function DocumentUpload({
 					mimeType,
 					fileSizeBytes: file.size,
 					content: base64,
+					deliveryMode: "digital",
 				});
 
 				clearInterval(progressInterval);
@@ -323,21 +324,13 @@ export function DocumentUpload({
 		[handleFileSelect],
 	);
 
-	const handleDragOver = useCallback(
-		(event: React.DragEvent, requirementKey: string) => {
-			event.preventDefault();
-			setDragOver((prev) => ({ ...prev, [requirementKey]: true }));
-		},
-		[],
-	);
+	const handleDragOver = useCallback((event: React.DragEvent) => {
+		event.preventDefault();
+	}, []);
 
-	const handleDragLeave = useCallback(
-		(event: React.DragEvent, requirementKey: string) => {
-			event.preventDefault();
-			setDragOver((prev) => ({ ...prev, [requirementKey]: false }));
-		},
-		[],
-	);
+	const handleDragLeave = useCallback((event: React.DragEvent) => {
+		event.preventDefault();
+	}, []);
 
 	const handleDeliveryModeChange = useCallback(
 		(requirementKey: string, label: string, mode: "digital" | "physical") => {
@@ -354,9 +347,9 @@ export function DocumentUpload({
 		[requestId, declarePhysicalMutation],
 	);
 
-	// Expose refresh function
-	const _refreshDocuments = useCallback(() => {
-		void listDocumentsMutation.mutate();
+	// Refresh documents when requestId changes
+	useEffect(() => {
+		listDocumentsMutation.mutate();
 	}, [listDocumentsMutation.mutate]);
 
 	// Notify parent of document changes
@@ -510,7 +503,7 @@ export function DocumentUpload({
 														<FileText size={14} />
 													</ThemeIcon>
 													<Stack gap={0}>
-														<Text size="xs" fw={500} truncate="70%">
+														<Text size="xs" fw={500} truncate>
 															{currentDoc.fileName}
 														</Text>
 														{currentDoc.fileSizeBytes && (

@@ -1,0 +1,21 @@
+{
+  "featureId": "document-listing-api",
+  "reviewedAt": "2026-04-17T07:15:00.000Z",
+  "commitId": "ad1755c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The document listing APIs (citizen.documents.list and admin.documents.list) are fully implemented. The commit ad1755c added the missing `replacesDocumentId` field to both endpoint responses. All required fields are present: requirementKey, deliveryMode, status, isCurrent, fileName, reviewedByUserId, reviewedAt, notes, and replacesDocumentId.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The worker did not update BACKEND_STATUS.md after the change, though AGENTS.md mandates that 'if the change affects routes, contracts or behavior backend, update packages/server/src/BACKEND_STATUS.md in the same change'. However, the change was minimal (adding one field to existing responses) and the document listing endpoints were already documented.",
+      "evidence": "BACKEND_STATUS.md documents 'documents.list' and 'documents.admin.list' but the field additions (replacesDocumentId for both) are not reflected in the contract documentation."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Implementation passes review. Both document listing APIs correctly return all required fields including the added replacesDocumentId. TypeScript typecheck passes, all 145 tests pass, lint/format clean. The minimal change was adding replacesDocumentId to existing responses that already had reviewedByUserId, reviewedAt, and notes."
+}

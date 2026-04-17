@@ -1,0 +1,42 @@
+{
+  "featureId": "document-physical-declaration-api",
+  "reviewedAt": "2026-04-17T12:15:00.000Z",
+  "commitId": "a0ada81929603d34f5457b28be65cb6b2e6e56e9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation is functionally correct per tests and fulfills the feature description, but contains a data-integrity bug in the `markPreviousDocumentsAsNotCurrent` helper that could cause incorrect document state in production.",
+    "issues": [
+      {
+        "file": "packages/server/src/features/citizen/citizen-documents.service.ts",
+        "line": 179,
+        "severity": "blocking",
+        "description": "The `markPreviousDocumentsAsNotCurrent` function does not filter by `requestId`. It only uses `requirementKey` in the WHERE clause: `.where(eq(schema.requestDocument.requirementKey, requirementKey))`. This means when declaring a physical document for requirement X on request A, it also marks as not-current any documents for requirement X on other requests (request B, C, etc.). The function receives `requestId` as a parameter but never uses it in the query. The correct filter should be: `.where(and(eq(schema.requestDocument.requestId, requestId), eq(schema.requestDocument.requirementKey, requirementKey)))`. The tests pass due to test isolation (each test uses unique request IDs), but this bug would cause data corruption in a real multi-tenant scenario with concurrent requests."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "AGENTS.md rule states that when changing routes, services, or behavior backend, BACKEND_STATUS.md should be updated in the same change. The worker correctly updated BACKEND_STATUS.md with the new endpoint documentation.",
+      "evidence": "commit a0ada81 shows BACKEND_STATUS.md was modified to document the declarePhysical endpoint"
+    },
+    {
+      "area": "skills",
+      "observation": "The worker followed the backend-domain-worker skill procedure correctly. All steps were executed in proper order (read schema → implement → test → document → verify). No deviations found.",
+      "evidence": "skillFeedback.followedProcedure: true, no deviations noted in handoff"
+    },
+    {
+      "area": "services",
+      "observation": "Worker started the backend server manually on port 3001 for manual curl verification. This is not in services.yaml (services.yaml has backend start command but worker used bun run dev directly rather than following the service manifest). However, the skill procedure allows manual verification so this is acceptable.",
+      "evidence": "Transcript shows: cd /Users/verzach3/Projects/tranzit/packages/server && bun run dev & (background process)"
+    },
+    {
+      "area": "knowledge",
+      "observation": "No knowledge gaps found. Worker correctly implemented the feature using existing patterns in the codebase (auth guards, RPC handlers, Zod validation, DB schema usage)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Implementation correctly delivers the declarePhysical endpoint with proper authorization checks, input validation, and test coverage. However, there is a blocking data-integrity bug in the `markPreviousDocumentsAsNotCurrent` helper function at line 179 — it filters by `requirementKey` only, ignoring `requestId`. This means physical declarations for the same requirementKey on DIFFERENT requests would incorrectly mark each other's documents as not current. The bug is masked in tests because each test uses isolated request IDs. The fix is to add the requestId filter to the WHERE clause using `and(eq(...), eq(...))`."
+}
