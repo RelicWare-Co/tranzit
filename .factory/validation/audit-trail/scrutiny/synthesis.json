@@ -1,0 +1,101 @@
+{
+  "milestone": "audit-trail",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "cd packages/server && bun vitest run --maxWorkers=1",
+      "exitCode": 0,
+      "note": "All 214 tests pass. Parallel execution caused SQLITE_BUSY errors; serialized with --maxWorkers=1"
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run tsc",
+      "exitCode": 0,
+      "note": "Both web and server typecheck pass"
+    },
+    "lint": {
+      "passed": true,
+      "command": "bun run lint",
+      "exitCode": 0,
+      "note": "Biome lint passes with 0 errors"
+    }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 2,
+    "failed": 1,
+    "failedFeatures": ["audit-event-instrumentation"]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "audit-event-instrumentation",
+      "severity": "blocking",
+      "description": "Procedure delete/remove operation in procedures.router.ts:271 does not create any audit event. Both soft delete (marking inactive) and hard delete paths are missing audit instrumentation. This violates VAL-AUDIT-012 requirement.",
+      "files": ["packages/server/src/orpc/modules/procedures.router.ts"],
+      "line": 271
+    },
+    {
+      "featureId": "audit-event-instrumentation",
+      "severity": "blocking",
+      "description": "ipAddress and userAgent fields are never populated in audit events. The createAuditEvent function accepts these parameters but no call site passes them. Feature description explicitly requires these fields but they are always null.",
+      "files": ["packages/server/src/features/audit/audit.service.ts"],
+      "line": 18
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add guidance that workers must verify ALL CRUD operations are covered by audit events, including delete/remove operations. The 'procedure CRUD' claim in audit-event-instrumentation handoff was incomplete because delete was missing.",
+      "evidence": "audit-event-instrumentation handoff claimed 'Added audit events to procedure CRUD' but procedures.router.ts:271 (remove handler) has no createAuditEvent call. VAL-AUDIT-012 requires procedure mutations to be logged.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Document the convention for when to use centralized createAuditEvent() vs direct db.insert(schema.auditEvent). Two modules (admin-documents, service-requests) use direct inserts inconsistently.",
+      "evidence": "admin-documents.service.ts:363 and service-requests.service.ts:120 both use direct db.insert instead of createAuditEvent. The centralized function exists but adoption is inconsistent.",
+      "isSystemic": false
+    },
+    {
+      "target": ".factory/library",
+      "suggestion": "Document how to extract client IP address and user-agent from RPC handler context.headers for audit event population. All router handlers have access to context.headers but the extraction pattern is not established.",
+      "evidence": "Feature description requires ipAddress and userAgent but no call site passes them. All routers have access to context.headers but extraction pattern not documented.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "orderBy uses raw sql template instead of drizzle helpers - this is a convention issue",
+      "reason": "Non-blocking - the implementation is functional and this is a minor code style observation"
+    },
+    {
+      "observation": "React key warning on fragment shorthand - React reconciliation issue",
+      "reason": "Non-blocking - does not affect functionality, only causes minor reconciliation overhead"
+    },
+    {
+      "observation": "Date validation regex could be stricter - input validation issue",
+      "reason": "Non-blocking - code handles invalid dates correctly via Date constructor, regex is a minor precision issue"
+    }
+  ],
+  "previousRound": null,
+  "validationState": {
+    "assertionsCovered": {
+      "VAL-AUDIT-001": "covered by audit-event-instrumentation",
+      "VAL-AUDIT-002": "covered by audit-event-instrumentation",
+      "VAL-AUDIT-003": "covered by audit-event-instrumentation",
+      "VAL-AUDIT-004": "covered by audit-event-instrumentation",
+      "VAL-AUDIT-005": "covered by audit-event-instrumentation",
+      "VAL-AUDIT-006": "covered by audit-event-instrumentation",
+      "VAL-AUDIT-007": "covered by audit-log-query-api",
+      "VAL-AUDIT-008": "covered by audit-log-query-api",
+      "VAL-AUDIT-009": "covered by audit-log-query-api",
+      "VAL-AUDIT-010": "covered by audit-log-query-api",
+      "VAL-AUDIT-011": "covered by audit-event-instrumentation",
+      "VAL-AUDIT-012": "MISSING - procedure delete not instrumented",
+      "VAL-AUDIT-013": "covered by audit-event-instrumentation",
+      "VAL-AUDIT-014": "covered by audit-event-instrumentation"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "featureId": "audit-log-query-api",
+  "reviewedAt": "2026-04-17T11:30:00.000Z",
+  "commitId": "latest",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The audit log query API (admin.audit.list and admin.audit.get) is correctly implemented with all required filters (entityType, entityId, actorUserId, dateFrom, dateTo, action), pagination (limit/offset/hasMore), and ordering. The service uses existing audit_event indexes (audit_event_entity_idx, audit_event_actor_idx) as designed. 24 tests pass covering all filters, pagination, validation, combined filters, and router integration. Documentation updated in BACKEND_STATUS.md.",
+    "issues": [
+      {
+        "file": "packages/server/src/features/audit/audit-query.service.ts",
+        "line": 131,
+        "severity": "non_blocking",
+        "description": "action filter uses audit_event_action_idx index but no dedicated test verifies index usage for action-only queries. Tests exist for entity+entityId and actorUserId with index-hit comments, but action filter alone has no corresponding test."
+      },
+      {
+        "file": "packages/server/src/features/audit/audit-query.service.ts",
+        "line": 156,
+        "severity": "non_blocking",
+        "description": "orderBy uses raw sql template expressions instead of drizzle-orm typed ordering helpers (e.g., drizzleAsc/drizzleDesc). This is functional but non-standard compared to how other services in the codebase use ordering (e.g., bookings-read.service.ts uses drizzle orderBy helpers). Example pattern: orderDirSql(sql`${schema.auditEvent.createdAt}`) instead of drizzleDesc(schema.auditEvent.createdAt)."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "orderBy implementation uses raw sql template expressions rather than drizzle-orm's typed ordering helpers. This pattern doesn't appear in other read services in the codebase (e.g., bookings-read.service.ts uses drizzle orderBy helpers). If this pattern becomes more common, it should be documented.",
+      "evidence": "packages/server/src/features/audit/audit-query.service.ts:156 - orderDirSql returns a function that wraps column refs in sql`` templates instead of using drizzleAsc/drizzleDesc helpers"
+    },
+    {
+      "area": "skills",
+      "observation": "The backend-domain-worker skill procedure says to verify UI manually, but the worker could not verify via curl until after a server restart (the hot reload didn't pick up new router registration). The worker spent time investigating 404 vs 401 responses and server process management before restarting.",
+      "evidence": "Transcript shows multiple curl attempts returning 404 before server restart, then 401 (correct auth requirement confirmed). Worker ended up restarting server explicitly."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "audit-log-query-api implementation is correct and complete. admin.audit.list supports all 6 filters (entityType, entityId, actorUserId, action, dateFrom, dateTo) with pagination and ordering. admin.audit.get retrieves single events by ID. All 24 tests pass. Index usage is appropriate for entity+actor queries. BACKEND_STATUS.md updated. Minor non-blocking observations: no dedicated test for action-index usage, non-standard orderBy implementation using raw SQL templates, and import organization in the router file."
+}

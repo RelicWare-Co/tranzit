@@ -1,0 +1,56 @@
+{
+  "featureId": "audit-event-instrumentation",
+  "reviewedAt": "2026-04-17T15:58:00.000Z",
+  "commitId": "f0bcab392feceb32ddbac1ab3d0e038447ff0be6",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The implementation covers most mutations but has two blocking issues: (1) Procedure delete/remove has no audit event despite handoff claiming 'procedure CRUD' was covered, (2) ipAddress and userAgent fields are never populated despite being required by the feature description. Additionally, there's inconsistency where some modules (admin-documents, service-requests) use direct db.insert instead of the centralized createAuditEvent function.",
+    "issues": [
+      {
+        "file": "packages/server/src/orpc/modules/procedures.router.ts",
+        "line": 271,
+        "severity": "blocking",
+        "description": "The 'remove' procedure operation does not create any audit event. Both soft delete (marking as inactive) and hard delete paths are missing audit instrumentation. The handoff claims 'procedure CRUD' was covered, but the delete operation is missing."
+      },
+      {
+        "file": "packages/server/src/features/audit/audit.service.ts",
+        "line": 18,
+        "severity": "blocking",
+        "description": "The createAuditEvent function accepts ipAddress and userAgent parameters, but none of the call sites in bookings-mutations.service.ts, bookings-reassign.service.ts, citizen-portal.service.ts, schedule-templates-admin.service.ts, schedule-overrides-admin.service.ts, staff.router.ts, procedures.router.ts, or reservation series/instance services ever pass these values. The feature description explicitly requires these fields."
+      },
+      {
+        "file": "packages/server/src/features/admin/admin-documents.service.ts",
+        "line": 363,
+        "severity": "non_blocking",
+        "description": "The reviewDocument function uses direct db.insert(schema.auditEvent) instead of the centralized createAuditEvent function from audit.service.ts. This is inconsistent with the rest of the implementation. However, this was pre-existing behavior documented in BACKEND_STATUS.md."
+      },
+      {
+        "file": "packages/server/src/features/service-requests/service-requests.service.ts",
+        "line": 120,
+        "severity": "non_blocking",
+        "description": "The updateServiceRequestStatus function uses direct db.insert(schema.auditEvent) instead of the centralized createAuditEvent function. This was implemented in a prior commit (a246547) and is not part of this feature's scope."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "There is no documented convention for when to use the centralized createAuditEvent() function vs direct db.insert(schema.auditEvent). Two existing modules (admin-documents and service-requests) use direct inserts and were not converted to use the centralized function.",
+      "evidence": "admin-documents.service.ts:363 and service-requests.service.ts:120 both use direct insert. The new audit.service.ts was created but not all existing audit event creation was migrated to use it."
+    },
+    {
+      "area": "knowledge",
+      "observation": "The ipAddress and userAgent fields in audit events are documented as requirements but the RPC context (context.headers) is available at all router handlers and could be used to extract these values. The knowledge of how to extract client IP from headers (e.g., via x-forwarded-for or direct connection info) is not documented.",
+      "evidence": "Feature description requires ipAddress and userAgent but no call site passes them. All routers have access to context.headers but the pattern for extracting client IP is not established."
+    },
+    {
+      "area": "skills",
+      "observation": "The backend-domain-worker skill does not include a step to verify that all CRUD operations for each entity are covered by audit events. The handoff claimed 'procedure CRUD' was complete but the delete operation was missing.",
+      "evidence": "Handoff states 'Added audit events to procedure CRUD' but procedures.router.ts:271 (remove handler) has no createAuditEvent call."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The audit event instrumentation feature was mostly well implemented with good coverage of booking, schedule, staff, and reservation series mutations. However, it fails to meet requirements in two blocking areas: (1) procedure delete operations do not create audit events despite claims of CRUD coverage, and (2) ipAddress and userAgent fields are never populated. Additionally, there are inconsistencies in that some existing audit event creation uses direct db.insert instead of the centralized service. The feature should be fixed to add audit events to procedure delete operations and populate ipAddress/userAgent from request headers."
+}
