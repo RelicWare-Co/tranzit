@@ -1,251 +1,170 @@
-import {
-	Avatar,
-	Badge,
-	Box,
-	Button,
-	Card,
-	Grid,
-	Group,
-	Stack,
-	Text,
-	Title,
-} from "@mantine/core";
-import { createFileRoute } from "@tanstack/react-router";
+import { Avatar, Badge, Box, Button, Group, Stack, Text } from "@mantine/core";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { BarChart3, Calendar, ClipboardList, Users } from "lucide-react";
 import { useAuth } from "../../lib/AuthContext";
+import { AdminPageHeader } from "./_shared/-AdminPageHeader";
+import { adminUi } from "./_shared/-admin-ui";
 
 export const Route = createFileRoute("/admin/")({
 	component: AdminDashboard,
 });
 
-// Stat Card Component
-function StatCard({
-	value,
-	label,
-	icon: Icon,
-	color,
-	iconColor,
-}: {
-	value: string;
+type Kpi = {
 	label: string;
-	icon: React.ComponentType<{ size?: number; color?: string }>;
-	color: string;
-	iconColor: string;
-}) {
-	return (
-		<Card
-			radius="xl"
-			p="xl"
-			bg="white"
-			h="100%"
-			style={{
-				border: "1px solid #e5e7eb",
-				boxShadow:
-					"0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.025)",
-			}}
-		>
-			<Stack gap="md">
-				<Box
-					style={{
-						width: "56px",
-						height: "56px",
-						borderRadius: "16px",
-						backgroundColor: color,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					<Icon size={28} color={iconColor} />
-				</Box>
-				<Stack gap={0}>
-					<Text
-						style={{
-							fontSize: "32px",
-							fontWeight: 800,
-							color: "#111827",
-							letterSpacing: "-1px",
-							lineHeight: 1,
-						}}
-					>
-						{value}
-					</Text>
-					<Text size="sm" c="#6b7280" fw={500}>
-						{label}
-					</Text>
-				</Stack>
-			</Stack>
-		</Card>
-	);
-}
+	value: string;
+	accentClass: string;
+	icon: typeof Calendar;
+};
+
+const KPI_ROW: Kpi[] = [
+	{
+		label: "Citas hoy",
+		value: "1.247",
+		accentClass: "text-red-700",
+		icon: Calendar,
+	},
+	{
+		label: "Usuarios",
+		value: "8.932",
+		accentClass: "text-zinc-900",
+		icon: Users,
+	},
+	{
+		label: "Pendientes",
+		value: "156",
+		accentClass: "text-zinc-900",
+		icon: ClipboardList,
+	},
+	{
+		label: "En plazo",
+		value: "97,4%",
+		accentClass: "text-emerald-700",
+		icon: BarChart3,
+	},
+];
 
 function AdminDashboard() {
 	const { user } = useAuth();
-
-	const stats = [
-		{
-			value: "1,247",
-			label: "Citas hoy",
-			icon: Calendar,
-			color: "#fef2f2",
-			iconColor: "#e03131",
-		},
-		{
-			value: "8,932",
-			label: "Usuarios registrados",
-			icon: Users,
-			color: "#dcfce7",
-			iconColor: "#16a34a",
-		},
-		{
-			value: "156",
-			label: "Trámites pendientes",
-			icon: ClipboardList,
-			color: "#eff6ff",
-			iconColor: "#2563eb",
-		},
-		{
-			value: "98.2%",
-			label: "Tasa de cumplimiento",
-			icon: BarChart3,
-			color: "#f5f3ff",
-			iconColor: "#7c3aed",
-		},
-	];
 
 	const recentAppointments = [
 		{
 			id: "1",
 			name: "María González",
-			service: "Renovación de Licencia",
-			date: "Hoy, 10:30 AM",
+			service: "Renovación de licencia",
+			date: "Hoy, 10:30",
 			status: "confirmada",
 		},
 		{
 			id: "2",
 			name: "Carlos Rodríguez",
-			service: "Traspaso de Propiedad",
-			date: "Hoy, 11:00 AM",
+			service: "Traspaso de propiedad",
+			date: "Hoy, 11:00",
 			status: "en_proceso",
 		},
 		{
 			id: "3",
-			name: "Ana Patricia",
-			service: "Matrícula Inicial",
-			date: "Hoy, 11:30 AM",
+			name: "An Patricia Duarte",
+			service: "Matrícula inicial",
+			date: "Hoy, 11:30",
 			status: "confirmada",
 		},
 		{
 			id: "4",
-			name: "Juan Pérez",
-			service: "Certificado de Tradición",
-			date: "Hoy, 2:00 PM",
+			name: "Juan Pablo Mejía",
+			service: "Certificado de tradición",
+			date: "Hoy, 14:00",
 			status: "pendiente",
 		},
 	];
 
 	return (
-		<Stack gap="xl">
-			{/* Welcome Section */}
-			<Box>
-				<Title
-					order={1}
-					c="#111827"
-					style={{
-						letterSpacing: "-1px",
-						fontWeight: 800,
-						fontSize: "32px",
-					}}
-				>
-					Panel de Administración
-				</Title>
-				<Text size="lg" c="#6b7280" mt="xs">
-					Bienvenido, {user?.name || user?.email}. Aquí puedes gestionar todas
-					las operaciones del sistema.
-				</Text>
+		<Stack gap="md">
+			<AdminPageHeader
+				title="Panel de administración"
+				description={`Hola, ${user?.name || user?.email || "equipo"}.`}
+			/>
+
+			<Box className={`${adminUi.surface} overflow-hidden p-0`}>
+				<div className="grid grid-cols-2 gap-px bg-zinc-200/90 sm:grid-cols-4">
+					{KPI_ROW.map((kpi) => {
+						const Icon = kpi.icon;
+						return (
+							<Box
+								key={kpi.label}
+								className="flex min-w-0 items-center gap-2.5 bg-white px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3"
+							>
+								<Icon
+									size={17}
+									className="shrink-0 text-zinc-400"
+									strokeWidth={1.75}
+								/>
+								<div className="min-w-0">
+									<Text className="text-[0.625rem] font-semibold uppercase leading-none tracking-[0.12em] text-zinc-400">
+										{kpi.label}
+									</Text>
+									<Text
+										className={`${adminUi.monoStat} mt-0.5 truncate text-lg font-semibold leading-tight sm:text-xl ${kpi.accentClass}`}
+									>
+										{kpi.value}
+									</Text>
+								</div>
+							</Box>
+						);
+					})}
+				</div>
 			</Box>
 
-			{/* Stats Grid */}
-			<Grid gap="md">
-				{stats.map((stat) => (
-					<Grid.Col key={stat.label} span={{ base: 6, md: 3 }}>
-						<StatCard {...stat} />
-					</Grid.Col>
-				))}
-			</Grid>
-
-			{/* Recent Appointments */}
-			<Card
-				radius="xl"
-				p="xl"
-				bg="white"
-				style={{
-					border: "1px solid #e5e7eb",
-					boxShadow:
-						"0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.025)",
-				}}
-			>
-				<Group justify="space-between" mb="lg">
+			<Box className={`${adminUi.surface} overflow-hidden p-0`}>
+				<Group
+					justify="space-between"
+					align="center"
+					wrap="wrap"
+					gap="sm"
+					px="md"
+					py="sm"
+					className="border-b border-zinc-200/90 bg-zinc-50/50"
+				>
 					<Group gap="sm">
-						<Box
-							style={{
-								width: 40,
-								height: 40,
-								borderRadius: "10px",
-								backgroundColor: "#fef2f2",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<Calendar size={20} color="#e03131" />
+						<Box className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-zinc-200/90">
+							<Calendar size={15} className="text-red-700" strokeWidth={1.75} />
 						</Box>
-						<Title
-							order={3}
-							c="#111827"
-							style={{
-								letterSpacing: "-0.5px",
-								fontWeight: 700,
-								fontSize: "20px",
-							}}
-						>
-							Citas Recientes
-						</Title>
+						<div>
+							<Text className="text-base font-semibold tracking-tight text-zinc-900">
+								Próximas citas
+							</Text>
+							<Text className="text-xs text-zinc-500">Hoy, orden por hora</Text>
+						</div>
 					</Group>
 					<Button
+						component={Link}
+						to="/admin/citas"
 						variant="light"
 						color="red"
-						size="sm"
-						style={{
-							borderRadius: "8px",
-							fontWeight: 600,
-						}}
+						size="xs"
+						radius="md"
+						className="shrink-0 font-semibold"
 					>
-						Ver todas
+						Ir a citas
 					</Button>
 				</Group>
 
-				<Stack gap="md">
-					{recentAppointments.map((appointment) => (
+				<Stack gap={0} px="sm" py="xs">
+					{recentAppointments.map((appointment, i) => (
 						<Group
 							key={appointment.id}
 							justify="space-between"
-							style={{
-								padding: "16px",
-								borderRadius: "12px",
-								backgroundColor: "#f9fafb",
-								border: "1px solid #e5e7eb",
-							}}
+							align="center"
+							wrap="wrap"
+							gap="sm"
+							py="sm"
+							px="xs"
+							className={i > 0 ? "border-t border-zinc-200/80" : undefined}
 						>
-							<Group gap="md">
+							<Group gap="sm">
 								<Avatar
-									size="md"
+									size="sm"
 									radius="xl"
-									color="#e03131"
-									style={{
-										backgroundColor: "#fef2f2",
-										fontWeight: 700,
-									}}
+									className="border border-red-100 bg-red-50 text-xs font-bold text-red-800"
 								>
 									{appointment.name
 										.split(" ")
@@ -254,17 +173,17 @@ function AdminDashboard() {
 										.slice(0, 2)
 										.toUpperCase()}
 								</Avatar>
-								<Stack gap={2}>
-									<Text fw={600} c="#111827">
+								<Stack gap={0}>
+									<Text size="sm" fw={600} className="text-zinc-900">
 										{appointment.name}
 									</Text>
-									<Text size="sm" c="#6b7280">
+									<Text size="xs" className="text-zinc-500">
 										{appointment.service}
 									</Text>
 								</Stack>
 							</Group>
-							<Group gap="md">
-								<Text size="sm" c="#6b7280">
+							<Group gap="sm">
+								<Text size="xs" className={`${adminUi.monoStat} text-zinc-500`}>
 									{appointment.date}
 								</Text>
 								<Badge
@@ -272,14 +191,16 @@ function AdminDashboard() {
 										appointment.status === "confirmada"
 											? "green"
 											: appointment.status === "en_proceso"
-												? "blue"
-												: "yellow"
+												? "yellow"
+												: "gray"
 									}
 									variant="light"
 									size="sm"
-									style={{
-										textTransform: "none",
-										fontWeight: 600,
+									styles={{
+										root: {
+											textTransform: "none",
+											fontWeight: 600,
+										},
 									}}
 								>
 									{appointment.status === "confirmada"
@@ -292,7 +213,7 @@ function AdminDashboard() {
 						</Group>
 					))}
 				</Stack>
-			</Card>
+			</Box>
 		</Stack>
 	);
 }

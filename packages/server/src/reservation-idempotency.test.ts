@@ -31,11 +31,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import {
-	checkCapacity,
-	consumeCapacity,
-	releaseCapacity,
-} from "./features/bookings/capacity.service";
+import { checkCapacity } from "./features/bookings/capacity-check.service";
+import { consumeCapacity, releaseCapacity } from "./features/bookings/capacity-consume.service";
 import { db, schema } from "./lib/db";
 
 // ---------------------------------------------------------------------------
@@ -720,7 +717,7 @@ describe("VAL-ADM-005: Move recalculates capacity origin/destination", () => {
 	test("reassignBooking moves capacity from origin to destination staff", async () => {
 		// Import reassignBooking
 		const { reassignBooking } = await import(
-			"./features/bookings/capacity.service"
+			"./features/bookings/capacity-reassign.service"
 		);
 
 		// Create booking with staff 1

@@ -14,7 +14,7 @@
     "build": "bun --cwd packages/web build",
     "preview": "bun --cwd packages/web preview",
     "maildev": "bun run --cwd packages/server maildev",
-    "test": "bun --cwd packages/web test",
+    "test": "bun run --cwd packages/server test",
     "lint": "bun run --filter=\"*\" lint",
     "format": "bun run --filter=\"*\" format",
     "check": "bun run --filter=\"*\" check",

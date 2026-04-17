@@ -5,10 +5,8 @@ import {
 	isDateOnOrAfter,
 	throwRpcError,
 } from "../../orpc/shared";
-import {
-	type CapacityConflict,
-	checkCapacity,
-} from "../bookings/capacity.service";
+import type { CapacityConflict } from "../bookings/capacity.types";
+import { checkCapacity } from "../bookings/capacity-check.service";
 
 async function assertStaffReassignmentCapacity(
 	bookings: Array<typeof schema.booking.$inferSelect>,

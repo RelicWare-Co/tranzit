@@ -307,36 +307,4 @@ export async function checkCapacity(
 	};
 }
 
-export async function getActiveBookingCountForSlot(
-	slotId: string,
-): Promise<number> {
-	const bookings = await db.query.booking.findMany({
-		where: and(
-			eq(schema.booking.slotId, slotId),
-			eq(schema.booking.isActive, true),
-		),
-	});
-	return bookings.length;
-}
 
-export async function getActiveBookingCountForStaffOnDate(
-	staffUserId: string,
-	date: string,
-): Promise<number> {
-	const bookings = await db.query.booking.findMany({
-		where: and(
-			eq(schema.booking.staffUserId, staffUserId),
-			eq(schema.booking.isActive, true),
-		),
-	});
-
-	const slotIds = bookings.map((b) => b.slotId);
-	if (slotIds.length === 0) return 0;
-
-	const slots = await db.query.appointmentSlot.findMany({
-		where: sql`${schema.appointmentSlot.id} IN ${slotIds}`,
-	});
-
-	const slotDateMap = new Map(slots.map((s) => [s.id, s.slotDate]));
-	return bookings.filter((b) => slotDateMap.get(b.slotId) === date).length;
-}

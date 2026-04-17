@@ -2,7 +2,7 @@ import { config as loadEnv } from "dotenv";
 
 import { defineConfig } from "drizzle-kit";
 
-loadEnv({ path: "../.env" });
+loadEnv({ path: "../../.env" });
 
 export default defineConfig({
 	out: "./drizzle",

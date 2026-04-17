@@ -19,6 +19,7 @@ import { AlertCircle, Lock, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../lib/AuthContext";
 import { orpc } from "../../lib/orpc-client";
+import { ADMIN_ACCENT, adminUi } from "./_shared/-admin-ui";
 
 export const Route = createFileRoute("/admin/login")({
 	component: AdminLoginPage,
@@ -114,43 +115,34 @@ function AdminLoginPage() {
 
 	const inputStyles = {
 		input: {
-			backgroundColor: "#f9fafb",
-			border: "1px solid #e5e7eb",
-			borderRadius: "8px",
-			color: "#111827",
+			backgroundColor: "#fafafa",
+			border: "1px solid #e4e4e7",
+			borderRadius: 12,
+			color: "#18181b",
 			fontWeight: 500,
 			"&:focus": {
-				borderColor: "#e03131",
-				boxShadow: "0 0 0 2px rgba(224, 49, 49, 0.15)",
+				borderColor: ADMIN_ACCENT,
+				boxShadow: "0 0 0 2px rgba(201, 42, 42, 0.18)",
 			},
 		},
 		label: {
 			fontWeight: 600,
-			color: "#374151",
-			marginBottom: "6px",
-			letterSpacing: "-0.2px",
+			color: "#3f3f46",
+			marginBottom: 6,
+			letterSpacing: "-0.02em",
 		},
 	};
 
 	if (shouldCheckOnboarding && onboardingStatusQuery.isPending) {
 		return (
-			<Box bg="#f8f9fa" mih="100vh" pt={160} pb={80}>
-				<Container size="xs">
-					<Card
-						p={40}
-						radius="xl"
-						bg="white"
-						style={{
-							border: "1px solid #e5e7eb",
-							boxShadow:
-								"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
-						}}
-					>
+			<Box className={adminUi.pageBg}>
+				<Container size="xs" className="py-24 sm:py-32">
+					<Card className={`${adminUi.surface} p-10`} shadow="none">
 						<Stack gap="md" align="center">
 							<Badge variant="light" color="red" size="lg">
 								Verificando acceso
 							</Badge>
-							<Text size="sm" c="#6b7280" ta="center">
+							<Text size="sm" className="text-center text-zinc-500">
 								Cargando el estado administrativo antes de mostrar el
 								formulario.
 							</Text>
@@ -167,68 +159,47 @@ function AdminLoginPage() {
 			onboardingStatusQuery.isError)
 	) {
 		return (
-			<Box bg="#f8f9fa" mih="100vh">
-				<Container size="xs">
-					<Card
-						p={40}
-						radius="xl"
-						bg="white"
-						style={{
-							border: "1px solid #e5e7eb",
-							boxShadow:
-								"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
-						}}
-					>
+			<Box className={adminUi.pageBg}>
+				<Container size="sm" className="py-16 sm:py-24">
+					<Card className={`${adminUi.surface} p-8 sm:p-10`} shadow="none">
 						<Stack gap="xl">
-							<Stack gap="xs" align="center" mb="md">
+							<Stack gap="xs" align="flex-start">
 								<Box
-									style={{
-										width: 48,
-										height: 48,
-										borderRadius: "12px",
-										backgroundColor: "#e03131",
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-										marginBottom: "16px",
-									}}
+									className="mb-1 flex h-12 w-12 items-center justify-center rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+									style={{ backgroundColor: ADMIN_ACCENT }}
 								>
-									<ShieldCheck size={24} color="white" />
+									<ShieldCheck
+										size={24}
+										className="text-white"
+										strokeWidth={1.75}
+									/>
 								</Box>
 								<Title
 									order={2}
-									c="#111827"
-									style={{ letterSpacing: "-1px", fontWeight: 800 }}
+									className="text-2xl font-semibold tracking-tight text-zinc-900"
 								>
-									Configurar Administrador
+									Configurar administrador
 								</Title>
-								<Text size="sm" c="#6b7280">
+								<Text size="sm" className="leading-relaxed text-zinc-500">
 									No hay administradores en el sistema. Tu cuenta puede ser
 									elevada a administrador principal.
 								</Text>
-								<Badge
-									variant="light"
-									color="green"
-									size="lg"
-									style={{ marginTop: "8px" }}
-								>
+								<Badge variant="light" color="teal" size="lg">
 									Primer administrador
 								</Badge>
 							</Stack>
 
-							{error && (
+							{error ? (
 								<Alert
 									icon={<AlertCircle size={16} />}
 									color="red"
 									radius="md"
-									style={{
-										border: "1px solid #fca5a5",
-										backgroundColor: "#fef2f2",
-									}}
+									variant="light"
+									className="border border-red-200/80"
 								>
 									{error}
 								</Alert>
-							)}
+							) : null}
 
 							<Stack gap="sm">
 								<Button
@@ -237,21 +208,19 @@ function AdminLoginPage() {
 									loading={onboardingMutation.isPending}
 									onClick={handleOnboard}
 									color="red"
-									style={{
-										borderRadius: "8px",
-										fontWeight: 600,
-										transition: "transform 0.1s ease",
-									}}
+									radius="md"
+									className="font-semibold"
 								>
-									Activar como Administrador
+									Activar como administrador
 								</Button>
 								<Button
 									fullWidth
 									size="md"
 									variant="subtle"
+									color="gray"
 									onClick={skipOnboarding}
 									loading={onboardingMutation.isPending}
-									style={{ borderRadius: "8px", fontWeight: 500 }}
+									radius="md"
 								>
 									Saltar por ahora
 								</Button>
@@ -264,106 +233,121 @@ function AdminLoginPage() {
 	}
 
 	return (
-		<Box bg="#f8f9fa" mih="100vh" pt={160} pb={80}>
-			<Container size="xs">
-				<Card
-					p={40}
-					radius="xl"
-					bg="white"
+		<Box className={`${adminUi.pageBg} flex min-h-[100dvh]`}>
+			<div className="relative hidden w-[42%] min-w-[320px] flex-col justify-between overflow-hidden bg-zinc-950 p-10 text-zinc-100 lg:flex">
+				<div
+					className="pointer-events-none absolute inset-0 opacity-[0.35]"
 					style={{
-						border: "1px solid #e5e7eb",
-						boxShadow:
-							"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
+						background:
+							"radial-gradient(ellipse 90% 70% at 20% 20%, rgba(201,42,42,0.35), transparent 55%), radial-gradient(ellipse 80% 60% at 80% 80%, rgba(63,63,70,0.5), transparent 50%)",
 					}}
-				>
-					<Stack gap="xl">
-						<Stack gap="xs" align="center" mb="md">
-							<Box
-								style={{
-									width: 48,
-									height: 48,
-									borderRadius: "12px",
-									backgroundColor: "#e03131",
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									marginBottom: "16px",
-								}}
-							>
-								<Lock size={24} color="white" />
-							</Box>
-							<Title
-								order={2}
-								c="#111827"
-								style={{ letterSpacing: "-1px", fontWeight: 800 }}
-							>
-								Acceso Administrativo
-							</Title>
-							<Text size="sm" c="#6b7280">
-								Ingresa tus credenciales internas para acceder al backoffice
-							</Text>
-						</Stack>
+				/>
+				<div className="relative z-[1]">
+					<Text className="text-xs font-bold uppercase tracking-[0.25em] text-zinc-500">
+						SIMUT Tuluá
+					</Text>
+					<Title
+						order={2}
+						className="mt-6 max-w-sm text-3xl font-semibold tracking-tight text-white"
+					>
+						Backoffice operativo
+					</Title>
+					<Text className="mt-4 max-w-sm text-sm leading-relaxed text-zinc-400">
+						Acceso restringido para personal autorizado. Las acciones quedan
+						sujetas a auditoría del sistema.
+					</Text>
+				</div>
+				<Text className="relative z-[1] text-xs text-zinc-500">
+					Usá credenciales internas emitidas por la entidad.
+				</Text>
+			</div>
 
-						{error && (
-							<Alert
-								icon={<AlertCircle size={16} />}
-								color="red"
-								radius="md"
-								style={{
-									border: "1px solid #fca5a5",
-									backgroundColor: "#fef2f2",
-								}}
-							>
-								{error}
-							</Alert>
-						)}
-
-						<form onSubmit={handleSubmit}>
-							<Stack gap="lg">
-								<TextInput
-									label="Correo electrónico"
-									placeholder="admin@simut.local"
-									required
-									{...form.getInputProps("email")}
-									styles={inputStyles}
-									size="md"
-								/>
-
-								<PasswordInput
-									label="Contraseña"
-									placeholder="••••••••"
-									required
-									{...form.getInputProps("password")}
-									styles={inputStyles}
-									size="md"
-								/>
-
-								<Button
-									type="submit"
-									fullWidth
-									size="md"
-									color="red"
-									loading={loading}
+			<div className="flex flex-1 items-center justify-center px-4 py-14 sm:px-8">
+				<Container size="xs" className="w-full max-w-md p-0">
+					<Card className={`${adminUi.surface} p-8 sm:p-10`} shadow="none">
+						<Stack gap="xl">
+							<Stack gap="xs" align="flex-start">
+								<Box
+									className="mb-1 flex h-12 w-12 items-center justify-center rounded-xl lg:hidden"
 									style={{
-										borderRadius: "8px",
-										fontWeight: 600,
-										marginTop: "8px",
-										transition: "transform 0.1s ease",
+										backgroundColor: ADMIN_ACCENT,
+										boxShadow:
+											"inset 0 1px 0 rgba(255,255,255,0.2), 0 12px 28px -16px rgba(201,42,42,0.65)",
 									}}
 								>
-									Iniciar sesión
-								</Button>
+									<Lock size={22} className="text-white" strokeWidth={1.75} />
+								</Box>
+								<Title
+									order={2}
+									className="text-2xl font-semibold tracking-tight text-zinc-900"
+								>
+									Acceso administrativo
+								</Title>
+								<Text size="sm" className="leading-relaxed text-zinc-500">
+									Ingresá tus credenciales internas para abrir el backoffice.
+								</Text>
 							</Stack>
-						</form>
 
-						<Text size="sm" ta="center" c="#6b7280">
-							<Anchor component={Link} to="/" fw={600} c="#111827">
-								Volver al portal ciudadano
-							</Anchor>
-						</Text>
-					</Stack>
-				</Card>
-			</Container>
+							{error ? (
+								<Alert
+									icon={<AlertCircle size={16} />}
+									color="red"
+									radius="md"
+									variant="light"
+									className="border border-red-200/80"
+								>
+									{error}
+								</Alert>
+							) : null}
+
+							<form onSubmit={handleSubmit}>
+								<Stack gap="lg">
+									<TextInput
+										label="Correo electrónico"
+										placeholder="admin@simut.local"
+										required
+										{...form.getInputProps("email")}
+										styles={inputStyles}
+										size="md"
+									/>
+
+									<PasswordInput
+										label="Contraseña"
+										placeholder="••••••••"
+										required
+										{...form.getInputProps("password")}
+										styles={inputStyles}
+										size="md"
+									/>
+
+									<Button
+										type="submit"
+										fullWidth
+										size="md"
+										color="red"
+										loading={loading}
+										radius="md"
+										className="mt-2 font-semibold"
+									>
+										Iniciar sesión
+									</Button>
+								</Stack>
+							</form>
+
+							<Text size="sm" ta="center" className="text-zinc-500">
+								<Anchor
+									component={Link}
+									to="/"
+									fw={600}
+									className="text-zinc-800 underline decoration-zinc-300 underline-offset-4"
+								>
+									Volver al portal ciudadano
+								</Anchor>
+							</Text>
+						</Stack>
+					</Card>
+				</Container>
+			</div>
 		</Box>
 	);
 }

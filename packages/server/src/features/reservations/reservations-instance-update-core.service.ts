@@ -7,7 +7,7 @@ import {
 	throwCapacityConflict,
 	throwRpcError,
 } from "../../orpc/shared";
-import { checkCapacity } from "../bookings/capacity.service";
+import { checkCapacity } from "../bookings/capacity-check.service";
 
 export async function updateReservationInstance(input: {
 	bookingId: string;

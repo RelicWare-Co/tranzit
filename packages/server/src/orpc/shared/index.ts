@@ -12,7 +12,7 @@
  */
 
 export type { PermissionMap } from "./auth-guards";
-export { requireAdminAccess } from "./auth-guards";
+export { requireAdminAccess, requireAuthenticatedSession } from "./auth-guards";
 export {
 	fallbackErrorCode,
 	resolveCachedIdempotencyResponse,

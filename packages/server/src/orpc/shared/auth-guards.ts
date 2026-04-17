@@ -3,15 +3,21 @@ import { throwRpcError } from "./errors";
 
 export type PermissionMap = Record<string, string[]>;
 
-export async function requireAdminAccess(
-	headers: Headers,
-	permissions?: PermissionMap,
-) {
+export async function requireAuthenticatedSession(headers: Headers) {
 	const session = await auth.api.getSession({ headers });
 
 	if (!session) {
 		throwRpcError("UNAUTHENTICATED", 401, "Debes iniciar sesion");
 	}
+
+	return session;
+}
+
+export async function requireAdminAccess(
+	headers: Headers,
+	permissions?: PermissionMap,
+) {
+	const session = await requireAuthenticatedSession(headers);
 
 	const userRoles = (session.user.role ?? "")
 		.split(",")

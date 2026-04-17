@@ -9,6 +9,27 @@ import { db, schema } from "../../lib/db";
 import { rpc } from "../context";
 import { requireAdminAccess, throwRpcError } from "../shared";
 
+function parseDefaultCapacity(value: unknown): number {
+	const capacity = Number(value);
+	if (!Number.isInteger(capacity) || capacity <= 0) {
+		throwRpcError(
+			"INVALID_CAPACITY",
+			422,
+			"defaultDailyCapacity must be a positive integer",
+		);
+	}
+	return capacity;
+}
+
+function validateBooleanField(
+	value: unknown,
+	fieldName: string,
+): asserts value is boolean {
+	if (value !== undefined && typeof value !== "boolean") {
+		throwRpcError("INVALID_FIELD_TYPE", 422, `${fieldName} must be a boolean`);
+	}
+}
+
 export function createStaffRouter() {
 	return {
 		list: rpc.handler(async ({ context, input }) => {
@@ -90,18 +111,10 @@ export function createStaffRouter() {
 				);
 			}
 
-			let parsedDefaultCapacity: number | undefined;
-			if (body.defaultDailyCapacity !== undefined) {
-				const capacity = Number(body.defaultDailyCapacity);
-				if (!Number.isInteger(capacity) || capacity <= 0) {
-					throwRpcError(
-						"INVALID_CAPACITY",
-						422,
-						"defaultDailyCapacity must be a positive integer",
-					);
-				}
-				parsedDefaultCapacity = capacity;
-			}
+			const parsedDefaultCapacity =
+				body.defaultDailyCapacity !== undefined
+					? parseDefaultCapacity(body.defaultDailyCapacity)
+					: undefined;
 
 			const weeklyAvailability = validateWeeklyAvailability(
 				body.weeklyAvailability,
@@ -191,48 +204,13 @@ export function createStaffRouter() {
 				throwRpcError("NOT_FOUND", 404, "Staff profile not found");
 			}
 
-			let parsedDefaultCapacity: number | undefined;
-			if (payload.defaultDailyCapacity !== undefined) {
-				const capacity = Number(payload.defaultDailyCapacity);
-				if (!Number.isInteger(capacity) || capacity <= 0) {
-					throwRpcError(
-						"INVALID_CAPACITY",
-						422,
-						"defaultDailyCapacity must be a positive integer",
-					);
-				}
-				parsedDefaultCapacity = capacity;
-			}
+			const parsedDefaultCapacity =
+				payload.defaultDailyCapacity !== undefined
+					? parseDefaultCapacity(payload.defaultDailyCapacity)
+					: undefined;
 
-			if (payload.weeklyAvailability !== undefined) {
-				const weeklyAvailability = validateWeeklyAvailability(
-					payload.weeklyAvailability,
-				);
-				if (!weeklyAvailability.valid) {
-					throwRpcError(
-						"INVALID_WEEKLY_AVAILABILITY",
-						422,
-						weeklyAvailability.error,
-					);
-				}
-			}
-
-			if (
-				payload.isActive !== undefined &&
-				typeof payload.isActive !== "boolean"
-			) {
-				throwRpcError("INVALID_FIELD_TYPE", 422, "isActive must be a boolean");
-			}
-			if (
-				payload.isAssignable !== undefined &&
-				typeof payload.isAssignable !== "boolean"
-			) {
-				throwRpcError(
-					"INVALID_FIELD_TYPE",
-					422,
-					"isAssignable must be a boolean",
-				);
-			}
+			validateBooleanField(payload.isActive, "isActive");
+			validateBooleanField(payload.isAssignable, "isAssignable");
 
 			const updates: Partial<typeof schema.staffProfile.$inferInsert> = {
 				updatedAt: new Date(),
@@ -249,9 +227,14 @@ export function createStaffRouter() {
 				const weeklyAvailability = validateWeeklyAvailability(
 					payload.weeklyAvailability,
 				);
-				if (weeklyAvailability.valid) {
-					updates.weeklyAvailability = weeklyAvailability.parsed;
+				if (!weeklyAvailability.valid) {
+					throwRpcError(
+						"INVALID_WEEKLY_AVAILABILITY",
+						422,
+						weeklyAvailability.error,
+					);
 				}
+				updates.weeklyAvailability = weeklyAvailability.parsed;
 			}
 			if (payload.notes !== undefined) updates.notes = payload.notes;
 			if (payload.metadata !== undefined) updates.metadata = payload.metadata;

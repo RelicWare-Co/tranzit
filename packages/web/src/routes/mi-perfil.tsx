@@ -1,4 +1,5 @@
 import {
+	Alert,
 	Avatar,
 	Badge,
 	Box,
@@ -6,514 +7,318 @@ import {
 	Card,
 	Container,
 	Divider,
-	Grid,
 	Group,
+	Loader,
+	SimpleGrid,
 	Stack,
 	Text,
 	Title,
 } from "@mantine/core";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-	Calendar,
-	Clock,
-	Edit3,
-	LogOut,
-	Mail,
-	MapPin,
-	Phone,
-	User,
-} from "lucide-react";
-import { useEffect } from "react";
+import { AlertCircle, CalendarClock, Mail, Phone, User } from "lucide-react";
+import { useEffect, useMemo } from "react";
 import { useAuth } from "../lib/AuthContext";
+import { orpcClient } from "../lib/orpc-client";
 
 export const Route = createFileRoute("/mi-perfil")({
 	component: ProfilePage,
 });
 
-function ProfilePage() {
-	const { user, isAuthenticated, isLoading, logout } = useAuth();
-	const navigate = useNavigate();
+type CitizenBookingSummary = Awaited<
+	ReturnType<typeof orpcClient.citizen.bookings.mine>
+>[number];
 
-	// Redirect to login if not authenticated
+function getErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
+
+	if (
+		error &&
+		typeof error === "object" &&
+		"message" in error &&
+		typeof (error as { message?: unknown }).message === "string"
+	) {
+		return (error as { message: string }).message;
+	}
+
+	return fallback;
+}
+
+function toDate(value: string | Date | null | undefined): Date | null {
+	if (!value) return null;
+	const parsed = value instanceof Date ? value : new Date(value);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateTime(value: string | Date | null | undefined): string {
+	const parsed = toDate(value);
+	if (!parsed) return "-";
+	return parsed.toLocaleString("es-CO", {
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+}
+
+function resolveDisplayStatus(booking: CitizenBookingSummary): string {
+	const holdExpiresAtMs = toDate(booking.holdExpiresAt)?.getTime();
+
+	if (
+		booking.status === "held" &&
+		booking.isActive &&
+		holdExpiresAtMs !== undefined &&
+		holdExpiresAtMs <= Date.now()
+	) {
+		return "expired";
+	}
+
+	return booking.status;
+}
+
+function statusColor(status: string): string {
+	switch (status) {
+		case "confirmed":
+			return "green";
+		case "held":
+			return "yellow";
+		case "expired":
+			return "orange";
+		case "cancelled":
+			return "red";
+		default:
+			return "gray";
+	}
+}
+
+function ProfilePage() {
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+
+	const bookingsQuery = useQuery({
+		queryKey: ["citizen", "bookings", "mine", "all"],
+		enabled: isAuthenticated,
+		queryFn: async () =>
+			await orpcClient.citizen.bookings.mine({ includeInactive: true }),
+		refetchOnWindowFocus: true,
+	});
+
+	const cancelMutation = useMutation({
+		mutationFn: async ({ bookingId }: { bookingId: string }) => {
+			return await orpcClient.citizen.bookings.cancel({ bookingId });
+		},
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: ["citizen", "bookings", "mine"],
+			});
+		},
+	});
+
 	useEffect(() => {
-		if (!isLoading && !isAuthenticated) {
+		if (!authLoading && !isAuthenticated) {
 			navigate({ to: "/login" });
 		}
-	}, [isAuthenticated, isLoading, navigate]);
+	}, [authLoading, isAuthenticated, navigate]);
 
-	if (isLoading) {
+	const initials = useMemo(() => {
+		if (!user) return "U";
+		if (user.name?.trim()) {
+			return user.name
+				.split(" ")
+				.map((chunk) => chunk[0] ?? "")
+				.join("")
+				.slice(0, 2)
+				.toUpperCase();
+		}
+		return user.email?.[0]?.toUpperCase() ?? "U";
+	}, [user]);
+
+	if (authLoading || !isAuthenticated || !user) {
 		return (
-			<Box bg="#f8f9fa" mih="100vh" py={60}>
-				<Container size="lg">
-					<Card
-						p={60}
-						radius="xl"
-						bg="white"
-						style={{
-							border: "1px solid #e5e7eb",
-							boxShadow:
-								"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
-						}}
-					>
-						<Stack align="center" gap="md">
-							<Box
-								style={{
-									width: 64,
-									height: 64,
-									borderRadius: "50%",
-									backgroundColor: "#f3f4f6",
-									animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-								}}
-							/>
-							<Box
-								style={{
-									width: 200,
-									height: 24,
-									borderRadius: 8,
-									backgroundColor: "#f3f4f6",
-									animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-									animationDelay: "0.1s",
-								}}
-							/>
-							<Box
-								style={{
-									width: 150,
-									height: 16,
-									borderRadius: 8,
-									backgroundColor: "#f3f4f6",
-									animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-									animationDelay: "0.2s",
-								}}
-							/>
-						</Stack>
-					</Card>
+			<Box py={80}>
+				<Container size="sm">
+					<Group justify="center" gap="sm">
+						<Loader size="sm" />
+						<Text size="sm" c="dimmed">
+							Cargando perfil ciudadano...
+						</Text>
+					</Group>
 				</Container>
 			</Box>
 		);
 	}
 
-	if (!isAuthenticated || !user) {
-		return null;
-	}
-
-	const initials = user.name
-		? user.name
-				.split(" ")
-				.map((n: string) => n[0])
-				.join("")
-				.slice(0, 2)
-				.toUpperCase()
-		: user.email?.[0].toUpperCase() || "U";
-
-	const handleLogout = () => {
-		void logout()
-			.then(() => {
-				navigate({ to: "/" });
-			})
-			.catch(() => {});
-	};
-
-	// Mock appointments data - in a real app, this would come from an API
-	const appointments = [
-		{
-			id: "1",
-			date: "15 de Enero, 2025",
-			time: "10:00 AM",
-			service: "Renovación de Licencia",
-			status: "confirmada",
-			location: "Sede Principal - Calle 26 # 28-41",
-		},
-	];
-
 	return (
-		<Box bg="#f8f9fa" mih="100vh" pt={160} pb={60}>
+		<Box py={72}>
 			<Container size="lg">
-				<Stack gap="xl">
-					{/* Profile Header */}
-					<Card
-						p={40}
-						radius="xl"
-						bg="white"
-						style={{
-							border: "1px solid #e5e7eb",
-							boxShadow:
-								"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
-						}}
-					>
-						<Grid gap="xl">
-							<Grid.Col span={{ base: 12, md: 4 }}>
-								<Stack align="center" gap="md">
-									<Avatar
-										size={120}
-										radius="xl"
-										color="#e03131"
-										style={{
-											backgroundColor: "#fef2f2",
-											border: "3px solid #e03131",
-											fontWeight: 800,
-											fontSize: "48px",
-										}}
-									>
-										{initials}
-									</Avatar>
-									<Badge
-										size="lg"
-										color="green"
-										variant="light"
-										leftSection={
-											<Box
-												style={{
-													width: 8,
-													height: 8,
-													borderRadius: "50%",
-													backgroundColor: "#22c55e",
-												}}
-											/>
-										}
-										style={{
-											textTransform: "none",
-											fontWeight: 600,
-										}}
-									>
-										Activo
-									</Badge>
+				<Stack gap="lg">
+					<Card withBorder radius="md" p="xl">
+						<Group justify="space-between" align="flex-start" wrap="wrap">
+							<Group gap="md" align="center">
+								<Avatar size={56} radius="xl" color="red">
+									{initials}
+								</Avatar>
+								<Stack gap={2}>
+									<Title order={3}>{user.name || "Ciudadano"}</Title>
+									<Text size="sm" c="dimmed">
+										Portal ciudadano conectado a backend
+									</Text>
 								</Stack>
-							</Grid.Col>
-
-							<Grid.Col span={{ base: 12, md: 8 }}>
-								<Stack gap="md">
-									<Group justify="space-between" align="flex-start">
-										<Box>
-											<Title
-												order={2}
-												c="#111827"
-												style={{
-													letterSpacing: "-1px",
-													fontWeight: 800,
-													fontSize: "28px",
-												}}
-											>
-												{user.name || "Usuario"}
-											</Title>
-											<Text size="sm" c="#6b7280" mt={4}>
-												{user.email}
-											</Text>
-										</Box>
-										<Group gap="sm">
-											<Button
-												variant="light"
-												color="gray"
-												size="sm"
-												leftSection={<Edit3 size={16} />}
-												style={{
-													borderRadius: "8px",
-													fontWeight: 600,
-												}}
-											>
-												Editar
-											</Button>
-											<Button
-												variant="light"
-												color="red"
-												size="sm"
-												leftSection={<LogOut size={16} />}
-												onClick={handleLogout}
-												style={{
-													borderRadius: "8px",
-													fontWeight: 600,
-												}}
-											>
-												Cerrar Sesión
-											</Button>
-										</Group>
-									</Group>
-
-									<Divider my="md" />
-
-									<Grid gap="md">
-										<Grid.Col span={{ base: 12, sm: 6 }}>
-											<Group gap="sm">
-												<Box
-													style={{
-														width: 40,
-														height: 40,
-														borderRadius: "10px",
-														backgroundColor: "#f3f4f6",
-														display: "flex",
-														alignItems: "center",
-														justifyContent: "center",
-													}}
-												>
-													<Mail size={20} color="#6b7280" />
-												</Box>
-												<Stack gap={0}>
-													<Text size="xs" c="#9ca3af" fw={500}>
-														Correo electrónico
-													</Text>
-													<Text size="sm" c="#111827" fw={600}>
-														{user.email}
-													</Text>
-												</Stack>
-											</Group>
-										</Grid.Col>
-										<Grid.Col span={{ base: 12, sm: 6 }}>
-											<Group gap="sm">
-												<Box
-													style={{
-														width: 40,
-														height: 40,
-														borderRadius: "10px",
-														backgroundColor: "#f3f4f6",
-														display: "flex",
-														alignItems: "center",
-														justifyContent: "center",
-													}}
-												>
-													<User size={20} color="#6b7280" />
-												</Box>
-												<Stack gap={0}>
-													<Text size="xs" c="#9ca3af" fw={500}>
-														Tipo de cuenta
-													</Text>
-													<Text size="sm" c="#111827" fw={600}>
-														Ciudadano
-													</Text>
-												</Stack>
-											</Group>
-										</Grid.Col>
-										<Grid.Col span={{ base: 12, sm: 6 }}>
-											<Group gap="sm">
-												<Box
-													style={{
-														width: 40,
-														height: 40,
-														borderRadius: "10px",
-														backgroundColor: "#f3f4f6",
-														display: "flex",
-														alignItems: "center",
-														justifyContent: "center",
-													}}
-												>
-													<Phone size={20} color="#6b7280" />
-												</Box>
-												<Stack gap={0}>
-													<Text size="xs" c="#9ca3af" fw={500}>
-														Teléfono
-													</Text>
-													<Text size="sm" c="#111827" fw={600}>
-														{user.phone || "No registrado"}
-													</Text>
-												</Stack>
-											</Group>
-										</Grid.Col>
-										<Grid.Col span={{ base: 12, sm: 6 }}>
-											<Group gap="sm">
-												<Box
-													style={{
-														width: 40,
-														height: 40,
-														borderRadius: "10px",
-														backgroundColor: "#f3f4f6",
-														display: "flex",
-														alignItems: "center",
-														justifyContent: "center",
-													}}
-												>
-													<MapPin size={20} color="#6b7280" />
-												</Box>
-												<Stack gap={0}>
-													<Text size="xs" c="#9ca3af" fw={500}>
-														Ubicación
-													</Text>
-													<Text size="sm" c="#111827" fw={600}>
-														Tuluá, Valle del Cauca
-													</Text>
-												</Stack>
-											</Group>
-										</Grid.Col>
-									</Grid>
-								</Stack>
-							</Grid.Col>
-						</Grid>
-					</Card>
-
-					{/* Appointments Section */}
-					<Card
-						p={40}
-						radius="xl"
-						bg="white"
-						style={{
-							border: "1px solid #e5e7eb",
-							boxShadow:
-								"0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025)",
-						}}
-					>
-						<Group justify="space-between" align="center" mb="lg">
-							<Group gap="sm">
-								<Box
-									style={{
-										width: 40,
-										height: 40,
-										borderRadius: "10px",
-										backgroundColor: "#fef2f2",
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-									}}
-								>
-									<Calendar size={20} color="#e03131" />
-								</Box>
-								<Title
-									order={3}
-									c="#111827"
-									style={{
-										letterSpacing: "-0.5px",
-										fontWeight: 700,
-										fontSize: "22px",
-									}}
-								>
-									Mis Citas Agendadas
-								</Title>
 							</Group>
-							<Button
-								component={Link}
-								to="/agendar"
-								variant="light"
-								color="red"
-								size="sm"
-								leftSection={<Calendar size={16} />}
-								style={{
-									borderRadius: "8px",
-									fontWeight: 600,
-								}}
-							>
-								Agendar nueva cita
-							</Button>
+
+							<Group>
+								<Button
+									component={Link}
+									to="/agendar"
+									leftSection={<CalendarClock size={16} />}
+								>
+									Agendar cita
+								</Button>
+								<Button
+									variant="default"
+									onClick={() => {
+										void logout().then(() => navigate({ to: "/" }));
+									}}
+								>
+									Cerrar sesión
+								</Button>
+							</Group>
 						</Group>
 
-						{appointments.length > 0 ? (
-							<Stack gap="md">
-								{appointments.map((appointment) => (
-									<Card
-										key={appointment.id}
-										p="md"
-										radius="lg"
-										bg="#f9fafb"
-										style={{
-											border: "1px solid #e5e7eb",
-										}}
-									>
-										<Group justify="space-between" align="flex-start">
-											<Group gap="md">
-												<Box
-													style={{
-														width: 56,
-														height: 56,
-														borderRadius: "12px",
-														backgroundColor: "white",
-														border: "1px solid #e5e7eb",
-														display: "flex",
-														alignItems: "center",
-														justifyContent: "center",
-														flexDirection: "column",
-													}}
-												>
-													<Text size="xs" c="#9ca3af" fw={600}>
-														ENE
-													</Text>
-													<Text
-														size="xl"
-														c="#111827"
-														fw={800}
-														style={{ lineHeight: 1 }}
-													>
-														15
-													</Text>
-												</Box>
-												<Stack gap={4}>
-													<Text size="md" c="#111827" fw={700}>
-														{appointment.service}
-													</Text>
-													<Group gap="xs">
-														<Badge
-															size="sm"
-															color="green"
-															variant="light"
-															style={{
-																textTransform: "none",
-																fontWeight: 600,
-															}}
-														>
-															Confirmada
-														</Badge>
-														<Group gap={4}>
-															<Clock size={14} color="#9ca3af" />
-															<Text size="sm" c="#6b7280">
-																{appointment.time}
-															</Text>
-														</Group>
-													</Group>
-													<Text size="sm" c="#6b7280">
-														{appointment.location}
-													</Text>
-												</Stack>
-											</Group>
-										</Group>
-									</Card>
-								))}
-							</Stack>
-						) : (
-							<Card
-								p={40}
-								radius="lg"
-								bg="#f9fafb"
-								style={{
-									border: "1px dashed #e5e7eb",
-									textAlign: "center",
-								}}
-							>
-								<Stack align="center" gap="md">
-									<Box
-										style={{
-											width: 64,
-											height: 64,
-											borderRadius: "16px",
-											backgroundColor: "white",
-											border: "1px solid #e5e7eb",
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "center",
-										}}
-									>
-										<Calendar size={28} color="#d1d5db" />
-									</Box>
-									<Stack gap={4} align="center">
-										<Text size="md" c="#111827" fw={600}>
-											No tienes citas agendadas
-										</Text>
-										<Text size="sm" c="#6b7280" maw={300}>
-											Programa tu primera cita para realizar trámites de
-											movilidad de manera rápida y sencilla
-										</Text>
-									</Stack>
-									<Button
-										component={Link}
-										to="/agendar"
-										variant="light"
-										color="red"
-										size="md"
-										leftSection={<Calendar size={18} />}
-										mt="md"
-										style={{
-											borderRadius: "8px",
-											fontWeight: 600,
-										}}
-									>
-										Agendar mi primera cita
-									</Button>
+						<Divider my="md" />
+
+						<SimpleGrid cols={{ base: 1, sm: 3 }}>
+							<Group gap="sm">
+								<Mail size={16} />
+								<Stack gap={0}>
+									<Text size="xs" c="dimmed">
+										Correo
+									</Text>
+									<Text size="sm" fw={500}>
+										{user.email}
+									</Text>
 								</Stack>
-							</Card>
-						)}
+							</Group>
+							<Group gap="sm">
+								<User size={16} />
+								<Stack gap={0}>
+									<Text size="xs" c="dimmed">
+										Rol
+									</Text>
+									<Text size="sm" fw={500}>
+										Ciudadano
+									</Text>
+								</Stack>
+							</Group>
+							<Group gap="sm">
+								<Phone size={16} />
+								<Stack gap={0}>
+									<Text size="xs" c="dimmed">
+										Teléfono
+									</Text>
+									<Text size="sm" fw={500}>
+										{user.phone || "No registrado"}
+									</Text>
+								</Stack>
+							</Group>
+						</SimpleGrid>
+					</Card>
+
+					<Card withBorder radius="md" p="xl">
+						<Stack gap="md">
+							<Group justify="space-between">
+								<Title order={4}>Mis citas</Title>
+								{bookingsQuery.isFetching ? <Loader size="xs" /> : null}
+							</Group>
+
+							{bookingsQuery.isError ? (
+								<Alert color="red" icon={<AlertCircle size={16} />}>
+									{getErrorMessage(
+										bookingsQuery.error,
+										"No se pudieron cargar tus citas.",
+									)}
+								</Alert>
+							) : null}
+
+							{bookingsQuery.isPending ? (
+								<Group gap="sm">
+									<Loader size="sm" />
+									<Text size="sm" c="dimmed">
+										Consultando citas en backend...
+									</Text>
+								</Group>
+							) : null}
+
+							{(bookingsQuery.data ?? []).length > 0 ? (
+								<Stack gap="sm">
+									{(bookingsQuery.data ?? []).map((booking) => {
+										const displayStatus = resolveDisplayStatus(booking);
+										const canCancel =
+											booking.isActive &&
+											(displayStatus === "held" ||
+												displayStatus === "confirmed");
+
+										return (
+											<Card key={booking.id} withBorder radius="md" p="md">
+												<Group justify="space-between" align="flex-start">
+													<Stack gap={2}>
+														<Text fw={600}>
+															{booking.request?.procedure?.name || "Trámite"}
+														</Text>
+														<Text size="sm" c="dimmed">
+															{booking.slot
+																? `${booking.slot.slotDate} · ${booking.slot.startTime} - ${booking.slot.endTime}`
+																: "Sin horario asociado"}
+														</Text>
+														<Text size="xs" c="dimmed">
+															Creada: {formatDateTime(booking.createdAt)}
+														</Text>
+														{displayStatus === "held" ? (
+															<Text size="xs" c="dimmed">
+																Expira: {formatDateTime(booking.holdExpiresAt)}
+															</Text>
+														) : null}
+													</Stack>
+
+													<Stack gap="xs" align="flex-end">
+														<Badge color={statusColor(displayStatus)}>
+															{displayStatus}
+														</Badge>
+														{canCancel ? (
+															<Button
+																size="xs"
+																variant="default"
+																onClick={() => {
+																	void cancelMutation.mutateAsync({
+																		bookingId: booking.id,
+																	});
+																}}
+																loading={
+																	cancelMutation.isPending &&
+																	cancelMutation.variables?.bookingId ===
+																		booking.id
+																}
+															>
+																Cancelar
+															</Button>
+														) : null}
+													</Stack>
+												</Group>
+											</Card>
+										);
+									})}
+								</Stack>
+							) : (
+								<Text size="sm" c="dimmed">
+									Aún no tienes citas registradas. Agenda la primera desde el
+									portal.
+								</Text>
+							)}
+						</Stack>
 					</Card>
 				</Stack>
 			</Container>

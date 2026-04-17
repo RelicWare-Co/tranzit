@@ -1,7 +1,7 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { throwRpcError } from "../../orpc/shared";
-import { checkCapacity } from "./capacity.service";
+import { checkCapacity } from "./capacity-check.service";
 
 export interface ListBookingsInput {
 	slotId?: string;
