@@ -4,22 +4,23 @@ import {
 	Badge,
 	Box,
 	Button,
-	Card,
 	Checkbox,
 	Container,
 	Divider,
+	Flex,
 	Grid,
 	Group,
 	Loader,
+	Modal,
 	PinInput,
 	Select,
 	SimpleGrid,
 	Stack,
 	Text,
-	Textarea,
 	TextInput,
 	ThemeIcon,
 	Title,
+	UnstyledButton,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,13 +29,14 @@ import {
 	AlertCircle,
 	CalendarClock,
 	CheckCircle2,
+	ChevronRight,
 	Clock,
 	FileText,
-	Mail,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import { orpcClient } from "../lib/orpc-client";
+import classes from "./agendar.module.css";
 
 export const Route = createFileRoute("/agendar")({
 	component: AgendarPage,
@@ -61,19 +63,10 @@ type ProcedureRequirement = {
 };
 
 function getErrorMessage(error: unknown, fallback: string): string {
-	if (error instanceof Error && error.message) {
-		return error.message;
-	}
-
-	if (
-		error &&
-		typeof error === "object" &&
-		"message" in error &&
-		typeof (error as { message?: unknown }).message === "string"
-	) {
+	if (error instanceof Error && error.message) return error.message;
+	if (error && typeof error === "object" && "message" in error) {
 		return (error as { message: string }).message;
 	}
-
 	return fallback;
 }
 
@@ -91,18 +84,6 @@ function formatDateLabel(value: string) {
 	});
 }
 
-function formatDateTime(value: string | Date | null | undefined) {
-	const parsed = toDate(value);
-	if (!parsed) return "-";
-	return parsed.toLocaleString("es-CO", {
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
-}
-
 function useHoldCountdown(expiresAt: string | Date | null | undefined) {
 	const expiresAtMs = useMemo(
 		() => toDate(expiresAt)?.getTime() ?? null,
@@ -115,7 +96,6 @@ function useHoldCountdown(expiresAt: string | Date | null | undefined) {
 			setRemainingSeconds(0);
 			return;
 		}
-
 		const tick = () => {
 			const nextSeconds = Math.max(
 				0,
@@ -123,7 +103,6 @@ function useHoldCountdown(expiresAt: string | Date | null | undefined) {
 			);
 			setRemainingSeconds(nextSeconds);
 		};
-
 		tick();
 		const intervalId = window.setInterval(tick, 1000);
 		return () => window.clearInterval(intervalId);
@@ -149,31 +128,27 @@ function getProcedureRequirements(procedure: CitizenProcedure | null) {
 
 	return requirements
 		.map((rawRequirement, index): ProcedureRequirement | null => {
-			if (!rawRequirement || typeof rawRequirement !== "object") {
-				return null;
-			}
-
-			const requirement = rawRequirement as Record<string, unknown>;
+			if (!rawRequirement || typeof rawRequirement !== "object") return null;
+			const req = rawRequirement as Record<string, unknown>;
 			const key =
-				typeof requirement.key === "string" && requirement.key.trim().length > 0
-					? requirement.key.trim()
+				typeof req.key === "string" && req.key.trim().length > 0
+					? req.key.trim()
 					: `requirement-${index + 1}`;
 			const label =
-				typeof requirement.label === "string" &&
-				requirement.label.trim().length > 0
-					? requirement.label.trim()
+				typeof req.label === "string" && req.label.trim().length > 0
+					? req.label.trim()
 					: `Requisito ${index + 1}`;
 			const instructions =
-				typeof requirement.instructions === "string" &&
-				requirement.instructions.trim().length > 0
-					? requirement.instructions.trim()
+				typeof req.instructions === "string" &&
+				req.instructions.trim().length > 0
+					? req.instructions.trim()
 					: null;
 			const downloadUrlCandidates = [
-				requirement.downloadUrl,
-				requirement.download_url,
-				requirement.templateUrl,
-				requirement.template_url,
-				requirement.url,
+				req.downloadUrl,
+				req.download_url,
+				req.templateUrl,
+				req.template_url,
+				req.url,
 			];
 			const downloadUrl =
 				downloadUrlCandidates.find(
@@ -184,15 +159,13 @@ function getProcedureRequirements(procedure: CitizenProcedure | null) {
 			return {
 				key,
 				label,
-				isRequired: requirement.required !== false,
+				isRequired: req.required !== false,
 				instructions,
 				downloadUrl:
 					typeof downloadUrl === "string" ? downloadUrl.trim() : null,
 			};
 		})
-		.filter((requirement): requirement is ProcedureRequirement =>
-			Boolean(requirement),
-		);
+		.filter(Boolean) as ProcedureRequirement[];
 }
 
 function AgendarPage() {
@@ -201,19 +174,21 @@ function AgendarPage() {
 	const { user, isAuthenticated, sendVerificationOtp, signInEmailOtp } =
 		useAuth();
 
-	const [authenticatedStep, setAuthenticatedStep] = useState(1);
-	const [authEmail, setAuthEmail] = useState("");
-	const [otpCode, setOtpCode] = useState("");
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
 	const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+	const [requirementsAcknowledged, setRequirementsAcknowledged] =
+		useState(false);
+
 	const [holdBooking, setHoldBooking] = useState<CitizenBookingSummary | null>(
 		null,
 	);
+
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [requirementsAcknowledged, setRequirementsAcknowledged] =
-		useState(false);
-	const currentStep = isAuthenticated ? authenticatedStep : 0;
+
+	const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+	const [authEmail, setAuthEmail] = useState("");
+	const [otpCode, setOtpCode] = useState("");
 
 	const detailsForm = useForm({
 		initialValues: {
@@ -227,32 +202,50 @@ function AgendarPage() {
 			notes: "",
 		},
 		validate: {
-			procedureTypeId: (value) =>
-				value ? null : "Selecciona el trámite a agendar",
+			procedureTypeId: (value) => (value ? null : "Selecciona el trámite"),
 			applicantName: (value) =>
-				value.trim().length >= 3 ? null : "Ingresa el nombre completo",
+				value.trim().length >= 3 ? null : "Ingresa tu nombre",
 			applicantDocument: (value) =>
 				value.trim().length >= 5 ? null : "Ingresa un documento válido",
 			email: (value) =>
-				/^\S+@\S+\.\S+$/.test(value)
-					? null
-					: "Ingresa un correo electrónico válido",
+				/^\S+@\S+\.\S+$/.test(value) ? null : "Ingresa un correo válido",
+			plate: (value, values) => {
+				const proc = proceduresById?.get(values.procedureTypeId);
+				if (proc?.requiresVehicle && !value.trim()) {
+					return "Este trámite requiere placa";
+				}
+				return null;
+			},
 		},
 	});
 
 	const proceduresQuery = useQuery({
 		queryKey: ["citizen", "procedures"],
-		enabled: isAuthenticated,
 		queryFn: async () => await orpcClient.citizen.procedures.list(),
 		staleTime: 5 * 60 * 1000,
 	});
 
+	const proceduresById = useMemo(
+		() => new Map((proceduresQuery.data ?? []).map((p) => [p.id, p])),
+		[proceduresQuery.data],
+	);
+
+	const selectedProcedure = useMemo(() => {
+		return proceduresById.get(detailsForm.values.procedureTypeId) ?? null;
+	}, [proceduresById, detailsForm.values.procedureTypeId]);
+
+	const procedureRequirements = useMemo(
+		() => getProcedureRequirements(selectedProcedure),
+		[selectedProcedure],
+	);
+
 	const slotsRangeQuery = useQuery({
 		queryKey: ["citizen", "slots-range", 14],
-		enabled: isAuthenticated && currentStep >= 2,
+		enabled: Boolean(selectedProcedure) && requirementsAcknowledged,
 		queryFn: async () => await orpcClient.citizen.slots.range({ days: 14 }),
 		staleTime: 20 * 1000,
 	});
+
 	const myBookingsQuery = useQuery({
 		queryKey: ["citizen", "bookings", "mine", "active"],
 		enabled: isAuthenticated,
@@ -260,6 +253,77 @@ function AgendarPage() {
 			await orpcClient.citizen.bookings.mine({ includeInactive: false }),
 		staleTime: 20 * 1000,
 	});
+
+	const slotsByDate = useMemo(() => {
+		const data =
+			(slotsRangeQuery.data as SlotsRangeResponse | undefined)?.daily ?? [];
+		return new Map(data.map((day) => [day.date, day]));
+	}, [slotsRangeQuery.data]);
+
+	const availableDates = useMemo(() => {
+		const daily =
+			(slotsRangeQuery.data as SlotsRangeResponse | undefined)?.daily ?? [];
+		return daily.filter((day) => day.count > 0);
+	}, [slotsRangeQuery.data]);
+
+	const resolvedSelectedDate = useMemo(() => {
+		if (selectedDate && slotsByDate.has(selectedDate)) return selectedDate;
+		return availableDates[0]?.date ?? null;
+	}, [availableDates, selectedDate, slotsByDate]);
+
+	const selectedDaySlots = useMemo(() => {
+		if (!resolvedSelectedDate) return [];
+		return slotsByDate.get(resolvedSelectedDate)?.slots ?? [];
+	}, [resolvedSelectedDate, slotsByDate]);
+
+	const resolvedSelectedSlotId = useMemo(() => {
+		if (!selectedSlotId) return null;
+		const slotExists = selectedDaySlots.some((s) => s.id === selectedSlotId);
+		return slotExists ? selectedSlotId : null;
+	}, [selectedDaySlots, selectedSlotId]);
+
+	useEffect(() => {
+		if (!user?.email) return;
+		if (!detailsForm.values.email) {
+			detailsForm.setFieldValue("email", user.email);
+			setAuthEmail(user.email);
+		}
+	}, [detailsForm.setFieldValue, detailsForm.values.email, user?.email]);
+
+	const serverHeldBooking = useMemo(() => {
+		const bookings = myBookingsQuery.data ?? [];
+		return (
+			bookings.find(
+				(booking) => booking.isActive && booking.status === "held",
+			) ?? null
+		);
+	}, [myBookingsQuery.data]);
+
+	useEffect(() => {
+		if (!isAuthenticated || !serverHeldBooking) return;
+		if (holdBooking?.id === serverHeldBooking.id) return;
+
+		setHoldBooking(serverHeldBooking);
+		if (serverHeldBooking.request?.procedure?.id) {
+			detailsForm.setFieldValue(
+				"procedureTypeId",
+				serverHeldBooking.request.procedure.id,
+			);
+		}
+		setRequirementsAcknowledged(true);
+		setFeedback("Recuperamos tu reserva temporal activa.");
+	}, [
+		detailsForm.setFieldValue,
+		holdBooking?.id,
+		isAuthenticated,
+		serverHeldBooking,
+	]);
+
+	const holdRemainingSeconds = useHoldCountdown(holdBooking?.holdExpiresAt);
+	const holdExpired =
+		Boolean(holdBooking) &&
+		holdBooking?.status === "held" &&
+		holdRemainingSeconds <= 0;
 
 	const sendOtpMutation = useMutation({
 		mutationFn: async (email: string) => {
@@ -269,41 +333,15 @@ function AgendarPage() {
 			setAuthEmail(email);
 			setOtpCode("");
 			setError(null);
-			setFeedback("Enviamos un código OTP de 6 dígitos al correo indicado.");
 		},
-		onError: (mutationError) => {
-			setError(
-				getErrorMessage(mutationError, "No fue posible enviar el código OTP."),
-			);
-		},
-	});
-
-	const verifyOtpMutation = useMutation({
-		mutationFn: async (payload: { email: string; otp: string }) => {
-			await signInEmailOtp(payload.email, payload.otp);
-		},
-		onSuccess: () => {
-			setError(null);
-			setFeedback("Sesión validada. Continúa con los datos del trámite.");
-			setAuthenticatedStep(1);
-		},
-		onError: (mutationError) => {
-			setError(
-				getErrorMessage(
-					mutationError,
-					"OTP inválido o expirado. Solicita un nuevo código.",
-				),
-			);
-			setOtpCode("");
+		onError: (err) => {
+			setError(getErrorMessage(err, "Error al enviar código OTP."));
 		},
 	});
 
 	const holdMutation = useMutation({
 		mutationFn: async () => {
-			if (!resolvedSelectedSlotId) {
-				throw new Error("Selecciona un horario disponible.");
-			}
-
+			if (!resolvedSelectedSlotId) throw new Error("Selecciona horario.");
 			return await orpcClient.citizen.bookings.hold({
 				procedureTypeId: detailsForm.values.procedureTypeId,
 				slotId: resolvedSelectedSlotId,
@@ -318,752 +356,889 @@ function AgendarPage() {
 		},
 		onSuccess: async (response) => {
 			setHoldBooking(response.booking);
-			setAuthenticatedStep(3);
-			setRequirementsAcknowledged(false);
 			setError(null);
-			setFeedback(
-				"Reserva temporal creada. Revisa requisitos y plantillas para llevar en físico.",
-			);
+			setFeedback("Cupo asegurado temporalmente.");
 			await Promise.all([
-				queryClient.invalidateQueries({
-					queryKey: ["citizen", "slots-range", 14],
-				}),
+				queryClient.invalidateQueries({ queryKey: ["citizen", "slots-range"] }),
 				queryClient.invalidateQueries({
 					queryKey: ["citizen", "bookings", "mine"],
 				}),
 			]);
 		},
-		onError: (mutationError) => {
+		onError: (err) => {
 			setError(
-				getErrorMessage(
-					mutationError,
-					"No pudimos crear la reserva temporal para este horario.",
-				),
+				getErrorMessage(err, "No pudimos crear la reserva para este horario."),
 			);
+		},
+	});
+
+	const verifyOtpMutation = useMutation({
+		mutationFn: async (payload: { email: string; otp: string }) => {
+			await signInEmailOtp(payload.email, payload.otp);
+		},
+		onSuccess: () => {
+			setError(null);
+			setIsAuthModalOpen(false);
+			holdMutation.mutate();
+		},
+		onError: (err) => {
+			setError(getErrorMessage(err, "Código inválido o expirado."));
+			setOtpCode("");
 		},
 	});
 
 	const confirmMutation = useMutation({
 		mutationFn: async () => {
-			if (!holdBooking) {
-				throw new Error("No hay una reserva temporal para confirmar.");
-			}
-
+			if (!holdBooking) throw new Error("No hay reserva temporal.");
 			return await orpcClient.citizen.bookings.confirm({
 				bookingId: holdBooking.id,
 			});
 		},
 		onSuccess: async () => {
 			setError(null);
-			setFeedback("Cita confirmada correctamente.");
+			setFeedback("¡Cita confirmada correctamente!");
 			await queryClient.invalidateQueries({
 				queryKey: ["citizen", "bookings", "mine"],
 			});
 			navigate({ to: "/mi-perfil" });
 		},
-		onError: (mutationError) => {
-			setError(
-				getErrorMessage(
-					mutationError,
-					"No fue posible confirmar la cita. Verifica el estado de la reserva.",
-				),
-			);
+		onError: (err) => {
+			setError(getErrorMessage(err, "No fue posible confirmar la cita."));
 		},
 	});
 
 	const cancelHoldMutation = useMutation({
 		mutationFn: async () => {
-			if (!holdBooking) {
-				throw new Error("No hay reserva temporal activa.");
-			}
-
+			if (!holdBooking) throw new Error("No hay reserva activa.");
 			return await orpcClient.citizen.bookings.cancel({
 				bookingId: holdBooking.id,
 			});
 		},
 		onSuccess: async () => {
 			setHoldBooking(null);
-			setAuthenticatedStep(2);
-			setRequirementsAcknowledged(false);
 			setError(null);
-			setFeedback("Reserva temporal liberada.");
+			setFeedback("Reserva liberada. Elige otro horario.");
 			await Promise.all([
-				queryClient.invalidateQueries({
-					queryKey: ["citizen", "slots-range", 14],
-				}),
+				queryClient.invalidateQueries({ queryKey: ["citizen", "slots-range"] }),
 				queryClient.invalidateQueries({
 					queryKey: ["citizen", "bookings", "mine"],
 				}),
 			]);
 		},
-		onError: (mutationError) => {
-			setError(
-				getErrorMessage(
-					mutationError,
-					"No fue posible cancelar la reserva temporal.",
-				),
-			);
+		onError: (err) => {
+			setError(getErrorMessage(err, "No fue posible cancelar la reserva."));
 		},
 	});
 
-	const selectedProcedure = useMemo(() => {
-		return (
-			(proceduresQuery.data ?? []).find(
-				(procedure) => procedure.id === detailsForm.values.procedureTypeId,
-			) ?? null
-		);
-	}, [proceduresQuery.data, detailsForm.values.procedureTypeId]);
-	const procedureRequirements = useMemo(
-		() => getProcedureRequirements(selectedProcedure),
-		[selectedProcedure],
-	);
-	const proceduresById = useMemo(
-		() =>
-			new Map(
-				(proceduresQuery.data ?? []).map((procedure) => [
-					procedure.id,
-					procedure,
-				]),
-			),
-		[proceduresQuery.data],
-	);
-
-	const slotsByDate = useMemo(() => {
-		const data =
-			(slotsRangeQuery.data as SlotsRangeResponse | undefined)?.daily ?? [];
-		return new Map(data.map((day) => [day.date, day]));
-	}, [slotsRangeQuery.data]);
-
-	const availableDates = useMemo(() => {
-		const daily =
-			(slotsRangeQuery.data as SlotsRangeResponse | undefined)?.daily ?? [];
-		return daily.filter((day) => day.count > 0);
-	}, [slotsRangeQuery.data]);
-	const resolvedSelectedDate = useMemo(() => {
-		if (selectedDate && slotsByDate.has(selectedDate)) {
-			return selectedDate;
-		}
-		return availableDates[0]?.date ?? null;
-	}, [availableDates, selectedDate, slotsByDate]);
-
-	const selectedDaySlots = useMemo(() => {
-		if (!resolvedSelectedDate) return [];
-		return slotsByDate.get(resolvedSelectedDate)?.slots ?? [];
-	}, [resolvedSelectedDate, slotsByDate]);
-	const resolvedSelectedSlotId = useMemo(() => {
-		if (!selectedSlotId) return null;
-		const slotExists = selectedDaySlots.some(
-			(slot) => slot.id === selectedSlotId,
-		);
-		return slotExists ? selectedSlotId : null;
-	}, [selectedDaySlots, selectedSlotId]);
-
-	const holdRemainingSeconds = useHoldCountdown(
-		holdBooking?.holdExpiresAt ?? null,
-	);
-	const serverHeldBooking = useMemo(() => {
-		const bookings = myBookingsQuery.data ?? [];
-		return (
-			bookings.find(
-				(booking) => booking.isActive && booking.status === "held",
-			) ?? null
-		);
-	}, [myBookingsQuery.data]);
-	const holdExpired =
-		Boolean(holdBooking) &&
-		holdBooking?.status === "held" &&
-		holdRemainingSeconds <= 0;
-
-	useEffect(() => {
-		if (!user?.email) return;
-		if (!detailsForm.values.email) {
-			detailsForm.setFieldValue("email", user.email);
-		}
-	}, [detailsForm.setFieldValue, detailsForm.values.email, user?.email]);
-
-	useEffect(() => {
-		if (!isAuthenticated || !serverHeldBooking) return;
-		if (holdBooking?.id === serverHeldBooking.id) return;
-
-		setHoldBooking(serverHeldBooking);
-		setSelectedDate(serverHeldBooking.slot?.slotDate ?? null);
-		setSelectedSlotId(serverHeldBooking.slot?.id ?? null);
-		if (serverHeldBooking.request?.procedure?.id) {
-			detailsForm.setFieldValue(
-				"procedureTypeId",
-				serverHeldBooking.request.procedure.id,
-			);
-		}
-		setAuthenticatedStep(3);
-		setRequirementsAcknowledged(false);
-		setFeedback(
-			"Recuperamos tu reserva temporal activa. Confírmala antes de que expire.",
-		);
-	}, [
-		detailsForm.setFieldValue,
-		holdBooking?.id,
-		isAuthenticated,
-		serverHeldBooking,
-	]);
-
-	const handleValidateOtp = useCallback(() => {
-		if (!authEmail) {
-			setError("Primero envía el código OTP a un correo válido.");
+	const handleReserveClick = detailsForm.onSubmit((values) => {
+		if (!resolvedSelectedSlotId) {
+			setError("Debes seleccionar una fecha y horario.");
 			return;
 		}
-
-		if (otpCode.length !== 6) {
-			setError("El código OTP debe tener 6 dígitos.");
-			return;
-		}
-
 		setError(null);
-		setFeedback(null);
-		verifyOtpMutation.mutate({ email: authEmail, otp: otpCode });
-	}, [authEmail, otpCode, verifyOtpMutation]);
 
-	const handleContinueToSlots = detailsForm.onSubmit((values) => {
-		if (selectedProcedure?.requiresVehicle && !values.plate.trim()) {
-			detailsForm.setFieldError("plate", "Este trámite requiere placa");
+		if (!isAuthenticated) {
+			setAuthEmail(values.email);
+			setIsAuthModalOpen(true);
+			sendOtpMutation.mutate(values.email);
 			return;
 		}
-
-		setError(null);
-		setFeedback(null);
-		setAuthenticatedStep(2);
+		holdMutation.mutate();
 	});
 
 	return (
-		<Box py={72}>
-			<Container size="lg">
-				<Stack gap="lg">
-					<Stack gap={4}>
-						<Title order={2}>Agendar cita ciudadana</Title>
-						<Text size="sm" c="dimmed">
-							Flujo conectado a backend: OTP, reserva temporal, confirmación
-							real y consulta en perfil.
-						</Text>
-					</Stack>
+		<Box py={{ base: 32, md: 64 }} className={classes.root}>
+			<Container size="xl">
+				{error && (
+					<Alert
+						color="red"
+						icon={<AlertCircle size={16} />}
+						mb="xl"
+						className={classes.alert}
+					>
+						{error}
+					</Alert>
+				)}
+				{feedback && !holdBooking && (
+					<Alert
+						color="green"
+						icon={<CheckCircle2 size={16} />}
+						mb="xl"
+						className={classes.alert}
+					>
+						{feedback}
+					</Alert>
+				)}
 
-					<Group gap="xs">
-						<Badge color={currentStep >= 0 ? "red" : "gray"}>1. Acceso</Badge>
-						<Badge color={currentStep >= 1 ? "red" : "gray"}>2. Datos</Badge>
-						<Badge color={currentStep >= 2 ? "red" : "gray"}>3. Horario</Badge>
-						<Badge color={currentStep >= 3 ? "red" : "gray"}>
-							4. Requisitos
-						</Badge>
-						<Badge color={currentStep >= 4 ? "red" : "gray"}>
-							5. Confirmar
-						</Badge>
-					</Group>
-
-					{error ? (
-						<Alert color="red" icon={<AlertCircle size={16} />}>
-							{error}
-						</Alert>
-					) : null}
-					{feedback ? (
-						<Alert color="green" icon={<CheckCircle2 size={16} />}>
-							{feedback}
-						</Alert>
-					) : null}
-
-					{currentStep === 0 ? (
-						<Card withBorder radius="md" p="xl">
-							<Stack gap="md">
-								<Group gap="sm">
-									<Mail size={18} />
-									<Text fw={600}>Verificación OTP</Text>
-								</Group>
-								<TextInput
-									type="email"
-									label="Correo electrónico"
-									placeholder="correo@ejemplo.com"
-									value={authEmail}
-									onChange={(event) => setAuthEmail(event.currentTarget.value)}
-								/>
-								<Group grow>
-									<Button
-										leftSection={<Mail size={16} />}
-										onClick={() => {
-											setError(null);
-											setFeedback(null);
-											void sendOtpMutation.mutateAsync(
-												authEmail.trim().toLowerCase(),
-											);
-										}}
-										loading={sendOtpMutation.isPending}
-										disabled={!/^\S+@\S+\.\S+$/.test(authEmail)}
+				{!holdBooking ? (
+					<Grid style={{ gap: 64 }}>
+						{/* Left Pane */}
+						<Grid.Col span={{ base: 12, md: 7, lg: 7 }}>
+							<Stack gap={64}>
+								<Box>
+									<Title order={1} className={classes.pageTitle}>
+										Agendar Cita
+									</Title>
+									<Text
+										size="lg"
+										c="dimmed"
+										mt="xs"
+										className={classes.pageSubtitle}
 									>
-										Enviar OTP
-									</Button>
-								</Group>
-								<PinInput
-									length={6}
-									type="number"
-									value={otpCode}
-									onChange={setOtpCode}
-								/>
-								<Button
-									onClick={handleValidateOtp}
-									loading={verifyOtpMutation.isPending}
-									disabled={otpCode.length !== 6}
-								>
-									Validar y continuar
-								</Button>
-							</Stack>
-						</Card>
-					) : null}
+										Reserva tu espacio presencial sin fricción.
+									</Text>
+								</Box>
 
-					{currentStep === 1 ? (
-						<Card withBorder radius="md" p="xl">
-							<form onSubmit={handleContinueToSlots}>
-								<Stack gap="md">
-									<Select
-										required
-										label="Trámite"
-										placeholder={
-											proceduresQuery.isPending
-												? "Cargando trámites..."
-												: "Selecciona un trámite"
-										}
-										value={detailsForm.values.procedureTypeId}
-										onChange={(value) => {
-											const nextProcedureTypeId = value ?? "";
-											detailsForm.setFieldValue(
-												"procedureTypeId",
-												nextProcedureTypeId,
-											);
-
-											const requiresVehicle =
-												proceduresById.get(nextProcedureTypeId)
-													?.requiresVehicle ?? false;
-											if (!requiresVehicle && detailsForm.values.plate) {
-												detailsForm.setFieldValue("plate", "");
-											}
-										}}
-										data={(proceduresQuery.data ?? []).map(
-											(procedure: CitizenProcedure) => ({
-												value: procedure.id,
-												label: procedure.name,
-											}),
-										)}
-										error={
-											proceduresQuery.isError
-												? "No pudimos cargar los trámites disponibles"
-												: detailsForm.errors.procedureTypeId
-										}
-									/>
-
-									{selectedProcedure?.requiresVehicle ? (
-										<TextInput
-											required
-											label="Placa"
-											placeholder="Ej: ABC123"
-											value={detailsForm.values.plate}
-											onChange={(event) =>
-												detailsForm.setFieldValue(
-													"plate",
-													event.currentTarget.value.toUpperCase(),
-												)
-											}
-											error={detailsForm.errors.plate}
-										/>
-									) : null}
-
-									<SimpleGrid cols={{ base: 1, sm: 2 }}>
-										<TextInput
-											required
-											label="Nombre completo"
-											placeholder="Ej: Ana Gómez"
-											{...detailsForm.getInputProps("applicantName")}
-										/>
-										<TextInput
-											required
-											label="Documento"
-											placeholder="Número de identificación"
-											{...detailsForm.getInputProps("applicantDocument")}
-										/>
-										<Select
-											label="Tipo documento"
-											data={[
-												{ value: "CC", label: "CC" },
-												{ value: "CE", label: "CE" },
-												{ value: "PP", label: "Pasaporte" },
-											]}
-											{...detailsForm.getInputProps("documentType")}
-										/>
-										<TextInput
-											label="Teléfono"
-											placeholder="Ej: 3001234567"
-											{...detailsForm.getInputProps("phone")}
-										/>
-									</SimpleGrid>
-
-									<TextInput
-										required
-										type="email"
-										label="Correo de contacto"
-										placeholder="correo@ejemplo.com"
-										{...detailsForm.getInputProps("email")}
-									/>
-
-									<Textarea
-										label="Notas (opcional)"
-										minRows={2}
-										placeholder="Información adicional para la cita"
-										{...detailsForm.getInputProps("notes")}
-									/>
-
-									<Group justify="space-between">
-										<Button
-											variant="default"
-											onClick={() => setAuthenticatedStep(0)}
-										>
-											Volver
-										</Button>
-										<Button type="submit">Continuar a horarios</Button>
-									</Group>
-								</Stack>
-							</form>
-						</Card>
-					) : null}
-
-					{currentStep === 2 ? (
-						<Card withBorder radius="md" p="xl">
-							<Stack gap="md">
-								<Group justify="space-between" align="center">
-									<Text fw={600}>Selecciona fecha y horario</Text>
-									{slotsRangeQuery.isFetching ? <Loader size="sm" /> : null}
-								</Group>
-
-								{slotsRangeQuery.isPending ? (
-									<Group gap="sm">
-										<Loader size="sm" />
-										<Text size="sm" c="dimmed">
-											Cargando disponibilidad real...
-										</Text>
-									</Group>
-								) : null}
-
-								{availableDates.length > 0 ? (
-									<>
-										<Select
-											label="Fecha"
-											value={resolvedSelectedDate}
-											onChange={(value) => {
-												setSelectedDate(value);
-												setSelectedSlotId(null);
-											}}
-											data={availableDates.map((day) => ({
-												value: day.date,
-												label: formatDateLabel(day.date),
-											}))}
-										/>
-
-										<SimpleGrid cols={{ base: 1, sm: 2 }}>
-											{selectedDaySlots.map((slot) => (
-												<Button
-													key={slot.id}
-													variant={
-														resolvedSelectedSlotId === slot.id
-															? "filled"
-															: "default"
-													}
-													onClick={() => setSelectedSlotId(slot.id)}
+								<form onSubmit={handleReserveClick}>
+									<Stack gap={64}>
+										{/* Step 1: Procedure */}
+										<Box>
+											<Group gap="md" mb="xl" align="center">
+												<ThemeIcon
+													size={32}
+													radius="xl"
+													color="red"
+													variant="filled"
+													className={classes.stepBadge}
 												>
-													{slot.startTime} - {slot.endTime} (
-													{slot.remainingCapacity ?? "∞"})
-												</Button>
-											))}
-										</SimpleGrid>
-									</>
-								) : (
-									<Alert color="yellow" icon={<CalendarClock size={16} />}>
-										No hay cupos disponibles en el rango consultado.
-									</Alert>
-								)}
+													1
+												</ThemeIcon>
+												<Text fw={600} size="xl" className={classes.stepTitle}>
+													¿Qué trámite necesitas?
+												</Text>
+											</Group>
 
-								<Divider />
-
-								<Group justify="space-between">
-									<Button
-										variant="default"
-										onClick={() => setAuthenticatedStep(1)}
-									>
-										Volver a datos
-									</Button>
-									<Button
-										onClick={() => {
-											setError(null);
-											setFeedback(null);
-											void holdMutation.mutateAsync();
-										}}
-										loading={holdMutation.isPending}
-										disabled={!resolvedSelectedSlotId}
-									>
-										Reservar temporalmente
-									</Button>
-								</Group>
-							</Stack>
-						</Card>
-					) : null}
-
-					{currentStep === 3 && holdBooking ? (
-						<Card withBorder radius="md" p="xl">
-							<Stack gap="lg">
-								<Alert
-									color={holdExpired ? "red" : "yellow"}
-									icon={<Clock size={16} />}
-								>
-									{holdExpired ? (
-										<>
-											La reserva temporal expiró. Selecciona un nuevo horario.
-										</>
-									) : (
-										<>
-											Tu reserva temporal expira en{" "}
-											<b>{formatSeconds(holdRemainingSeconds)}</b>.
-										</>
-									)}
-								</Alert>
-
-								<Grid>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text size="sm" c="dimmed">
-											Trámite
-										</Text>
-										<Text fw={600}>
-											{holdBooking.request?.procedure?.name ?? "-"}
-										</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text size="sm" c="dimmed">
-											Horario
-										</Text>
-										<Text fw={600}>
-											{holdBooking.slot?.slotDate ?? "-"}{" "}
-											{holdBooking.slot?.startTime ?? ""}
-										</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text size="sm" c="dimmed">
-											Estado
-										</Text>
-										<Text fw={600}>{holdBooking.status}</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text size="sm" c="dimmed">
-											Expira
-										</Text>
-										<Text fw={600}>
-											{formatDateTime(holdBooking.holdExpiresAt)}
-										</Text>
-									</Grid.Col>
-								</Grid>
-
-								<Divider
-									label="Requisitos y plantillas"
-									labelPosition="center"
-								/>
-
-								<Alert color="blue" icon={<FileText size={16} />}>
-									No se reciben formularios ni documentos de trámite por carga
-									digital. Descarga las plantillas disponibles y llévalas
-									impresas el día de la cita.
-								</Alert>
-
-								{procedureRequirements.length > 0 ? (
-									<Stack gap="sm">
-										{procedureRequirements.map((requirement) => (
-											<Card key={requirement.key} withBorder radius="md" p="md">
-												<Stack gap={6}>
-													<Group justify="space-between" wrap="nowrap">
-														<Text fw={600}>{requirement.label}</Text>
-														<Badge
-															color={requirement.isRequired ? "red" : "gray"}
-															variant="light"
+											{proceduresQuery.isPending ? (
+												<Loader size="sm" color="red" />
+											) : (
+												<div className={classes.radioList}>
+													{proceduresQuery.data?.map((proc) => (
+														<UnstyledButton
+															key={proc.id}
+															className={classes.radioCard}
+															data-checked={
+																detailsForm.values.procedureTypeId ===
+																	proc.id || undefined
+															}
+															onClick={() => {
+																detailsForm.setFieldValue(
+																	"procedureTypeId",
+																	proc.id,
+																);
+																setRequirementsAcknowledged(false);
+																setSelectedDate(null);
+																setSelectedSlotId(null);
+																if (!proc.requiresVehicle) {
+																	detailsForm.setFieldValue("plate", "");
+																}
+															}}
 														>
-															{requirement.isRequired
-																? "Obligatorio"
-																: "Opcional"}
-														</Badge>
-													</Group>
-													{requirement.instructions ? (
-														<Text size="sm" c="dimmed">
-															{requirement.instructions}
-														</Text>
-													) : null}
-													{requirement.downloadUrl ? (
-														<Anchor
-															href={requirement.downloadUrl}
-															target="_blank"
-															rel="noreferrer"
-															size="sm"
-														>
-															Descargar formato
-														</Anchor>
+															<div className={classes.radioCheck} />
+															<div>
+																<Text fw={600} size="md">
+																	{proc.name}
+																</Text>
+																{proc.requiresVehicle && (
+																	<Badge
+																		color="blue"
+																		variant="dot"
+																		size="xs"
+																		mt={8}
+																	>
+																		Requiere placa
+																	</Badge>
+																)}
+															</div>
+														</UnstyledButton>
+													))}
+												</div>
+											)}
+										</Box>
+
+										{/* Step 2: Requirements */}
+										{selectedProcedure && (
+											<Box className={classes.fadeEnter}>
+												<Group gap="md" mb="xl" align="center">
+													<ThemeIcon
+														size={32}
+														radius="xl"
+														color="red"
+														variant="filled"
+														className={classes.stepBadge}
+													>
+														2
+													</ThemeIcon>
+													<Text
+														fw={600}
+														size="xl"
+														className={classes.stepTitle}
+													>
+														Requisitos del trámite
+													</Text>
+												</Group>
+
+												<div className={classes.requirementsBox}>
+													{procedureRequirements.length > 0 ? (
+														<Stack gap="lg" mb="xl">
+															{procedureRequirements.map((req) => (
+																<Box
+																	key={req.key}
+																	className={classes.requirementItem}
+																>
+																	<Group
+																		justify="space-between"
+																		align="center"
+																		wrap="nowrap"
+																	>
+																		<div>
+																			<Text fw={600} size="sm">
+																				{req.label}
+																			</Text>
+																			{req.instructions && (
+																				<Text size="sm" c="dimmed" mt={4}>
+																					{req.instructions}
+																				</Text>
+																			)}
+																		</div>
+																		{req.downloadUrl && (
+																			<Anchor
+																				href={req.downloadUrl}
+																				target="_blank"
+																				className={classes.downloadLink}
+																			>
+																				Descargar formato
+																			</Anchor>
+																		)}
+																	</Group>
+																</Box>
+															))}
+														</Stack>
 													) : (
-														<Text size="sm" c="dimmed">
-															Formato no cargado en plataforma. Solicítalo en
-															ventanilla antes de asistir.
+														<Text size="sm" c="dimmed" fs="italic" mb="xl">
+															No hay plantillas requeridas.
 														</Text>
 													)}
-												</Stack>
-											</Card>
-										))}
+
+													<Checkbox
+														size="md"
+														color="red"
+														label="He revisado los requisitos y llevaré las plantillas impresas el día de mi cita."
+														checked={requirementsAcknowledged}
+														onChange={(e) =>
+															setRequirementsAcknowledged(
+																e.currentTarget.checked,
+															)
+														}
+														className={classes.acknowledgeCheck}
+													/>
+												</div>
+											</Box>
+										)}
+
+										{/* Step 3: Slots */}
+										{selectedProcedure && requirementsAcknowledged && (
+											<Box className={classes.fadeEnter}>
+												<Group gap="md" mb="xl" align="center">
+													<ThemeIcon
+														size={32}
+														radius="xl"
+														color="red"
+														variant="filled"
+														className={classes.stepBadge}
+													>
+														3
+													</ThemeIcon>
+													<Text
+														fw={600}
+														size="xl"
+														className={classes.stepTitle}
+													>
+														Fecha y Horario
+													</Text>
+												</Group>
+
+												{slotsRangeQuery.isPending ? (
+													<Loader size="sm" color="red" />
+												) : availableDates.length > 0 ? (
+													<Grid style={{ gap: "var(--mantine-spacing-xl)" }}>
+														<Grid.Col span={{ base: 12, sm: 5 }}>
+															<Stack gap="sm" className={classes.dateList}>
+																{availableDates.map((day) => (
+																	<UnstyledButton
+																		key={day.date}
+																		className={classes.datePill}
+																		data-active={
+																			resolvedSelectedDate === day.date ||
+																			undefined
+																		}
+																		onClick={() => {
+																			setSelectedDate(day.date);
+																			setSelectedSlotId(null);
+																		}}
+																	>
+																		<Text
+																			size="xs"
+																			tt="uppercase"
+																			fw={700}
+																			className={classes.dateMonth}
+																		>
+																			{new Date(
+																				`${day.date}T00:00:00`,
+																			).toLocaleDateString("es-CO", {
+																				month: "short",
+																			})}
+																		</Text>
+																		<Text
+																			size="xl"
+																			fw={700}
+																			className={classes.dateDay}
+																		>
+																			{new Date(
+																				`${day.date}T00:00:00`,
+																			).getDate()}
+																		</Text>
+																		<Text
+																			size="xs"
+																			fw={500}
+																			className={classes.dateWeekday}
+																		>
+																			{new Date(
+																				`${day.date}T00:00:00`,
+																			).toLocaleDateString("es-CO", {
+																				weekday: "short",
+																			})}
+																		</Text>
+																	</UnstyledButton>
+																))}
+															</Stack>
+														</Grid.Col>
+														<Grid.Col span={{ base: 12, sm: 7 }}>
+															{selectedDaySlots.length > 0 ? (
+																<SimpleGrid cols={2} spacing="md">
+																	{selectedDaySlots.map((slot) => (
+																		<UnstyledButton
+																			key={slot.id}
+																			className={classes.slotButton}
+																			data-active={
+																				resolvedSelectedSlotId === slot.id ||
+																				undefined
+																			}
+																			onClick={() => setSelectedSlotId(slot.id)}
+																		>
+																			<Text
+																				fw={600}
+																				size="md"
+																				ff="monospace"
+																				style={{ letterSpacing: 0.5 }}
+																			>
+																				{slot.startTime}
+																			</Text>
+																		</UnstyledButton>
+																	))}
+																</SimpleGrid>
+															) : (
+																<Text c="dimmed" size="sm">
+																	No hay horarios este día.
+																</Text>
+															)}
+														</Grid.Col>
+													</Grid>
+												) : (
+													<Alert
+														color="yellow"
+														icon={<CalendarClock size={16} />}
+													>
+														No hay cupos disponibles. Intenta más adelante.
+													</Alert>
+												)}
+											</Box>
+										)}
+
+										{/* Step 4: Personal Details */}
+										{selectedProcedure &&
+											requirementsAcknowledged &&
+											resolvedSelectedSlotId && (
+												<Box className={classes.fadeEnter}>
+													<Group gap="md" mb="xl" align="center">
+														<ThemeIcon
+															size={32}
+															radius="xl"
+															color="red"
+															variant="filled"
+															className={classes.stepBadge}
+														>
+															4
+														</ThemeIcon>
+														<Text
+															fw={600}
+															size="xl"
+															className={classes.stepTitle}
+														>
+															Datos Personales
+														</Text>
+													</Group>
+
+													<div className={classes.formGrid}>
+														<TextInput
+															required
+															label="Nombre completo"
+															placeholder="Ana Gómez"
+															classNames={{
+																input: classes.input,
+																label: classes.inputLabel,
+															}}
+															{...detailsForm.getInputProps("applicantName")}
+														/>
+														<Flex gap="sm">
+															<Select
+																label="Tipo"
+																data={["CC", "CE", "PP"]}
+																w={90}
+																classNames={{
+																	input: classes.input,
+																	label: classes.inputLabel,
+																}}
+																{...detailsForm.getInputProps("documentType")}
+															/>
+															<TextInput
+																required
+																label="Documento"
+																placeholder="123456789"
+																style={{ flex: 1 }}
+																classNames={{
+																	input: classes.input,
+																	label: classes.inputLabel,
+																}}
+																{...detailsForm.getInputProps(
+																	"applicantDocument",
+																)}
+															/>
+														</Flex>
+														<TextInput
+															required
+															type="email"
+															label="Correo electrónico"
+															placeholder="correo@ejemplo.com"
+															classNames={{
+																input: classes.input,
+																label: classes.inputLabel,
+															}}
+															{...detailsForm.getInputProps("email")}
+															disabled={isAuthenticated}
+														/>
+														<TextInput
+															label="Teléfono"
+															placeholder="3001234567"
+															classNames={{
+																input: classes.input,
+																label: classes.inputLabel,
+															}}
+															{...detailsForm.getInputProps("phone")}
+														/>
+														{selectedProcedure.requiresVehicle && (
+															<TextInput
+																required
+																label="Placa del vehículo"
+																placeholder="ABC123"
+																classNames={{
+																	input: classes.input,
+																	label: classes.inputLabel,
+																}}
+																{...detailsForm.getInputProps("plate")}
+																onChange={(e) =>
+																	detailsForm.setFieldValue(
+																		"plate",
+																		e.currentTarget.value.toUpperCase(),
+																	)
+																}
+															/>
+														)}
+													</div>
+
+													<Button
+														type="submit"
+														size="xl"
+														color="red"
+														fullWidth
+														mt={48}
+														loading={
+															holdMutation.isPending ||
+															sendOtpMutation.isPending
+														}
+														className={classes.actionButton}
+														rightSection={<ChevronRight size={20} />}
+													>
+														Asegurar mi cupo
+													</Button>
+												</Box>
+											)}
 									</Stack>
-								) : (
-									<Alert color="yellow" icon={<AlertCircle size={16} />}>
-										Este trámite no tiene requisitos documentales configurados
-										en plataforma. Revisa las instrucciones del trámite y
-										confirma con SIMUT antes de asistir.
-									</Alert>
-								)}
-
-								<Checkbox
-									checked={requirementsAcknowledged}
-									onChange={(event) => {
-										const checked = event.currentTarget.checked;
-										setRequirementsAcknowledged(checked);
-										if (checked) {
-											setError(null);
-										}
-									}}
-									label="Confirmo que revisé los requisitos y llevaré los formatos/documentos en físico."
-								/>
-
-								<Divider />
-
-								<Group justify="space-between">
-									<Button
-										variant="default"
-										onClick={() => {
-											setError(null);
-											setFeedback(null);
-											void cancelHoldMutation.mutateAsync();
-										}}
-										loading={cancelHoldMutation.isPending}
-									>
-										{holdExpired ? "Elegir otro horario" : "Cancelar reserva"}
-									</Button>
-									<Button
-										onClick={() => {
-											if (!requirementsAcknowledged) {
-												setError(
-													"Debes confirmar que llevarás los requisitos físicos antes de continuar.",
-												);
-												return;
-											}
-											setError(null);
-											setFeedback(null);
-											setAuthenticatedStep(4);
-										}}
-										disabled={holdExpired || !requirementsAcknowledged}
-									>
-										Continuar a confirmar
-									</Button>
-								</Group>
+								</form>
 							</Stack>
-						</Card>
-					) : null}
+						</Grid.Col>
 
-					{currentStep === 4 && holdBooking ? (
-						<Card withBorder radius="md" p="xl">
-							<Stack gap="lg">
-								<Alert
-									color={holdExpired ? "red" : "yellow"}
-									icon={<Clock size={16} />}
+						{/* Right Pane */}
+						<Grid.Col span={{ base: 12, md: 5, lg: 5 }}>
+							<div className={classes.stickySummary}>
+								<Text
+									fw={700}
+									tt="uppercase"
+									size="xs"
+									c="red"
+									mb="xl"
+									style={{ letterSpacing: 1.5 }}
 								>
-									{holdExpired ? (
-										<>
-											La reserva temporal expiró. Selecciona un nuevo horario.
-										</>
-									) : (
-										<>
-											Tu reserva temporal expira en{" "}
-											<b>{formatSeconds(holdRemainingSeconds)}</b>.
-										</>
-									)}
-								</Alert>
+									Tu Cita en Curso
+								</Text>
 
-								<Group gap="sm">
-									<ThemeIcon size="lg" variant="light" color="blue" radius="xl">
-										<FileText size={18} />
-									</ThemeIcon>
-									<Stack gap={0}>
-										<Text fw={600}>Resumen de tu cita</Text>
-										<Text size="sm" c="dimmed">
-											Revisa los datos antes de confirmar
-										</Text>
-									</Stack>
-								</Group>
-
-								<Grid>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text size="sm" c="dimmed">
+								<Stack gap="xl">
+									<Box>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={8}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
 											Trámite
 										</Text>
-										<Text fw={600}>
-											{holdBooking.request?.procedure?.name ?? "-"}
-										</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text size="sm" c="dimmed">
+										{selectedProcedure?.name ? (
+											<Text fw={500} size="lg" lh={1.3}>
+												{selectedProcedure.name}
+											</Text>
+										) : (
+											<Badge
+												variant="outline"
+												color="gray"
+												style={{ borderStyle: "dashed", borderWidth: 2 }}
+												radius="sm"
+												size="md"
+												tt="none"
+												fw={500}
+											>
+												Pendiente
+											</Badge>
+										)}
+									</Box>
+
+									<Box>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={8}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
 											Horario
 										</Text>
-										<Text fw={600}>
-											{holdBooking.slot?.slotDate ?? "-"}{" "}
-											{holdBooking.slot?.startTime ?? ""}
-										</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text size="sm" c="dimmed">
+										{resolvedSelectedDate ? (
+											<Text fw={500} size="lg">
+												{formatDateLabel(resolvedSelectedDate)}
+												{resolvedSelectedSlotId &&
+													` • ${selectedDaySlots.find((s) => s.id === resolvedSelectedSlotId)?.startTime || ""}`}
+											</Text>
+										) : (
+											<Badge
+												variant="outline"
+												color="gray"
+												style={{ borderStyle: "dashed", borderWidth: 2 }}
+												radius="sm"
+												size="md"
+												tt="none"
+												fw={500}
+											>
+												Pendiente
+											</Badge>
+										)}
+									</Box>
+
+									<Box>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={8}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
 											Estado
 										</Text>
-										<Text fw={600}>{holdBooking.status}</Text>
+										<Badge color="gray" variant="light" size="lg" radius="sm">
+											Configurando
+										</Badge>
+									</Box>
+								</Stack>
+							</div>
+						</Grid.Col>
+					</Grid>
+				) : (
+					/* Confirmation View */
+					<Container size="sm" className={classes.fadeEnter}>
+						<div className={classes.holdContainer}>
+							<div className={classes.holdHeader}>
+								{holdExpired ? (
+									<Group
+										wrap="nowrap"
+										gap="md"
+										bg="red.0"
+										c="red.9"
+										p="lg"
+										style={{ borderRadius: "var(--mantine-radius-md)" }}
+									>
+										<ThemeIcon color="red" variant="light" size="lg" radius="xl">
+											<Clock size={20} />
+										</ThemeIcon>
+										<Text fw={600} size="md">
+											Tu reserva expiró. Por favor, selecciona otro horario.
+										</Text>
+									</Group>
+								) : (
+									<Group
+										wrap="nowrap"
+										gap="md"
+										bg="gray.0"
+										p="lg"
+										style={{
+											borderRadius: "var(--mantine-radius-md)",
+											border: "1px solid var(--mantine-color-gray-2)",
+										}}
+									>
+										<ThemeIcon color="gray" variant="light" size="lg" radius="xl">
+											<Clock size={20} />
+										</ThemeIcon>
+										<div style={{ flex: 1 }}>
+											<Text fw={600} size="md" c="dark.9">
+												Cupo temporal asegurado
+											</Text>
+											<Text size="sm" c="dimmed">
+												Completa la confirmación antes de que termine el tiempo.
+											</Text>
+										</div>
+										<Badge
+											size="xl"
+											variant="light"
+											color="dark"
+											radius="sm"
+											ff="monospace"
+											fw={700}
+											style={{ letterSpacing: 1 }}
+										>
+											{formatSeconds(holdRemainingSeconds)}
+										</Badge>
+									</Group>
+								)}
+							</div>
+
+							<Box p={{ base: 32, md: 48 }}>
+								<Text
+									fw={700}
+									tt="uppercase"
+									size="xs"
+									c="red"
+									mb="xl"
+									style={{ letterSpacing: 1.5 }}
+								>
+									Confirma tu asistencia
+								</Text>
+
+								<Grid style={{ gap: "var(--mantine-spacing-xl)" }}>
+									<Grid.Col span={12}>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={4}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
+											Trámite
+										</Text>
+										<Text fw={600} size="lg">
+											{holdBooking.request?.procedure?.name}
+										</Text>
 									</Grid.Col>
 									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text size="sm" c="dimmed">
-											Expira
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={4}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
+											Fecha
 										</Text>
-										<Text fw={600}>
-											{formatDateTime(holdBooking.holdExpiresAt)}
+										<Text fw={600} size="md">
+											{holdBooking.slot?.slotDate}
+										</Text>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 6 }}>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={4}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
+											Hora
+										</Text>
+										<Text fw={600} size="md" ff="monospace">
+											{holdBooking.slot?.startTime}
+										</Text>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 6 }}>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={4}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
+											A nombre de
+										</Text>
+										<Text fw={500} size="md">
+											{holdBooking.request?.applicantName}
+										</Text>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 6 }}>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={4}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
+											Documento
+										</Text>
+										<Text fw={500} size="md">
+											{holdBooking.request?.applicantDocument}
 										</Text>
 									</Grid.Col>
 								</Grid>
 
-								<Alert color="blue" icon={<FileText size={16} />}>
-									Recuerda presentarte con los formatos y documentos impresos.
-									El trámite no admite radicación digital de archivos.
-								</Alert>
+								<Divider my={48} />
 
-								<Divider />
+								<div className={classes.warningBox}>
+									<Group wrap="nowrap" align="flex-start" gap="md">
+										<FileText size={24} className={classes.warningIcon} />
+										<div>
+											<Text fw={700} mb={4}>
+												Presentación Física Obligatoria
+											</Text>
+											<Text size="sm" c="dimmed" lh={1.5}>
+												Recuerda que debes presentarte el día de tu cita con
+												todos los requisitos y plantillas impresas. No se
+												aceptan envíos digitales.
+											</Text>
+										</div>
+									</Group>
+								</div>
 
-								<Group justify="space-between">
+								<Group justify="space-between" mt={48}>
 									<Button
-										variant="default"
-										onClick={() => setAuthenticatedStep(3)}
+										variant="subtle"
+										color="gray"
+										size="lg"
+										onClick={() => cancelHoldMutation.mutate()}
+										loading={cancelHoldMutation.isPending}
 									>
-										Volver a requisitos
+										{holdExpired ? "Elegir otro horario" : "Cancelar"}
 									</Button>
 									<Button
-										onClick={() => {
-											setError(null);
-											setFeedback(null);
-											void confirmMutation.mutateAsync();
-										}}
+										size="xl"
+										color="red"
+										onClick={() => confirmMutation.mutate()}
 										loading={confirmMutation.isPending}
 										disabled={holdExpired}
+										className={classes.actionButton}
 									>
-										Confirmar cita
+										Confirmar cita definitivamente
 									</Button>
 								</Group>
-							</Stack>
-						</Card>
-					) : null}
-				</Stack>
+							</Box>
+						</div>
+					</Container>
+				)}
 			</Container>
+
+			{/* OTP Modal */}
+			<Modal
+				opened={isAuthModalOpen}
+				onClose={() => setIsAuthModalOpen(false)}
+				withCloseButton={false}
+				size="sm"
+				centered
+				classNames={{ body: classes.modalBody }}
+				padding="xl"
+				radius="md"
+			>
+				<Stack gap="xl">
+					<Box ta="center">
+						<Title order={3} mb="xs" fw={700}>
+							Verifica tu correo
+						</Title>
+						<Text size="sm" c="dimmed" lh={1.5}>
+							Ingresa el código de 6 dígitos que enviamos a <br />
+							<Text component="span" fw={600} c="dark.9">
+								{authEmail}
+							</Text>
+						</Text>
+					</Box>
+
+					{error && (
+						<Alert color="red" variant="light">
+							{error}
+						</Alert>
+					)}
+
+					<Box>
+						<Group justify="center">
+							<PinInput
+								length={6}
+								type="number"
+								size="xl"
+								value={otpCode}
+								onChange={setOtpCode}
+								disabled={verifyOtpMutation.isPending}
+								className={classes.pinInput}
+							/>
+						</Group>
+					</Box>
+
+					<Stack gap="md" mt="xl">
+						<Button
+							color="red"
+							size="xl"
+							fullWidth
+							onClick={() =>
+								verifyOtpMutation.mutate({ email: authEmail, otp: otpCode })
+							}
+							loading={verifyOtpMutation.isPending}
+							disabled={otpCode.length !== 6}
+							className={classes.actionButton}
+						>
+							Validar y Reservar
+						</Button>
+
+						<Anchor
+							component="button"
+							size="sm"
+							ta="center"
+							c="dimmed"
+							fw={500}
+							onClick={() => sendOtpMutation.mutate(authEmail)}
+							disabled={sendOtpMutation.isPending}
+						>
+							Reenviar código
+						</Anchor>
+					</Stack>
+				</Stack>
+			</Modal>
 		</Box>
 	);
 }

@@ -47,6 +47,7 @@ Estas reglas son obligatorias para cualquier agente que trabaje en este repo:
 - si el cambio afecta rutas, contratos o comportamiento backend, actualiza `packages/server/src/BACKEND_STATUS.md` en el mismo cambio,
 - si un cambio deja obsoleto algun `.md` enlazado desde este archivo, tambien debes actualizar ese documento en el mismo cambio,
 - no cierres una tarea dejando drift entre codigo y documentacion.
+- si estas haciendo tareas de frontend o disenando UI, debes leer obligatoriamente `.impeccable.md` en la raiz del proyecto antes de comenzar para respetar el contexto de diseno.
 
 Lista minima de `.md` enlazados que debes mantener sincronizados cuando aplique:
 - `AGENTS.md`,
