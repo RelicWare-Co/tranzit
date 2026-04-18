@@ -161,11 +161,8 @@ export function ProcedureDetailPanel({
 							>
 								Físicos: {procedure.allowsPhysicalDocuments ? "Sí" : "No"}
 							</Badge>
-							<Badge
-								variant="light"
-								color={procedure.allowsDigitalDocuments ? "teal" : "gray"}
-							>
-								Digitales: {procedure.allowsDigitalDocuments ? "Sí" : "No"}
+							<Badge variant="light" color="gray">
+								Digitales: No (bloqueado por política)
 							</Badge>
 						</Group>
 						<JsonInput

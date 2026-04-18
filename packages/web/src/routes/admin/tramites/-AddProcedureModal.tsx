@@ -1,11 +1,4 @@
-import {
-	Alert,
-	Checkbox,
-	Stack,
-	Switch,
-	Textarea,
-	TextInput,
-} from "@mantine/core";
+import { Alert, Stack, Switch, Textarea, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import {
 	AlertCircle,
@@ -101,7 +94,7 @@ export function AddProcedureModal({
 			description: "",
 			requiresVehicle: false,
 			allowsPhysicalDocuments: true,
-			allowsDigitalDocuments: true,
+			allowsDigitalDocuments: false,
 		},
 	});
 
@@ -171,7 +164,7 @@ export function AddProcedureModal({
 				description: values.description.trim() || undefined,
 				requiresVehicle: values.requiresVehicle,
 				allowsPhysicalDocuments: values.allowsPhysicalDocuments,
-				allowsDigitalDocuments: values.allowsDigitalDocuments,
+				allowsDigitalDocuments: false,
 			};
 			await onCreate(payload);
 			form.reset();
@@ -353,86 +346,36 @@ export function AddProcedureModal({
 
 				<FormSection
 					title="Configuración de documentos"
-					description="Define qué tipos de documentos acepta este trámite"
+					description="La plataforma solo permite gestión física de requisitos para ciudadanos"
 					icon={
 						<FileText size={20} className="text-zinc-500" strokeWidth={1.5} />
 					}
 				>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<button
-							type="button"
-							onClick={() =>
-								form.setFieldValue(
-									"allowsPhysicalDocuments",
-									!values.allowsPhysicalDocuments,
-								)
-							}
-							className={cx(
-								"flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 text-left",
-								values.allowsPhysicalDocuments
-									? "border-emerald-200 bg-emerald-50/30"
-									: "border-zinc-200 bg-zinc-50/50 hover:border-zinc-300",
-							)}
-						>
-							<Checkbox
-								checked={values.allowsPhysicalDocuments}
-								onChange={() => {}}
-								size="md"
-								className="mt-0.5 pointer-events-none"
-							/>
+						<div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50/30">
 							<div className="flex-1">
 								<div className="font-medium text-sm text-zinc-900">
-									Documentos físicos
+									Requisitos físicos habilitados
 								</div>
 								<div className="text-xs text-zinc-500 mt-0.5">
-									Permite entrega presencial de documentos
+									Los ciudadanos deben llevar documentación y formatos impresos
+									el día de la cita.
 								</div>
 							</div>
-						</button>
+						</div>
 
-						<button
-							type="button"
-							onClick={() =>
-								form.setFieldValue(
-									"allowsDigitalDocuments",
-									!values.allowsDigitalDocuments,
-								)
-							}
-							className={cx(
-								"flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 text-left",
-								values.allowsDigitalDocuments
-									? "border-emerald-200 bg-emerald-50/30"
-									: "border-zinc-200 bg-zinc-50/50 hover:border-zinc-300",
-							)}
-						>
-							<Checkbox
-								checked={values.allowsDigitalDocuments}
-								onChange={() => {}}
-								size="md"
-								className="mt-0.5 pointer-events-none"
-							/>
+						<div className="flex items-start gap-3 p-4 rounded-xl border border-zinc-200 bg-zinc-50/50">
 							<div className="flex-1">
 								<div className="font-medium text-sm text-zinc-900">
-									Documentos digitales
+									Carga digital deshabilitada
 								</div>
 								<div className="text-xs text-zinc-500 mt-0.5">
-									Permite carga de archivos en línea
+									Por política vigente no se permite subir archivos del trámite
+									desde el portal ciudadano.
 								</div>
 							</div>
-						</button>
+						</div>
 					</div>
-
-					{!values.allowsPhysicalDocuments &&
-						!values.allowsDigitalDocuments && (
-							<Alert
-								color="amber"
-								variant="light"
-								radius="lg"
-								className="border border-amber-200/50"
-							>
-								El trámite debe aceptar al menos un tipo de documento
-							</Alert>
-						)}
 				</FormSection>
 
 				<FormSection
@@ -481,11 +424,7 @@ export function AddProcedureModal({
 						variant="primary"
 						isLoading={isSubmitting}
 						onClick={handleSubmit}
-						disabled={
-							!isValid ||
-							(!values.allowsPhysicalDocuments &&
-								!values.allowsDigitalDocuments)
-						}
+						disabled={!isValid}
 						leftSection={<FileText size={18} strokeWidth={1.5} />}
 					>
 						Crear trámite

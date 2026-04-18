@@ -42,7 +42,7 @@ export const procedureCreateSchema = z.object({
 		.transform((val) => (val.length > 0 ? val : undefined)),
 	requiresVehicle: z.boolean().default(false),
 	allowsPhysicalDocuments: z.boolean().default(true),
-	allowsDigitalDocuments: z.boolean().default(true),
+	allowsDigitalDocuments: z.boolean().default(false),
 });
 
 export type ProcedureCreateFormValues = z.infer<typeof procedureCreateSchema>;

@@ -1,6 +1,6 @@
 # Backend Status (Current Implementation)
 
-Last updated: 2026-04-17
+Last updated: 2026-04-18
 
 This document describes what the backend **really has implemented today**.
 Use it as an operational map before adding or changing backend behavior.
@@ -153,6 +153,7 @@ Key behavior already implemented:
 - get procedure by ID
 - create with slug validation and deduplication
 - update with config version increment on schema-impacting changes
+- policy enforcement: digital citizen document upload is disabled and `allowsDigitalDocuments` is normalized to `false`
 - remove with soft-delete guard when service requests exist
 - **audit events for all mutations**: create, update, and delete (both soft and hard delete) create `audit_event` entries with `action` and `payload`
 
@@ -192,6 +193,8 @@ Key behavior already implemented:
 - `citizen.bookings.mine`
 
 Key behavior already implemented:
+- citizen procedures are exposed in physical-only mode (`allowsDigitalDocuments=false`)
+- `citizen.bookings.hold` persists `service_request.documentMode="physical_only"`
 - **Email notifications on booking lifecycle events**:
   - `citizen.bookings.confirm` sends a confirmation email with procedure name, date/time, staff name, and applicant details
   - `citizen.bookings.cancel` sends a cancellation notification email
@@ -224,7 +227,7 @@ Key behavior:
 ### 2.7 Citizen documents module (`server/src/orpc/modules/documents.router.ts`)
 
 Citizen endpoints:
-- `documents.upload` — Upload a document for a service request
+- `documents.upload` — **Disabled by policy** (returns `FORBIDDEN`; citizen digital upload not allowed)
 - `documents.declarePhysical` — Declare a document as physically delivered (creates row with deliveryMode=physical, status=marked_as_physical)
 - `documents.list` — List documents for a service request
 
@@ -239,14 +242,8 @@ HTTP endpoints:
 - `GET /api/admin/documents/:documentId/download` — Download document file with proper MIME headers
 
 Key behavior already implemented:
-- MIME type validation (PDF, PNG, JPG only)
-- File size limit (10MB maximum)
-- Base64 content encoding validation
-- Storage key generation with format: `documents/{requestId}/{timestamp}-{random}-{filename}`
-- **File persistence to disk** at storage key path (e.g., `uploads/documents/{requestId}/{timestamp}-{random}-{filename}`)
-- Creates `request_document` row with `status=pending`, `isCurrent=true`
-- Automatically marks previous documents for same `requirementKey` as not current
-- Ownership verification (only service request owner can upload/view documents)
+- citizen digital upload is explicitly blocked in service layer and router surface
+- ownership verification on citizen list/declare endpoints
 - Admin document download serves file with correct `Content-Type` header
 - Admin download requires admin/staff/auditor role
 - Physical declaration (`declarePhysical`) creates row with `deliveryMode=physical`, `status=marked_as_physical`, no storageKey
@@ -364,7 +361,7 @@ Main guarantees implemented:
 Even with the current backend, this is still missing or partial:
 - advanced citizen API flow for:
   - full service request lifecycle beyond hold/confirm base
-  - document review/approval workflow (upload with file persistence is implemented, review API pending)
+  - flujo documental ciudadano avanzado (más allá de confirmación/registro físico básico por solicitud)
 - full E2E test coverage for citizen frontend-backend integration
 
 ## 5) Quality baseline currently passing

@@ -12,6 +12,8 @@ La identidad vive en `better-auth`. La tabla `verification` se deja con el shape
 `procedure_type`
 Cada trámite guarda su formulario, reglas de elegibilidad, documentos requeridos y políticas como JSON. Eso evita una explosión de tablas de "campos", "secciones", "reglas" y "dependencias" en esta primera fase.
 
+Por política operativa vigente, la carga digital ciudadana de documentos está deshabilitada. `allowsDigitalDocuments` se conserva por compatibilidad histórica del esquema, pero backend lo fuerza a `false` en las superficies activas y el flujo ciudadano opera en modo físico.
+
 Además, `configVersion` permite distinguir cambios relevantes de configuración sin montar un sistema formal de versionado por entidad.
 
 `service_request`
@@ -23,7 +25,7 @@ Ahora también ancla:
 - `activeBookingId`: referencia canónica a la cita/reserva vigente de la solicitud.
 
 `request_document`
-Los documentos entregados quedan en tabla separada porque cambian de estado, pueden revisarse internamente y deben trazarse por solicitud.
+Los documentos entregados quedan en tabla separada porque cambian de estado, pueden revisarse internamente y deben trazarse por solicitud. En el flujo ciudadano actual se usa principalmente para confirmación/registro de entrega física; no para subida digital desde portal.
 
 Ya no se asume un solo archivo por requisito. Una solicitud puede tener múltiples filas para el mismo `requirementKey`. Para mantener trazabilidad liviana:
 - `isCurrent` marca si el documento pertenece al set vigente.
@@ -86,6 +88,7 @@ Son tablas genéricas. No hace falta una bitácora por módulo ni una tabla por 
 - Las reservas administrativas recurrentes deben colgar de `booking_series`; `seriesKey` no debe usarse como string libre.
 - Para una misma `idempotency_key`, el `payloadHash` debe mantenerse estable; si cambia, debe tratarse como conflicto y no como replay exitoso.
 - Si un documento reemplaza otro, crear nueva fila y enlazarla con `replacesDocumentId` en lugar de sobrescribir evidencia histórica.
+- No reintroducir carga digital ciudadana de documentos sin una decisión explícita de producto/regulatoria; el flujo vigente es descarga de plantillas + entrega física en cita.
 - Si un auxiliar solo atiende una parte del día en una fecha puntual, usar `availableStartTime` y `availableEndTime` antes de crear otra abstracción.
 
 ## Lo que todavía no estamos modelando

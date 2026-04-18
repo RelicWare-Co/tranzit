@@ -8,7 +8,7 @@ El objetivo del producto es reemplazar un proceso manual por correo por un siste
 - portal ciudadano,
 - autenticacion ligera por OTP,
 - formularios dinamicos por tramite,
-- carga documental,
+- requisitos y plantillas descargables para entrega fisica,
 - agenda configurable,
 - reservas temporales de cupos,
 - confirmacion de citas,
@@ -63,13 +63,14 @@ No asumas que el sistema ya esta completo. Hoy el repo esta en una fase intermed
 - Ya existen endpoints reales para schedule, staff, bookings y reservation-series, con capacidad y reasignacion en backend.
 - El backend expone la capa administrativa por oRPC en `/api/rpc/*`; `/api/admin/*` ya no se expone como superficie publica.
 - Ya existe una capa ciudadana inicial por oRPC para procedimientos, disponibilidad y ciclo base de reserva (hold/confirm/cancel/mis citas).
-- Todavia faltan APIs ciudadanas completas para gestion documental y ciclo de vida avanzado de `service_request`.
+- El flujo ciudadano opera en modo documental fisico: descarga de plantillas y entrega presencial.
+- Todavia faltan APIs ciudadanas completas para ciclo de vida avanzado de `service_request`.
 
 Hoy hay piezas ya conectadas y otras aun parciales:
 - `src/routes/login.tsx` ya usa OTP por correo para flujo ciudadano.
 - `src/routes/agendar.tsx` ya consume backend real para trámites, disponibilidad y reserva/confirmación.
 - `src/routes/mi-perfil.tsx` ya consume citas reales del ciudadano desde backend.
-- Sigue pendiente la parte documental y el ciclo completo de solicitud ciudadana.
+- Sigue pendiente robustecer el ciclo completo de `service_request` y pruebas E2E ciudadanas.
 
 Conclusion practica:
 - no construyas logica importante encima de mocks,
@@ -207,7 +208,7 @@ Ciudadano:
 - valida correo por OTP,
 - continua autenticado sin password,
 - completa requisitos,
-- sube documentos o marca entrega fisica,
+- descarga formatos/plantillas y lleva documentos en fisico,
 - ve agenda en tiempo real,
 - toma una reserva temporal,
 - confirma la cita,
@@ -329,7 +330,7 @@ El detalle endpoint por endpoint vive en `packages/server/src/BACKEND_STATUS.md`
 
 Lo que todavia no esta completo:
 - APIs ciudadanas avanzadas de `service_request` (beyond hold/confirm base),
-- flujo documental ciudadano completo,
+- consolidar confirmaciones documentales fisicas por trámite con mayor trazabilidad,
 - instrumentacion de auditoria/notificaciones mas completa para flujo ciudadano.
 
 Si vas a construir esa parte:
@@ -401,7 +402,7 @@ Siguientes pasos operativos prioritarios:
 
 Brecha ciudadana que sigue pendiente:
 - API de ciclo de vida avanzado de `service_request` (estados y snapshots mas ricos),
-- flujo documental ciudadano real,
+- robustecer flujo ciudadano de requisitos fisicos con más validaciones operativas,
 - robustecer pruebas automáticas para el flujo ciudadano conectado end-to-end.
 
 ## Workflow para cambios de schema

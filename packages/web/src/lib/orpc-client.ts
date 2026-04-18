@@ -440,6 +440,7 @@ type CitizenProcedure = {
 	allowsPhysicalDocuments: boolean;
 	allowsDigitalDocuments: boolean;
 	instructions: string | null;
+	documentSchema: Record<string, unknown>;
 };
 
 type CitizenSlot = {

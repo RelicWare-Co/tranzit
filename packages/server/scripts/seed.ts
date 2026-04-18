@@ -129,7 +129,7 @@ async function ensureProcedureTypes() {
 			description: "Renovacion de licencia vigente",
 			requiresVehicle: false,
 			allowsPhysicalDocuments: true,
-			allowsDigitalDocuments: true,
+			allowsDigitalDocuments: false,
 			instructions: "Traer licencia anterior y recibo de pago",
 		},
 		{
@@ -147,7 +147,7 @@ async function ensureProcedureTypes() {
 			description: "Primera matricula de vehiculo nuevo",
 			requiresVehicle: true,
 			allowsPhysicalDocuments: true,
-			allowsDigitalDocuments: true,
+			allowsDigitalDocuments: false,
 			instructions: "Factura de compra, SOAT y revision tecnico-mecanica",
 		},
 	];

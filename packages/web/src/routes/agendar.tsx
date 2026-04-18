@@ -1,9 +1,11 @@
 import {
 	Alert,
+	Anchor,
 	Badge,
 	Box,
 	Button,
 	Card,
+	Checkbox,
 	Container,
 	Divider,
 	Grid,
@@ -31,10 +33,6 @@ import {
 	Mail,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-	type DocumentItem,
-	DocumentUpload,
-} from "../components/DocumentUpload";
 import { useAuth } from "../lib/AuthContext";
 import { orpcClient } from "../lib/orpc-client";
 
@@ -53,6 +51,14 @@ type SlotsRangeResponse = Awaited<
 type CitizenBookingSummary = Awaited<
 	ReturnType<typeof orpcClient.citizen.bookings.confirm>
 >;
+
+type ProcedureRequirement = {
+	key: string;
+	label: string;
+	isRequired: boolean;
+	instructions: string | null;
+	downloadUrl: string | null;
+};
 
 function getErrorMessage(error: unknown, fallback: string): string {
 	if (error instanceof Error && error.message) {
@@ -133,23 +139,60 @@ function formatSeconds(seconds: number) {
 	return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
 
-function getDocumentRequirements(
-	procedure: CitizenProcedure | null,
-): Array<{ key: string; label: string }> {
+function getProcedureRequirements(procedure: CitizenProcedure | null) {
 	if (!procedure) return [];
+	const rawSchema = procedure.documentSchema;
+	if (!rawSchema || typeof rawSchema !== "object") return [];
 
-	// Check if procedure allows any document mode
-	if (!procedure.allowsDigitalDocuments && !procedure.allowsPhysicalDocuments) {
-		return [];
-	}
+	const requirements = (rawSchema as { requirements?: unknown }).requirements;
+	if (!Array.isArray(requirements)) return [];
 
-	// Default: provide generic document requirement based on procedure
-	return [
-		{
-			key: "supporting_document",
-			label: "Documento de soporte",
-		},
-	];
+	return requirements
+		.map((rawRequirement, index): ProcedureRequirement | null => {
+			if (!rawRequirement || typeof rawRequirement !== "object") {
+				return null;
+			}
+
+			const requirement = rawRequirement as Record<string, unknown>;
+			const key =
+				typeof requirement.key === "string" && requirement.key.trim().length > 0
+					? requirement.key.trim()
+					: `requirement-${index + 1}`;
+			const label =
+				typeof requirement.label === "string" &&
+				requirement.label.trim().length > 0
+					? requirement.label.trim()
+					: `Requisito ${index + 1}`;
+			const instructions =
+				typeof requirement.instructions === "string" &&
+				requirement.instructions.trim().length > 0
+					? requirement.instructions.trim()
+					: null;
+			const downloadUrlCandidates = [
+				requirement.downloadUrl,
+				requirement.download_url,
+				requirement.templateUrl,
+				requirement.template_url,
+				requirement.url,
+			];
+			const downloadUrl =
+				downloadUrlCandidates.find(
+					(candidate) =>
+						typeof candidate === "string" && candidate.trim().length > 0,
+				) ?? null;
+
+			return {
+				key,
+				label,
+				isRequired: requirement.required !== false,
+				instructions,
+				downloadUrl:
+					typeof downloadUrl === "string" ? downloadUrl.trim() : null,
+			};
+		})
+		.filter((requirement): requirement is ProcedureRequirement =>
+			Boolean(requirement),
+		);
 }
 
 function AgendarPage() {
@@ -168,7 +211,8 @@ function AgendarPage() {
 	);
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [documents, setDocuments] = useState<DocumentItem[]>([]);
+	const [requirementsAcknowledged, setRequirementsAcknowledged] =
+		useState(false);
 	const currentStep = isAuthenticated ? authenticatedStep : 0;
 
 	const detailsForm = useForm({
@@ -275,9 +319,10 @@ function AgendarPage() {
 		onSuccess: async (response) => {
 			setHoldBooking(response.booking);
 			setAuthenticatedStep(3);
+			setRequirementsAcknowledged(false);
 			setError(null);
 			setFeedback(
-				"Reserva temporal creada. Carga tus documentos antes de confirmar.",
+				"Reserva temporal creada. Revisa requisitos y plantillas para llevar en físico.",
 			);
 			await Promise.all([
 				queryClient.invalidateQueries({
@@ -339,6 +384,7 @@ function AgendarPage() {
 		onSuccess: async () => {
 			setHoldBooking(null);
 			setAuthenticatedStep(2);
+			setRequirementsAcknowledged(false);
 			setError(null);
 			setFeedback("Reserva temporal liberada.");
 			await Promise.all([
@@ -367,6 +413,10 @@ function AgendarPage() {
 			) ?? null
 		);
 	}, [proceduresQuery.data, detailsForm.values.procedureTypeId]);
+	const procedureRequirements = useMemo(
+		() => getProcedureRequirements(selectedProcedure),
+		[selectedProcedure],
+	);
 	const proceduresById = useMemo(
 		() =>
 			new Map(
@@ -438,11 +488,23 @@ function AgendarPage() {
 		setHoldBooking(serverHeldBooking);
 		setSelectedDate(serverHeldBooking.slot?.slotDate ?? null);
 		setSelectedSlotId(serverHeldBooking.slot?.id ?? null);
+		if (serverHeldBooking.request?.procedure?.id) {
+			detailsForm.setFieldValue(
+				"procedureTypeId",
+				serverHeldBooking.request.procedure.id,
+			);
+		}
 		setAuthenticatedStep(3);
+		setRequirementsAcknowledged(false);
 		setFeedback(
 			"Recuperamos tu reserva temporal activa. Confírmala antes de que expire.",
 		);
-	}, [isAuthenticated, serverHeldBooking, holdBooking?.id]);
+	}, [
+		detailsForm.setFieldValue,
+		holdBooking?.id,
+		isAuthenticated,
+		serverHeldBooking,
+	]);
 
 	const handleValidateOtp = useCallback(() => {
 		if (!authEmail) {
@@ -488,7 +550,7 @@ function AgendarPage() {
 						<Badge color={currentStep >= 1 ? "red" : "gray"}>2. Datos</Badge>
 						<Badge color={currentStep >= 2 ? "red" : "gray"}>3. Horario</Badge>
 						<Badge color={currentStep >= 3 ? "red" : "gray"}>
-							4. Documentos
+							4. Requisitos
 						</Badge>
 						<Badge color={currentStep >= 4 ? "red" : "gray"}>
 							5. Confirmar
@@ -801,14 +863,74 @@ function AgendarPage() {
 								</Grid>
 
 								<Divider
-									label="Documentos del trámite"
+									label="Requisitos y plantillas"
 									labelPosition="center"
 								/>
 
-								<DocumentUpload
-									requestId={holdBooking.request?.id || ""}
-									requirements={getDocumentRequirements(selectedProcedure)}
-									onDocumentsChange={setDocuments}
+								<Alert color="blue" icon={<FileText size={16} />}>
+									No se reciben formularios ni documentos de trámite por carga
+									digital. Descarga las plantillas disponibles y llévalas
+									impresas el día de la cita.
+								</Alert>
+
+								{procedureRequirements.length > 0 ? (
+									<Stack gap="sm">
+										{procedureRequirements.map((requirement) => (
+											<Card key={requirement.key} withBorder radius="md" p="md">
+												<Stack gap={6}>
+													<Group justify="space-between" wrap="nowrap">
+														<Text fw={600}>{requirement.label}</Text>
+														<Badge
+															color={requirement.isRequired ? "red" : "gray"}
+															variant="light"
+														>
+															{requirement.isRequired
+																? "Obligatorio"
+																: "Opcional"}
+														</Badge>
+													</Group>
+													{requirement.instructions ? (
+														<Text size="sm" c="dimmed">
+															{requirement.instructions}
+														</Text>
+													) : null}
+													{requirement.downloadUrl ? (
+														<Anchor
+															href={requirement.downloadUrl}
+															target="_blank"
+															rel="noreferrer"
+															size="sm"
+														>
+															Descargar formato
+														</Anchor>
+													) : (
+														<Text size="sm" c="dimmed">
+															Formato no cargado en plataforma. Solicítalo en
+															ventanilla antes de asistir.
+														</Text>
+													)}
+												</Stack>
+											</Card>
+										))}
+									</Stack>
+								) : (
+									<Alert color="yellow" icon={<AlertCircle size={16} />}>
+										Este trámite no tiene requisitos documentales configurados
+										en plataforma. Revisa las instrucciones del trámite y
+										confirma con SIMUT antes de asistir.
+									</Alert>
+								)}
+
+								<Checkbox
+									checked={requirementsAcknowledged}
+									onChange={(event) => {
+										const checked = event.currentTarget.checked;
+										setRequirementsAcknowledged(checked);
+										if (checked) {
+											setError(null);
+										}
+									}}
+									label="Confirmo que revisé los requisitos y llevaré los formatos/documentos en físico."
 								/>
 
 								<Divider />
@@ -827,11 +949,17 @@ function AgendarPage() {
 									</Button>
 									<Button
 										onClick={() => {
+											if (!requirementsAcknowledged) {
+												setError(
+													"Debes confirmar que llevarás los requisitos físicos antes de continuar.",
+												);
+												return;
+											}
 											setError(null);
 											setFeedback(null);
 											setAuthenticatedStep(4);
 										}}
-										disabled={holdExpired}
+										disabled={holdExpired || !requirementsAcknowledged}
 									>
 										Continuar a confirmar
 									</Button>
@@ -905,65 +1033,10 @@ function AgendarPage() {
 									</Grid.Col>
 								</Grid>
 
-								{/* Documents summary */}
-								{documents.length > 0 && (
-									<>
-										<Divider label="Documentos" labelPosition="center" />
-										<Stack gap="xs">
-											{documents
-												.filter((d) => d.isCurrent)
-												.map((doc) => (
-													<Group
-														key={doc.id}
-														justify="space-between"
-														wrap="nowrap"
-													>
-														<Group gap="sm" wrap="nowrap">
-															<ThemeIcon
-																size="sm"
-																variant="light"
-																color={
-																	doc.deliveryMode === "physical"
-																		? "grape"
-																		: "blue"
-																}
-																radius="sm"
-															>
-																<FileText size={14} />
-															</ThemeIcon>
-															<Stack gap={0}>
-																<Text size="xs" fw={500}>
-																	{doc.label}
-																</Text>
-																<Text size="xs" c="dimmed">
-																	{doc.deliveryMode === "physical"
-																		? "Entrega física"
-																		: doc.fileName}
-																</Text>
-															</Stack>
-														</Group>
-														<Badge
-															color={
-																doc.status === "valid"
-																	? "green"
-																	: doc.status === "pending"
-																		? "yellow"
-																		: "gray"
-															}
-															size="sm"
-															variant="light"
-														>
-															{doc.status === "valid"
-																? "Aprobado"
-																: doc.status === "pending"
-																	? "Pendiente"
-																	: doc.status}
-														</Badge>
-													</Group>
-												))}
-										</Stack>
-									</>
-								)}
+								<Alert color="blue" icon={<FileText size={16} />}>
+									Recuerda presentarte con los formatos y documentos impresos.
+									El trámite no admite radicación digital de archivos.
+								</Alert>
 
 								<Divider />
 
@@ -972,7 +1045,7 @@ function AgendarPage() {
 										variant="default"
 										onClick={() => setAuthenticatedStep(3)}
 									>
-										Volver a documentos
+										Volver a requisitos
 									</Button>
 									<Button
 										onClick={() => {
