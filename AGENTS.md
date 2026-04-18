@@ -252,7 +252,6 @@ Resumen corto del modelo actual:
 
 - `procedure_type` concentra definicion configurable del tramite en JSON.
 - `service_request` representa el flujo del ciudadano.
-- `request_document` guarda entregas documentales con historial simple.
 - `schedule_template` y `calendar_override` definen la agenda base y sus excepciones.
 - `appointment_slot` materializa slots reservables.
 - `booking` unifica hold temporal, cita confirmada y reserva administrativa.
@@ -271,7 +270,6 @@ Lee tambien `packages/server/src/db/SCHEMA.md` para el detalle. Los puntos mas d
 - si una reserva/cita deja de ser vigente por expiracion, cancelacion, atencion o reprogramacion, marca `isActive = false`.
 - `procedure_type.configVersion` y `service_request.procedureConfigVersion` existen para anclar la configuracion efectiva.
 - antes de confirmar o consolidar flujos importantes, persiste `service_request.procedureSnapshot`.
-- `request_document` ya no es 1 archivo por requisito; usa `isCurrent` y `replacesDocumentId` en vez de sobrescribir.
 - `booking_series` es la fuente para recurrencias administrativas; no uses `seriesKey` como string libre.
 - `staff_date_override.availableStartTime` y `availableEndTime` existen para disponibilidad parcial de un auxiliar en una fecha puntual.
 
@@ -330,7 +328,7 @@ El detalle endpoint por endpoint vive en `packages/server/src/BACKEND_STATUS.md`
 
 Lo que todavia no esta completo:
 - APIs ciudadanas avanzadas de `service_request` (beyond hold/confirm base),
-- consolidar confirmaciones documentales fisicas por trámite con mayor trazabilidad,
+- robustecer validaciones operativas de requisitos físicos en flujo ciudadano,
 - instrumentacion de auditoria/notificaciones mas completa para flujo ciudadano.
 
 Si vas a construir esa parte:

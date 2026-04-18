@@ -1,7 +1,6 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { Hono } from "hono";
 import { pinoLogger } from "hono-pino";
-import { adminDocumentsApp } from "./features/admin/admin-documents.routes";
 import { authApp } from "./features/auth/auth.routes";
 import { logger } from "./lib/logger";
 import { requireRole } from "./middlewares/authorization";
@@ -39,7 +38,6 @@ app.use("/api/auth/admin/*", sessionMiddleware);
 app.use("/api/auth/admin/*", requireRole("admin"));
 
 app.route("/api/auth", authApp);
-app.route("/api/admin", adminDocumentsApp);
 
 app.onError((error, c) => {
 	c.var.logger.error(

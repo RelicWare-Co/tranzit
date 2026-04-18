@@ -557,7 +557,6 @@ export async function createCitizenBookingHold(
 		phone: validatedInput.phone?.trim() || user.phone || null,
 		documentType: validatedInput.documentType?.trim() || "CC",
 		documentNumber: validatedInput.applicantDocument.trim(),
-		documentMode: "physical_only",
 		status: "booking_held",
 		procedureConfigVersion: procedure.configVersion,
 		draftData: {

@@ -20,7 +20,6 @@ import { formatDateLocal } from "../_shared/-dates";
 import { getErrorMessage } from "../_shared/-errors";
 import "./admin-schedule.css";
 import { BookingStatsGrid } from "./-BookingStatsGrid";
-import { DocumentReviewModal } from "./-DocumentReviewModal";
 import { NewBookingModal } from "./-NewBookingModal";
 import type {
 	BookingKind,
@@ -55,11 +54,6 @@ export function AdminCitasPage() {
 	const [staffList, setStaffList] = useState<StaffProfile[]>([]);
 	const [slots, setSlots] = useState<SlotWithCapacity[]>([]);
 	const [procedures, setProcedures] = useState<ProcedureType[]>([]);
-
-	// Document review modal state
-	const [documentReviewOpen, setDocumentReviewOpen] = useState(false);
-	const [selectedBookingForDocuments, setSelectedBookingForDocuments] =
-		useState<BookingWithRelations | null>(null);
 
 	const loadBookings = useCallback(async () => {
 		setIsLoadingEvents(true);
@@ -261,17 +255,6 @@ export function AdminCitasPage() {
 					: event,
 			),
 		);
-	};
-
-	const handleEventClick = (event: ScheduleEventData) => {
-		// The event data is stored in the 'data' field we set when creating events
-		const booking = (event as unknown as { data?: BookingWithRelations }).data;
-
-		// Open document review modal for citizen bookings that have a service request
-		if (booking?.kind === "citizen" && booking.request?.id) {
-			setSelectedBookingForDocuments(booking);
-			setDocumentReviewOpen(true);
-		}
 	};
 
 	const availableSlots = useMemo(
@@ -528,7 +511,6 @@ export function AdminCitasPage() {
 						events={events}
 						withEventsDragAndDrop
 						onEventDrop={handleEventDrop}
-						onEventClick={handleEventClick}
 						dayViewProps={{
 							startTime: "07:00:00",
 							endTime: "18:00:00",
@@ -595,19 +577,6 @@ export function AdminCitasPage() {
 				onStaffChange={setSelectedStaff}
 				staffOptions={staffOptions}
 				onSubmit={handleCreateBooking}
-			/>
-
-			<DocumentReviewModal
-				opened={documentReviewOpen}
-				onClose={() => {
-					setDocumentReviewOpen(false);
-					setSelectedBookingForDocuments(null);
-				}}
-				booking={selectedBookingForDocuments}
-				onReviewComplete={() => {
-					// Optionally refresh bookings after review
-					void loadBookings();
-				}}
 			/>
 		</Box>
 	);

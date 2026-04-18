@@ -59,7 +59,6 @@ export interface ServiceRequestWithDetails {
 	documentNumber: string | null;
 	status: string;
 	procedureConfigVersion: number;
-	documentMode: string | null;
 	draftData: Record<string, unknown>;
 	procedureSnapshot: Record<string, unknown>;
 	eligibilityResult: Record<string, unknown>;
@@ -198,7 +197,6 @@ export async function listServiceRequests(
 				documentNumber: req.documentNumber,
 				status: req.status,
 				procedureConfigVersion: req.procedureConfigVersion,
-				documentMode: req.documentMode,
 				draftData: req.draftData as Record<string, unknown>,
 				procedureSnapshot: req.procedureSnapshot as Record<string, unknown>,
 				eligibilityResult: req.eligibilityResult as Record<string, unknown>,
@@ -321,7 +319,6 @@ export async function getServiceRequest(
 		documentNumber: request.documentNumber,
 		status: request.status,
 		procedureConfigVersion: request.procedureConfigVersion,
-		documentMode: request.documentMode,
 		draftData: request.draftData as Record<string, unknown>,
 		procedureSnapshot: request.procedureSnapshot as Record<string, unknown>,
 		eligibilityResult: request.eligibilityResult as Record<string, unknown>,
@@ -367,8 +364,8 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
  * Eligibility checks that must pass before certain transitions.
  */
 const ELIGIBILITY_CHECKS: Record<string, string[]> = {
-	// verified requires that the booking is confirmed and documents are valid
-	verified: ["booking_confirmed", "documents_valid"],
+	// verified requires that the booking is confirmed
+	verified: ["booking_confirmed"],
 	// pending_confirmation requires eligibility check passed
 	pending_confirmation: ["eligibility_passed"],
 };
@@ -533,28 +530,6 @@ async function runEligibilityChecks(
 				if (booking.status !== "confirmed") {
 					reasons.push(
 						`La reserva activa tiene estado '${booking.status}', se requiere 'confirmed'`,
-					);
-				}
-				break;
-			}
-			case "documents_valid": {
-				// Check that all current documents for THIS request are valid
-				const documents = await db.query.requestDocument.findMany({
-					where: and(
-						eq(schema.requestDocument.requestId, requestId),
-						eq(schema.requestDocument.isCurrent, true),
-					),
-				});
-				if (documents.length === 0) {
-					// No documents required, skip this check
-					continue;
-				}
-				const invalidDocs = documents.filter(
-					(doc) => doc.status !== "valid" && doc.status !== "marked_as_physical",
-				);
-				if (invalidDocs.length > 0) {
-					reasons.push(
-						`Hay ${invalidDocs.length} documento(s) que no estan validos`,
 					);
 				}
 				break;

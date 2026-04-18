@@ -152,21 +152,16 @@ describe("Service Request Lifecycle", () => {
 		);
 	});
 
-	afterEach(async () => {
-		// Clean up test data in reverse order of creation
-		// First delete bookings that reference this request
-		await db
-			.delete(schema.booking)
-			.where(eq(schema.booking.requestId, testRequestId));
+		afterEach(async () => {
+			// Clean up test data in reverse order of creation
+			// First delete bookings that reference this request
+			await db
+				.delete(schema.booking)
+				.where(eq(schema.booking.requestId, testRequestId));
 
-		// Delete documents
-		await db
-			.delete(schema.requestDocument)
-			.where(eq(schema.requestDocument.requestId, testRequestId));
-
-		// Delete service requests for this procedure
-		await db
-			.delete(schema.serviceRequest)
+			// Delete service requests for this procedure
+			await db
+				.delete(schema.serviceRequest)
 			.where(eq(schema.serviceRequest.procedureTypeId, testProcedureId));
 
 		// Delete procedure
@@ -384,11 +379,6 @@ describe("Service Request Lifecycle", () => {
 
 			// Create a confirmed booking
 			await createTestBooking(testRequestId, testUser.user.id, "confirmed");
-
-			// Ensure no pending documents for this request (clean up from other tests)
-			await db
-				.delete(schema.requestDocument)
-				.where(eq(schema.requestDocument.requestId, testRequestId));
 
 			// Transition to verified
 			const result = await updateServiceRequestStatus({

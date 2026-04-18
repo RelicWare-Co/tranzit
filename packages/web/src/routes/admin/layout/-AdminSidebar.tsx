@@ -3,7 +3,6 @@ import {
 	BarChart3,
 	Calendar,
 	ClipboardList,
-	FileText,
 	LayoutDashboard,
 	Settings,
 	ShieldCheck,
@@ -44,12 +43,6 @@ export function AdminSidebar({ activeSection }: { activeSection: string }) {
 						label="Citas"
 						isActive={activeSection === "citas"}
 						to="/admin/citas"
-					/>
-					<SidebarItem
-						icon={FileText}
-						label="Documentos"
-						isActive={activeSection === "documentos"}
-						to="/admin/documentos"
 					/>
 					<SidebarItem
 						icon={Users}

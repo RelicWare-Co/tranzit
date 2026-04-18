@@ -194,7 +194,7 @@ Key behavior already implemented:
 
 Key behavior already implemented:
 - citizen procedures are exposed in physical-only mode (`allowsDigitalDocuments=false`)
-- `citizen.bookings.hold` persists `service_request.documentMode="physical_only"`
+- no citizen/admin request-document upload/review/download API is exposed
 - **Email notifications on booking lifecycle events**:
   - `citizen.bookings.confirm` sends a confirmation email with procedure name, date/time, staff name, and applicant details
   - `citizen.bookings.cancel` sends a cancellation notification email
@@ -204,6 +204,15 @@ Key behavior already implemented:
 - All notification events create `notification_delivery` records with status tracking (`pending` → `sent`/`failed`)
 - Email sending is non-blocking; failures are logged but do not affect the booking operation
 - Templates include HTML and plain-text versions with inline styles for email compatibility
+- authenticated citizen booking lifecycle over OTP session (hold/confirm/cancel/list)
+- stale hold cleanup before citizen reads/mutations (automatic release on expiry)
+- automatic staff assignment for citizen holds using capacity checks
+- citizen hold assignment only considers assignable staff profiles with a valid backing `user` row (prevents FK failures on booking insert)
+- real-time slot availability exposure based on generated schedule slots and active bookings
+- `service_request` creation with config/version snapshot at booking-hold time
+- strict `citizen.slots.range` date validation for `dateFrom` (format `YYYY-MM-DD` plus real calendar date)
+- `citizen.bookings.hold` rejects whitespace-only required identity fields (`applicantName`, `applicantDocument`)
+- `citizen.bookings.hold` applies normalized/validated Zod output for downstream persistence and booking creation
 
 ### 2.6.1 Notification module (`server/src/features/notifications/`)
 
@@ -224,49 +233,7 @@ Key behavior:
 - **OTP notifications are tracked**: `sendVerificationOtpEmail` in `auth.mailer.ts` routes through `sendOtpNotification`, which creates `notification_delivery` records with `entityType=user` and `entityId=email`
 - All notification sends update status to `sent` or `failed` with attempt tracking
 
-### 2.7 Citizen documents module (`server/src/orpc/modules/documents.router.ts`)
-
-Citizen endpoints:
-- `documents.upload` — **Disabled by policy** (returns `FORBIDDEN`; citizen digital upload not allowed)
-- `documents.declarePhysical` — Declare a document as physically delivered (creates row with deliveryMode=physical, status=marked_as_physical)
-- `documents.list` — List documents for a service request
-
-Admin endpoints:
-- `documents.admin.list` — List all documents for a request with review fields
-- `documents.admin.listAll` — List all documents across requests (with optional status filter) for document review page
-- `documents.admin.get` — Get document details by ID
-- `documents.admin.download` — Download document file (oRPC handler)
-- `documents.admin.review` — Review a document (approve/reject/start_review) with notes
-
-HTTP endpoints:
-- `GET /api/admin/documents/:documentId/download` — Download document file with proper MIME headers
-
-Key behavior already implemented:
-- citizen digital upload is explicitly blocked in service layer and router surface
-- ownership verification on citizen list/declare endpoints
-- Admin document download serves file with correct `Content-Type` header
-- Admin download requires admin/staff/auditor role
-- Physical declaration (`declarePhysical`) creates row with `deliveryMode=physical`, `status=marked_as_physical`, no storageKey
-- Physical declaration also marks previous documents for same requirement as not current
-
-Key behavior already implemented:
-- review actions: approve (sets status=valid), reject (requires non-empty notes, sets status=rejected), start_review (sets status=in_review)
-- validates status transitions (e.g., cannot approve a document already approved)
-- physical-marked documents cannot be directly approved without prior state change
-- re-review allowed (can approve a previously rejected document)
-- creates audit_event on every review action
-- sets reviewedByUserId and reviewedAt on review
-- authenticated citizen booking lifecycle over OTP session (hold/confirm/cancel/list)
-- stale hold cleanup before citizen reads/mutations (automatic release on expiry)
-- automatic staff assignment for citizen holds using capacity checks
-- citizen hold assignment only considers assignable staff profiles with a valid backing `user` row (prevents FK failures on booking insert)
-- real-time slot availability exposure based on generated schedule slots and active bookings
-- `service_request` creation with config/version snapshot at booking-hold time
-- strict `citizen.slots.range` date validation for `dateFrom` (format `YYYY-MM-DD` plus real calendar date)
-- `citizen.bookings.hold` rejects whitespace-only required identity fields (`applicantName`, `applicantDocument`)
-- `citizen.bookings.hold` applies normalized/validated Zod output for downstream persistence and booking creation
-
-### 2.8 Service Requests module (`server/src/orpc/modules/service-requests.router.ts`)
+### 2.7 Service Requests module (`server/src/orpc/modules/service-requests.router.ts`)
 
 - `admin.serviceRequests.list` — List all service requests with pagination and filters
 - `admin.serviceRequests.get` — Get full details of a single service request including snapshots and linked booking
@@ -288,7 +255,7 @@ Status transition rules:
 - `confirmed` and `cancelled` are terminal states
 
 Eligibility checks:
-- `verified` requires: `booking_confirmed` (active booking status = "confirmed") and `documents_valid` (all current documents for the request are valid or marked_as_physical)
+- `verified` requires: `booking_confirmed` (active booking status = "confirmed")
 - `pending_confirmation` requires: `eligibility_passed` (explicit eligibility data with `passed: true`)
 
 Key behavior already implemented:
@@ -299,7 +266,7 @@ Key behavior already implemented:
 - Config version (`procedureConfigVersion`) captured at request creation time
 - Procedure snapshot preserved at request creation
 
-### 2.9 Audit module (`server/src/orpc/modules/audit.router.ts`)
+### 2.8 Audit module (`server/src/orpc/modules/audit.router.ts`)
 
 - `admin.audit.list` — List audit events with pagination and filters
 - `admin.audit.get` — Get a single audit event by ID
@@ -361,7 +328,7 @@ Main guarantees implemented:
 Even with the current backend, this is still missing or partial:
 - advanced citizen API flow for:
   - full service request lifecycle beyond hold/confirm base
-  - flujo documental ciudadano avanzado (más allá de confirmación/registro físico básico por solicitud)
+  - stronger operational checks around physical requirement acknowledgement
 - full E2E test coverage for citizen frontend-backend integration
 
 ## 5) Quality baseline currently passing
