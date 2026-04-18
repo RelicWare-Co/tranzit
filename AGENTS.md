@@ -69,7 +69,7 @@ No asumas que el sistema ya esta completo. Hoy el repo esta en una fase intermed
 
 Hoy hay piezas ya conectadas y otras aun parciales:
 - `src/routes/login.tsx` ya usa OTP por correo para flujo ciudadano.
-- `src/routes/agendar.tsx` ya consume backend real para trámites, disponibilidad y reserva/confirmación.
+- `src/routes/agendar.tsx` ya consume backend real para trámites, disponibilidad y reserva/confirmación, con flujo guiado por pasos (trámite -> requisitos -> horario -> datos).
 - `src/routes/mi-perfil.tsx` ya consume citas reales del ciudadano desde backend.
 - Sigue pendiente robustecer el ciclo completo de `service_request` y pruebas E2E ciudadanas.
 
@@ -301,7 +301,7 @@ La app está conectada de forma funcional en admin y en un primer alcance ciudad
 
 Puntos concretos:
 - `src/routes/login.tsx` usa OTP ciudadano real.
-- `src/routes/agendar.tsx` usa procedimientos + disponibilidad + hold/confirm real via backend.
+- `src/routes/agendar.tsx` usa procedimientos + disponibilidad + hold/confirm real via backend en un wizard de pasos para reducir fricción en ciudadano.
 - `src/routes/mi-perfil.tsx` muestra citas reales del ciudadano y cancelación real.
 - `src/routes/index.tsx` y `src/routes/__root.tsx` ya tienen un lenguaje visual definido. Si editas UI, intenta preservar esa direccion y no volver a un layout generico.
 
@@ -382,6 +382,7 @@ Ciudadano conectado hoy en frontend:
 - `src/routes/login.tsx`:
   - OTP real (`/api/auth/email-otp/send-verification-otp` + `signIn.emailOtp`).
 - `src/routes/agendar.tsx`:
+  - UI guiada por pasos (trámite, requisitos, horario y datos personales),
   - `citizen.procedures.list`,
   - `citizen.slots.range`,
   - `citizen.bookings.hold`,

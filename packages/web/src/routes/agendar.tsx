@@ -62,6 +62,29 @@ type ProcedureRequirement = {
 	downloadUrl: string | null;
 };
 
+const BOOKING_STEPS = [
+	{
+		key: "procedure",
+		label: "Trámite",
+		description: "Elige el servicio que vas a realizar.",
+	},
+	{
+		key: "requirements",
+		label: "Requisitos",
+		description: "Revisa formatos y confirma documentos.",
+	},
+	{
+		key: "schedule",
+		label: "Horario",
+		description: "Selecciona fecha y hora disponible.",
+	},
+	{
+		key: "details",
+		label: "Datos",
+		description: "Completa tu información y asegura el cupo.",
+	},
+] as const;
+
 function getErrorMessage(error: unknown, fallback: string): string {
 	if (error instanceof Error && error.message) return error.message;
 	if (error && typeof error === "object" && "message" in error) {
@@ -178,6 +201,7 @@ function AgendarPage() {
 	const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 	const [requirementsAcknowledged, setRequirementsAcknowledged] =
 		useState(false);
+	const [activeStep, setActiveStep] = useState(0);
 
 	const [holdBooking, setHoldBooking] = useState<CitizenBookingSummary | null>(
 		null,
@@ -281,6 +305,23 @@ function AgendarPage() {
 		const slotExists = selectedDaySlots.some((s) => s.id === selectedSlotId);
 		return slotExists ? selectedSlotId : null;
 	}, [selectedDaySlots, selectedSlotId]);
+
+	const maxReachableStep = useMemo(() => {
+		if (!selectedProcedure) return 0;
+		if (!requirementsAcknowledged) return 1;
+		if (!resolvedSelectedSlotId) return 2;
+		return 3;
+	}, [requirementsAcknowledged, resolvedSelectedSlotId, selectedProcedure]);
+
+	const wizardProgress = useMemo(
+		() => Math.round(((activeStep + 1) / BOOKING_STEPS.length) * 100),
+		[activeStep],
+	);
+
+	useEffect(() => {
+		if (activeStep <= maxReachableStep) return;
+		setActiveStep(maxReachableStep);
+	}, [activeStep, maxReachableStep]);
 
 	useEffect(() => {
 		if (!user?.email) return;
@@ -416,6 +457,8 @@ function AgendarPage() {
 		},
 		onSuccess: async () => {
 			setHoldBooking(null);
+			setSelectedSlotId(null);
+			setActiveStep(selectedProcedure ? 2 : 0);
 			setError(null);
 			setFeedback("Reserva liberada. Elige otro horario.");
 			await Promise.all([
@@ -446,6 +489,37 @@ function AgendarPage() {
 		holdMutation.mutate();
 	});
 
+	const goToStep = (nextStep: number) => {
+		if (nextStep < 0 || nextStep >= BOOKING_STEPS.length) return;
+		if (nextStep > maxReachableStep) return;
+		setError(null);
+		setActiveStep(nextStep);
+	};
+
+	const handleProcedureContinue = () => {
+		if (!selectedProcedure) {
+			setError("Selecciona un trámite para continuar.");
+			return;
+		}
+		goToStep(1);
+	};
+
+	const handleRequirementsContinue = () => {
+		if (!requirementsAcknowledged) {
+			setError("Confirma que revisaste los requisitos antes de continuar.");
+			return;
+		}
+		goToStep(2);
+	};
+
+	const handleSlotsContinue = () => {
+		if (!resolvedSelectedSlotId) {
+			setError("Selecciona una fecha y horario para continuar.");
+			return;
+		}
+		goToStep(3);
+	};
+
 	return (
 		<Box py={{ base: 32, md: 64 }} className={classes.root}>
 			<Container size="xl">
@@ -471,10 +545,9 @@ function AgendarPage() {
 				)}
 
 				{!holdBooking ? (
-					<Grid style={{ gap: 64 }}>
-						{/* Left Pane */}
+					<Grid style={{ gap: 48 }}>
 						<Grid.Col span={{ base: 12, md: 7, lg: 7 }}>
-							<Stack gap={64}>
+							<Stack gap="xl">
 								<Box>
 									<Title order={1} className={classes.pageTitle}>
 										Agendar Cita
@@ -485,399 +558,521 @@ function AgendarPage() {
 										mt="xs"
 										className={classes.pageSubtitle}
 									>
-										Reserva tu espacio presencial sin fricción.
+										Avanza paso a paso para reservar sin perderte en el proceso.
 									</Text>
 								</Box>
 
-								<form onSubmit={handleReserveClick}>
-									<Stack gap={64}>
-										{/* Step 1: Procedure */}
-										<Box>
-											<Group gap="md" mb="xl" align="center">
-												<ThemeIcon
-													size={32}
-													radius="xl"
-													color="red"
-													variant="filled"
-													className={classes.stepBadge}
-												>
-													1
-												</ThemeIcon>
-												<Text fw={600} size="xl" className={classes.stepTitle}>
-													¿Qué trámite necesitas?
-												</Text>
-											</Group>
+								<div className={classes.stepRail}>
+									{BOOKING_STEPS.map((step, index) => {
+										const state =
+											index < activeStep
+												? "done"
+												: index === activeStep
+													? "active"
+													: "upcoming";
+										const isClickable = index <= maxReachableStep;
 
-											{proceduresQuery.isPending ? (
-												<Loader size="sm" color="red" />
-											) : (
-												<div className={classes.radioList}>
-													{proceduresQuery.data?.map((proc) => (
-														<UnstyledButton
-															key={proc.id}
-															className={classes.radioCard}
-															data-checked={
-																detailsForm.values.procedureTypeId ===
-																	proc.id || undefined
-															}
-															onClick={() => {
-																detailsForm.setFieldValue(
-																	"procedureTypeId",
-																	proc.id,
-																);
-																setRequirementsAcknowledged(false);
-																setSelectedDate(null);
-																setSelectedSlotId(null);
-																if (!proc.requiresVehicle) {
-																	detailsForm.setFieldValue("plate", "");
-																}
-															}}
-														>
-															<div className={classes.radioCheck} />
-															<div>
-																<Text fw={600} size="md">
-																	{proc.name}
-																</Text>
-																{proc.requiresVehicle && (
-																	<Badge
-																		color="blue"
-																		variant="dot"
-																		size="xs"
-																		mt={8}
-																	>
-																		Requiere placa
-																	</Badge>
-																)}
-															</div>
-														</UnstyledButton>
-													))}
-												</div>
-											)}
-										</Box>
-
-										{/* Step 2: Requirements */}
-										{selectedProcedure && (
-											<Box className={classes.fadeEnter}>
-												<Group gap="md" mb="xl" align="center">
-													<ThemeIcon
-														size={32}
-														radius="xl"
-														color="red"
-														variant="filled"
-														className={classes.stepBadge}
+										return (
+											<UnstyledButton
+												key={step.key}
+												type="button"
+												className={classes.stepRailItem}
+												data-state={state}
+												data-clickable={isClickable || undefined}
+												onClick={() => goToStep(index)}
+												disabled={!isClickable}
+											>
+												<span className={classes.stepRailIndex}>
+													{index + 1}
+												</span>
+												<span className={classes.stepRailText}>
+													<Text
+														size="xs"
+														fw={700}
+														tt="uppercase"
+														style={{ letterSpacing: 0.6 }}
 													>
-														2
-													</ThemeIcon>
+														{step.label}
+													</Text>
+													<Text size="xs" c="dimmed">
+														{step.description}
+													</Text>
+												</span>
+											</UnstyledButton>
+										);
+									})}
+								</div>
+
+								<div className={`${classes.wizardPanel} ${classes.fadeEnter}`}>
+									<div className={classes.progressTrack}>
+										<div
+											className={classes.progressFill}
+											style={{ width: `${wizardProgress}%` }}
+										/>
+									</div>
+
+									<Group justify="space-between" align="center" my="xl">
+										<div>
+											<Text
+												size="xs"
+												c="dimmed"
+												tt="uppercase"
+												fw={700}
+												style={{ letterSpacing: 0.8 }}
+											>
+												Paso {activeStep + 1} de {BOOKING_STEPS.length}
+											</Text>
+											<Text fw={700} size="xl" className={classes.stepTitle}>
+												{BOOKING_STEPS[activeStep]?.label}
+											</Text>
+										</div>
+										<Badge color="red" variant="light" size="lg" radius="sm">
+											{wizardProgress}% completado
+										</Badge>
+									</Group>
+
+									<form onSubmit={handleReserveClick}>
+										<Stack gap="xl">
+											{activeStep === 0 && (
+												<Box>
 													<Text
 														fw={600}
 														size="xl"
 														className={classes.stepTitle}
+														mb="xl"
+													>
+														¿Qué trámite necesitas?
+													</Text>
+													{proceduresQuery.isPending ? (
+														<Loader size="sm" color="red" />
+													) : proceduresQuery.data &&
+														proceduresQuery.data.length > 0 ? (
+														<div className={classes.radioList}>
+															{proceduresQuery.data.map((proc) => (
+																<UnstyledButton
+																	key={proc.id}
+																	type="button"
+																	className={classes.radioCard}
+																	data-checked={
+																		detailsForm.values.procedureTypeId ===
+																			proc.id || undefined
+																	}
+																	onClick={() => {
+																		const changedProcedure =
+																			detailsForm.values.procedureTypeId !==
+																			proc.id;
+																		detailsForm.setFieldValue(
+																			"procedureTypeId",
+																			proc.id,
+																		);
+																		if (changedProcedure) {
+																			setRequirementsAcknowledged(false);
+																			setSelectedDate(null);
+																			setSelectedSlotId(null);
+																		}
+																		if (!proc.requiresVehicle) {
+																			detailsForm.setFieldValue("plate", "");
+																		}
+																	}}
+																>
+																	<div className={classes.radioCheck} />
+																	<div>
+																		<Text fw={600} size="md">
+																			{proc.name}
+																		</Text>
+																		{proc.requiresVehicle && (
+																			<Badge
+																				color="blue"
+																				variant="dot"
+																				size="xs"
+																				mt={8}
+																			>
+																				Requiere placa
+																			</Badge>
+																		)}
+																	</div>
+																</UnstyledButton>
+															))}
+														</div>
+													) : (
+														<Alert
+															color="yellow"
+															icon={<CalendarClock size={16} />}
+														>
+															No hay trámites disponibles por ahora.
+														</Alert>
+													)}
+													<Group justify="space-between" mt={40}>
+														<Text size="sm" c="dimmed">
+															Selecciona un trámite para habilitar el siguiente
+															paso.
+														</Text>
+														<Button
+															type="button"
+															size="lg"
+															color="red"
+															disabled={!selectedProcedure}
+															onClick={handleProcedureContinue}
+															rightSection={<ChevronRight size={18} />}
+														>
+															Continuar
+														</Button>
+													</Group>
+												</Box>
+											)}
+
+											{activeStep === 1 && selectedProcedure && (
+												<Box className={classes.fadeEnter}>
+													<Text
+														fw={600}
+														size="xl"
+														className={classes.stepTitle}
+														mb="xl"
 													>
 														Requisitos del trámite
 													</Text>
-												</Group>
 
-												<div className={classes.requirementsBox}>
-													{procedureRequirements.length > 0 ? (
-														<Stack gap="lg" mb="xl">
-															{procedureRequirements.map((req) => (
-																<Box
-																	key={req.key}
-																	className={classes.requirementItem}
-																>
-																	<Group
-																		justify="space-between"
-																		align="center"
-																		wrap="nowrap"
+													<div className={classes.requirementsBox}>
+														{procedureRequirements.length > 0 ? (
+															<Stack gap="lg" mb="xl">
+																{procedureRequirements.map((req) => (
+																	<Box
+																		key={req.key}
+																		className={classes.requirementItem}
 																	>
-																		<div>
-																			<Text fw={600} size="sm">
-																				{req.label}
-																			</Text>
-																			{req.instructions && (
-																				<Text size="sm" c="dimmed" mt={4}>
-																					{req.instructions}
+																		<Group
+																			justify="space-between"
+																			align="center"
+																			wrap="nowrap"
+																		>
+																			<div>
+																				<Text fw={600} size="sm">
+																					{req.label}
 																				</Text>
+																				{req.instructions && (
+																					<Text size="sm" c="dimmed" mt={4}>
+																						{req.instructions}
+																					</Text>
+																				)}
+																			</div>
+																			{req.downloadUrl && (
+																				<Anchor
+																					href={req.downloadUrl}
+																					target="_blank"
+																					className={classes.downloadLink}
+																				>
+																					Descargar formato
+																				</Anchor>
 																			)}
-																		</div>
-																		{req.downloadUrl && (
-																			<Anchor
-																				href={req.downloadUrl}
-																				target="_blank"
-																				className={classes.downloadLink}
-																			>
-																				Descargar formato
-																			</Anchor>
-																		)}
-																	</Group>
-																</Box>
-															))}
-														</Stack>
-													) : (
-														<Text size="sm" c="dimmed" fs="italic" mb="xl">
-															No hay plantillas requeridas.
-														</Text>
-													)}
-
-													<Checkbox
-														size="md"
-														color="red"
-														label="He revisado los requisitos y llevaré las plantillas impresas el día de mi cita."
-														checked={requirementsAcknowledged}
-														onChange={(e) =>
-															setRequirementsAcknowledged(
-																e.currentTarget.checked,
-															)
-														}
-														className={classes.acknowledgeCheck}
-													/>
-												</div>
-											</Box>
-										)}
-
-										{/* Step 3: Slots */}
-										{selectedProcedure && requirementsAcknowledged && (
-											<Box className={classes.fadeEnter}>
-												<Group gap="md" mb="xl" align="center">
-													<ThemeIcon
-														size={32}
-														radius="xl"
-														color="red"
-														variant="filled"
-														className={classes.stepBadge}
-													>
-														3
-													</ThemeIcon>
-													<Text
-														fw={600}
-														size="xl"
-														className={classes.stepTitle}
-													>
-														Fecha y Horario
-													</Text>
-												</Group>
-
-												{slotsRangeQuery.isPending ? (
-													<Loader size="sm" color="red" />
-												) : availableDates.length > 0 ? (
-													<Grid style={{ gap: "var(--mantine-spacing-xl)" }}>
-														<Grid.Col span={{ base: 12, sm: 5 }}>
-															<Stack gap="sm" className={classes.dateList}>
-																{availableDates.map((day) => (
-																	<UnstyledButton
-																		key={day.date}
-																		className={classes.datePill}
-																		data-active={
-																			resolvedSelectedDate === day.date ||
-																			undefined
-																		}
-																		onClick={() => {
-																			setSelectedDate(day.date);
-																			setSelectedSlotId(null);
-																		}}
-																	>
-																		<Text
-																			size="xs"
-																			tt="uppercase"
-																			fw={700}
-																			className={classes.dateMonth}
-																		>
-																			{new Date(
-																				`${day.date}T00:00:00`,
-																			).toLocaleDateString("es-CO", {
-																				month: "short",
-																			})}
-																		</Text>
-																		<Text
-																			size="xl"
-																			fw={700}
-																			className={classes.dateDay}
-																		>
-																			{new Date(
-																				`${day.date}T00:00:00`,
-																			).getDate()}
-																		</Text>
-																		<Text
-																			size="xs"
-																			fw={500}
-																			className={classes.dateWeekday}
-																		>
-																			{new Date(
-																				`${day.date}T00:00:00`,
-																			).toLocaleDateString("es-CO", {
-																				weekday: "short",
-																			})}
-																		</Text>
-																	</UnstyledButton>
+																		</Group>
+																	</Box>
 																))}
 															</Stack>
-														</Grid.Col>
-														<Grid.Col span={{ base: 12, sm: 7 }}>
-															{selectedDaySlots.length > 0 ? (
-																<SimpleGrid cols={2} spacing="md">
-																	{selectedDaySlots.map((slot) => (
-																		<UnstyledButton
-																			key={slot.id}
-																			className={classes.slotButton}
-																			data-active={
-																				resolvedSelectedSlotId === slot.id ||
-																				undefined
-																			}
-																			onClick={() => setSelectedSlotId(slot.id)}
-																		>
-																			<Text
-																				fw={600}
-																				size="md"
-																				ff="monospace"
-																				style={{ letterSpacing: 0.5 }}
-																			>
-																				{slot.startTime}
-																			</Text>
-																		</UnstyledButton>
-																	))}
-																</SimpleGrid>
-															) : (
-																<Text c="dimmed" size="sm">
-																	No hay horarios este día.
-																</Text>
-															)}
-														</Grid.Col>
-													</Grid>
-												) : (
-													<Alert
-														color="yellow"
-														icon={<CalendarClock size={16} />}
-													>
-														No hay cupos disponibles. Intenta más adelante.
-													</Alert>
-												)}
-											</Box>
-										)}
+														) : (
+															<Text size="sm" c="dimmed" fs="italic" mb="xl">
+																No hay plantillas requeridas para este trámite.
+															</Text>
+														)}
 
-										{/* Step 4: Personal Details */}
-										{selectedProcedure &&
-											requirementsAcknowledged &&
-											resolvedSelectedSlotId && (
-												<Box className={classes.fadeEnter}>
-													<Group gap="md" mb="xl" align="center">
-														<ThemeIcon
-															size={32}
-															radius="xl"
+														<Checkbox
+															size="md"
 															color="red"
-															variant="filled"
-															className={classes.stepBadge}
+															label="He revisado los requisitos y llevaré los documentos impresos el día de mi cita."
+															checked={requirementsAcknowledged}
+															onChange={(e) =>
+																setRequirementsAcknowledged(
+																	e.currentTarget.checked,
+																)
+															}
+															className={classes.acknowledgeCheck}
+														/>
+													</div>
+
+													<Group justify="space-between" mt={40}>
+														<Button
+															type="button"
+															variant="subtle"
+															color="gray"
+															size="lg"
+															onClick={() => goToStep(0)}
 														>
-															4
-														</ThemeIcon>
+															Volver
+														</Button>
+														<Button
+															type="button"
+															size="lg"
+															color="red"
+															onClick={handleRequirementsContinue}
+															disabled={!requirementsAcknowledged}
+															rightSection={<ChevronRight size={18} />}
+														>
+															Continuar
+														</Button>
+													</Group>
+												</Box>
+											)}
+
+											{activeStep === 2 &&
+												selectedProcedure &&
+												requirementsAcknowledged && (
+													<Box className={classes.fadeEnter}>
 														<Text
 															fw={600}
 															size="xl"
 															className={classes.stepTitle}
+															mb="xl"
 														>
-															Datos Personales
+															Fecha y horario
 														</Text>
-													</Group>
 
-													<div className={classes.formGrid}>
-														<TextInput
-															required
-															label="Nombre completo"
-															placeholder="Ana Gómez"
-															classNames={{
-																input: classes.input,
-																label: classes.inputLabel,
-															}}
-															{...detailsForm.getInputProps("applicantName")}
-														/>
-														<Flex gap="sm">
-															<Select
-																label="Tipo"
-																data={["CC", "CE", "PP"]}
-																w={90}
-																classNames={{
-																	input: classes.input,
-																	label: classes.inputLabel,
-																}}
-																{...detailsForm.getInputProps("documentType")}
-															/>
-															<TextInput
-																required
-																label="Documento"
-																placeholder="123456789"
-																style={{ flex: 1 }}
-																classNames={{
-																	input: classes.input,
-																	label: classes.inputLabel,
-																}}
-																{...detailsForm.getInputProps(
-																	"applicantDocument",
-																)}
-															/>
-														</Flex>
-														<TextInput
-															required
-															type="email"
-															label="Correo electrónico"
-															placeholder="correo@ejemplo.com"
-															classNames={{
-																input: classes.input,
-																label: classes.inputLabel,
-															}}
-															{...detailsForm.getInputProps("email")}
-															disabled={isAuthenticated}
-														/>
-														<TextInput
-															label="Teléfono"
-															placeholder="3001234567"
-															classNames={{
-																input: classes.input,
-																label: classes.inputLabel,
-															}}
-															{...detailsForm.getInputProps("phone")}
-														/>
-														{selectedProcedure.requiresVehicle && (
-															<TextInput
-																required
-																label="Placa del vehículo"
-																placeholder="ABC123"
-																classNames={{
-																	input: classes.input,
-																	label: classes.inputLabel,
-																}}
-																{...detailsForm.getInputProps("plate")}
-																onChange={(e) =>
-																	detailsForm.setFieldValue(
-																		"plate",
-																		e.currentTarget.value.toUpperCase(),
-																	)
-																}
-															/>
+														{slotsRangeQuery.isPending ? (
+															<Loader size="sm" color="red" />
+														) : availableDates.length > 0 ? (
+															<Grid
+																style={{ gap: "var(--mantine-spacing-xl)" }}
+															>
+																<Grid.Col span={{ base: 12, sm: 5 }}>
+																	<Stack gap="sm" className={classes.dateList}>
+																		{availableDates.map((day) => (
+																			<UnstyledButton
+																				key={day.date}
+																				type="button"
+																				className={classes.datePill}
+																				data-active={
+																					resolvedSelectedDate === day.date ||
+																					undefined
+																				}
+																				onClick={() => {
+																					setSelectedDate(day.date);
+																					setSelectedSlotId(null);
+																				}}
+																			>
+																				<Text
+																					size="xs"
+																					tt="uppercase"
+																					fw={700}
+																					className={classes.dateMonth}
+																				>
+																					{new Date(
+																						`${day.date}T00:00:00`,
+																					).toLocaleDateString("es-CO", {
+																						month: "short",
+																					})}
+																				</Text>
+																				<Text
+																					size="xl"
+																					fw={700}
+																					className={classes.dateDay}
+																				>
+																					{new Date(
+																						`${day.date}T00:00:00`,
+																					).getDate()}
+																				</Text>
+																				<Text
+																					size="xs"
+																					fw={500}
+																					className={classes.dateWeekday}
+																				>
+																					{new Date(
+																						`${day.date}T00:00:00`,
+																					).toLocaleDateString("es-CO", {
+																						weekday: "short",
+																					})}
+																				</Text>
+																			</UnstyledButton>
+																		))}
+																	</Stack>
+																</Grid.Col>
+																<Grid.Col span={{ base: 12, sm: 7 }}>
+																	{selectedDaySlots.length > 0 ? (
+																		<SimpleGrid cols={2} spacing="md">
+																			{selectedDaySlots.map((slot) => (
+																				<UnstyledButton
+																					key={slot.id}
+																					type="button"
+																					className={classes.slotButton}
+																					data-active={
+																						resolvedSelectedSlotId ===
+																							slot.id || undefined
+																					}
+																					onClick={() =>
+																						setSelectedSlotId(slot.id)
+																					}
+																				>
+																					<Text
+																						fw={600}
+																						size="md"
+																						ff="monospace"
+																						style={{ letterSpacing: 0.5 }}
+																					>
+																						{slot.startTime}
+																					</Text>
+																				</UnstyledButton>
+																			))}
+																		</SimpleGrid>
+																	) : (
+																		<Text c="dimmed" size="sm">
+																			No hay horarios disponibles en esta fecha.
+																		</Text>
+																	)}
+																</Grid.Col>
+															</Grid>
+														) : (
+															<Alert
+																color="yellow"
+																icon={<CalendarClock size={16} />}
+															>
+																No hay cupos disponibles. Intenta más adelante.
+															</Alert>
 														)}
-													</div>
 
-													<Button
-														type="submit"
-														size="xl"
-														color="red"
-														fullWidth
-														mt={48}
-														loading={
-															holdMutation.isPending ||
-															sendOtpMutation.isPending
-														}
-														className={classes.actionButton}
-														rightSection={<ChevronRight size={20} />}
-													>
-														Asegurar mi cupo
-													</Button>
-												</Box>
-											)}
-									</Stack>
-								</form>
+														<Group justify="space-between" mt={40}>
+															<Button
+																type="button"
+																variant="subtle"
+																color="gray"
+																size="lg"
+																onClick={() => goToStep(1)}
+															>
+																Volver
+															</Button>
+															<Button
+																type="button"
+																size="lg"
+																color="red"
+																onClick={handleSlotsContinue}
+																disabled={!resolvedSelectedSlotId}
+																rightSection={<ChevronRight size={18} />}
+															>
+																Continuar
+															</Button>
+														</Group>
+													</Box>
+												)}
+
+											{activeStep === 3 &&
+												selectedProcedure &&
+												requirementsAcknowledged &&
+												resolvedSelectedSlotId && (
+													<Box className={classes.fadeEnter}>
+														<Text
+															fw={600}
+															size="xl"
+															className={classes.stepTitle}
+															mb="xl"
+														>
+															Datos personales
+														</Text>
+
+														<div className={classes.formGrid}>
+															<TextInput
+																required
+																label="Nombre completo"
+																placeholder="Ana Gómez"
+																classNames={{
+																	input: classes.input,
+																	label: classes.inputLabel,
+																}}
+																{...detailsForm.getInputProps("applicantName")}
+															/>
+															<Flex gap="sm">
+																<Select
+																	label="Tipo"
+																	data={["CC", "CE", "PP"]}
+																	w={90}
+																	classNames={{
+																		input: classes.input,
+																		label: classes.inputLabel,
+																	}}
+																	{...detailsForm.getInputProps("documentType")}
+																/>
+																<TextInput
+																	required
+																	label="Documento"
+																	placeholder="123456789"
+																	style={{ flex: 1 }}
+																	classNames={{
+																		input: classes.input,
+																		label: classes.inputLabel,
+																	}}
+																	{...detailsForm.getInputProps(
+																		"applicantDocument",
+																	)}
+																/>
+															</Flex>
+															<TextInput
+																required
+																type="email"
+																label="Correo electrónico"
+																placeholder="correo@ejemplo.com"
+																classNames={{
+																	input: classes.input,
+																	label: classes.inputLabel,
+																}}
+																{...detailsForm.getInputProps("email")}
+																disabled={isAuthenticated}
+															/>
+															<TextInput
+																label="Teléfono"
+																placeholder="3001234567"
+																classNames={{
+																	input: classes.input,
+																	label: classes.inputLabel,
+																}}
+																{...detailsForm.getInputProps("phone")}
+															/>
+															{selectedProcedure.requiresVehicle && (
+																<TextInput
+																	required
+																	label="Placa del vehículo"
+																	placeholder="ABC123"
+																	classNames={{
+																		input: classes.input,
+																		label: classes.inputLabel,
+																	}}
+																	{...detailsForm.getInputProps("plate")}
+																	onChange={(e) =>
+																		detailsForm.setFieldValue(
+																			"plate",
+																			e.currentTarget.value.toUpperCase(),
+																		)
+																	}
+																/>
+															)}
+														</div>
+
+														<Group justify="space-between" mt={40}>
+															<Button
+																type="button"
+																variant="subtle"
+																color="gray"
+																size="lg"
+																onClick={() => goToStep(2)}
+															>
+																Volver
+															</Button>
+															<Button
+																type="submit"
+																size="xl"
+																color="red"
+																loading={
+																	holdMutation.isPending ||
+																	sendOtpMutation.isPending
+																}
+																className={classes.actionButton}
+																rightSection={<ChevronRight size={20} />}
+															>
+																Asegurar mi cupo
+															</Button>
+														</Group>
+													</Box>
+												)}
+										</Stack>
+									</form>
+								</div>
 							</Stack>
 						</Grid.Col>
 
-						{/* Right Pane */}
 						<Grid.Col span={{ base: 12, md: 5, lg: 5 }}>
 							<div className={classes.stickySummary}>
 								<Text
@@ -892,6 +1087,23 @@ function AgendarPage() {
 								</Text>
 
 								<Stack gap="xl">
+									<Box>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={8}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
+											Paso actual
+										</Text>
+										<Badge color="red" variant="light" size="lg" radius="sm">
+											{activeStep + 1} / {BOOKING_STEPS.length} ·{" "}
+											{BOOKING_STEPS[activeStep]?.label}
+										</Badge>
+									</Box>
+
 									<Box>
 										<Text
 											size="xs"
@@ -963,10 +1175,38 @@ function AgendarPage() {
 											fw={600}
 											style={{ letterSpacing: 0.5 }}
 										>
+											Requisitos
+										</Text>
+										<Badge
+											color={requirementsAcknowledged ? "green" : "gray"}
+											variant="light"
+											size="lg"
+											radius="sm"
+										>
+											{requirementsAcknowledged ? "Listos" : "Pendientes"}
+										</Badge>
+									</Box>
+
+									<Box>
+										<Text
+											size="xs"
+											c="dimmed"
+											mb={8}
+											tt="uppercase"
+											fw={600}
+											style={{ letterSpacing: 0.5 }}
+										>
 											Estado
 										</Text>
-										<Badge color="gray" variant="light" size="lg" radius="sm">
-											Configurando
+										<Badge
+											color={resolvedSelectedSlotId ? "red" : "gray"}
+											variant="light"
+											size="lg"
+											radius="sm"
+										>
+											{resolvedSelectedSlotId
+												? "Listo para reservar"
+												: "Configurando"}
 										</Badge>
 									</Box>
 								</Stack>
@@ -987,7 +1227,12 @@ function AgendarPage() {
 										p="lg"
 										style={{ borderRadius: "var(--mantine-radius-md)" }}
 									>
-										<ThemeIcon color="red" variant="light" size="lg" radius="xl">
+										<ThemeIcon
+											color="red"
+											variant="light"
+											size="lg"
+											radius="xl"
+										>
 											<Clock size={20} />
 										</ThemeIcon>
 										<Text fw={600} size="md">
@@ -1005,7 +1250,12 @@ function AgendarPage() {
 											border: "1px solid var(--mantine-color-gray-2)",
 										}}
 									>
-										<ThemeIcon color="gray" variant="light" size="lg" radius="xl">
+										<ThemeIcon
+											color="gray"
+											variant="light"
+											size="lg"
+											radius="xl"
+										>
 											<Clock size={20} />
 										</ThemeIcon>
 										<div style={{ flex: 1 }}>
