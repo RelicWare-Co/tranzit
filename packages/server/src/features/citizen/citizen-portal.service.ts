@@ -3,10 +3,7 @@ import { z } from "zod";
 import { db, schema } from "../../lib/db";
 import { logger } from "../../lib/logger";
 import { throwCapacityConflict, throwRpcError } from "../../orpc/shared";
-import {
-	createAuditEvent,
-	buildBookingSummary,
-} from "../audit/audit.service";
+import { createAuditEvent, buildBookingSummary } from "../audit/audit.service";
 import {
 	confirmExistingBooking,
 	createBooking,
@@ -457,10 +454,15 @@ const buildNotificationContext = async (
 };
 
 export async function listCitizenProcedures() {
-	return await db.query.procedureType.findMany({
+	const procedures = await db.query.procedureType.findMany({
 		where: eq(schema.procedureType.isActive, true),
 		orderBy: (procedureType, { asc }) => [asc(procedureType.name)],
 	});
+
+	return procedures.map((procedure) => ({
+		...procedure,
+		allowsDigitalDocuments: false,
+	}));
 }
 
 export async function listCitizenSlotsRange(

@@ -440,6 +440,7 @@ type CitizenProcedure = {
 	allowsPhysicalDocuments: boolean;
 	allowsDigitalDocuments: boolean;
 	instructions: string | null;
+	documentSchema: Record<string, unknown>;
 };
 
 type CitizenSlot = {
@@ -518,95 +519,6 @@ type CitizenBookingHoldInput = {
 type CitizenBookingHoldResponse = {
 	requestId: string;
 	booking: CitizenBookingSummary;
-};
-
-type RequestDocument = {
-	id: string;
-	requestId: string;
-	requirementKey: string;
-	label: string;
-	deliveryMode: string;
-	storageKey: string | null;
-	fileName: string | null;
-	mimeType: string | null;
-	fileSizeBytes: number | null;
-	status: string;
-	isCurrent: boolean;
-	replacesDocumentId: string | null;
-	reviewedByUserId: string | null;
-	reviewedAt: string | Date | null;
-	notes: string | null;
-	createdAt: string | Date;
-	updatedAt: string | Date;
-};
-
-type DocumentUploadInput = {
-	requestId: string;
-	requirementKey: string;
-	label: string;
-	deliveryMode: "digital" | "physical";
-	fileName: string;
-	mimeType: string;
-	fileSizeBytes: number;
-	content: string;
-};
-
-type DocumentUploadResponse = {
-	id: string;
-	requestId: string;
-	requirementKey: string;
-	label: string;
-	deliveryMode: string;
-	storageKey: string;
-	fileName: string;
-	mimeType: string;
-	fileSizeBytes: number;
-	status: string;
-	isCurrent: boolean;
-	createdAt: string | Date;
-};
-
-type DocumentDeclarePhysicalInput = {
-	requestId: string;
-	requirementKey: string;
-	label: string;
-};
-
-type DocumentDeclarePhysicalResponse = {
-	id: string;
-	requestId: string;
-	requirementKey: string;
-	label: string;
-	deliveryMode: string;
-	storageKey: null;
-	fileName: null;
-	mimeType: null;
-	fileSizeBytes: null;
-	status: string;
-	isCurrent: boolean;
-	createdAt: string | Date;
-};
-
-type DocumentListInput = {
-	requestId: string;
-};
-
-type DocumentListAllInput = {
-	status?: string[];
-	isCurrent?: boolean;
-	limit?: number;
-};
-
-type DocumentWithRequestInfo = RequestDocument & {
-	serviceRequest?: {
-		id: string;
-		status: string;
-		procedure?: {
-			id: string;
-			slug: string;
-			name: string;
-		} | null;
-	} | null;
 };
 
 type AdminReservationSeries = {
@@ -821,48 +733,6 @@ export interface TranzitRpcClient {
 	[key: string]: any;
 	session: {
 		get: RpcProcedure<SessionResponse>;
-	};
-	documents: {
-		upload: RpcProcedure<DocumentUploadResponse, DocumentUploadInput>;
-		declarePhysical: RpcProcedure<
-			DocumentDeclarePhysicalResponse,
-			DocumentDeclarePhysicalInput
-		>;
-		list: RpcProcedure<RequestDocument[], DocumentListInput>;
-		admin: {
-			list: RpcProcedure<RequestDocument[], DocumentListInput>;
-			listAll: RpcProcedure<DocumentWithRequestInfo[], DocumentListAllInput>;
-			get: RpcProcedure<RequestDocument, { documentId: string }>;
-			download: RpcProcedure<
-				{
-					content: ArrayBuffer;
-					fileName: string;
-					mimeType: string;
-					fileSizeBytes: number;
-				},
-				{ documentId: string }
-			>;
-			review: RpcProcedure<
-				{
-					id: string;
-					requestId: string;
-					requirementKey: string;
-					label: string;
-					deliveryMode: string;
-					status: string;
-					notes: string | null;
-					reviewedByUserId: string | null;
-					reviewedAt: string | Date | null;
-					isCurrent: boolean;
-					updatedAt: string | Date;
-				},
-				{
-					documentId: string;
-					action: "approve" | "reject" | "start_review";
-					notes?: string;
-				}
-			>;
-		};
 	};
 	citizen: {
 		procedures: {

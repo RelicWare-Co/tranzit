@@ -5,7 +5,11 @@ import {
 } from "../../features/audit/audit.service";
 import { db, schema } from "../../lib/db";
 import { rpc } from "../context";
-import { extractClientInfo, requireAdminAccess, throwRpcError } from "../shared";
+import {
+	extractClientInfo,
+	requireAdminAccess,
+	throwRpcError,
+} from "../shared";
 
 // Input validation helpers
 function generateId(): string {
@@ -37,6 +41,25 @@ function parseSlug(slug: string | undefined): string {
 	return sanitized;
 }
 
+function enforceNoDigitalDocuments(value: boolean | undefined) {
+	if (value === true) {
+		throwRpcError(
+			"POLICY_RESTRICTION",
+			422,
+			"La carga digital de documentos esta deshabilitada por requisito operativo.",
+		);
+	}
+}
+
+function toPhysicalOnlyProcedure<T extends { allowsDigitalDocuments: boolean }>(
+	procedure: T,
+): T {
+	return {
+		...procedure,
+		allowsDigitalDocuments: false,
+	};
+}
+
 export function createProceduresRouter() {
 	return {
 		list: rpc.handler(async ({ context, input }) => {
@@ -49,15 +72,19 @@ export function createProceduresRouter() {
 				const isActive =
 					payload.isActive === true || payload.isActive === "true";
 
-				return await db.query.procedureType.findMany({
+				const procedures = await db.query.procedureType.findMany({
 					where: eq(schema.procedureType.isActive, isActive),
 					orderBy: (procedureType, { asc }) => [asc(procedureType.name)],
 				});
+
+				return procedures.map(toPhysicalOnlyProcedure);
 			}
 
-			return await db.query.procedureType.findMany({
+			const procedures = await db.query.procedureType.findMany({
 				orderBy: (procedureType, { asc }) => [asc(procedureType.name)],
 			});
+
+			return procedures.map(toPhysicalOnlyProcedure);
 		}),
 
 		get: rpc.handler(async ({ context, input }) => {
@@ -78,7 +105,7 @@ export function createProceduresRouter() {
 				throwRpcError("NOT_FOUND", 404, "Procedure not found");
 			}
 
-			return procedure;
+			return toPhysicalOnlyProcedure(procedure);
 		}),
 
 		create: rpc.handler(async ({ context, input }) => {
@@ -102,6 +129,7 @@ export function createProceduresRouter() {
 
 			const parsedName = parseName(payload?.name);
 			const sanitizedSlug = parseSlug(payload?.slug);
+			enforceNoDigitalDocuments(payload?.allowsDigitalDocuments);
 
 			// Check for duplicate slug
 			const existing = await db.query.procedureType.findFirst({
@@ -126,7 +154,7 @@ export function createProceduresRouter() {
 				configVersion: 1,
 				requiresVehicle: payload.requiresVehicle ?? false,
 				allowsPhysicalDocuments: payload.allowsPhysicalDocuments ?? true,
-				allowsDigitalDocuments: payload.allowsDigitalDocuments ?? true,
+				allowsDigitalDocuments: false,
 				instructions: payload.instructions ?? null,
 				eligibilitySchema: payload.eligibilitySchema ?? {},
 				formSchema: payload.formSchema ?? {},
@@ -158,13 +186,13 @@ export function createProceduresRouter() {
 					description: payload.description ?? null,
 					requiresVehicle: payload.requiresVehicle ?? false,
 					allowsPhysicalDocuments: payload.allowsPhysicalDocuments ?? true,
-					allowsDigitalDocuments: payload.allowsDigitalDocuments ?? true,
+					allowsDigitalDocuments: false,
 				},
 				ipAddress: clientInfo.ipAddress,
 				userAgent: clientInfo.userAgent,
 			});
 
-			return newProcedure;
+			return toPhysicalOnlyProcedure(newProcedure);
 		}),
 
 		update: rpc.handler(async ({ context, input }) => {
@@ -198,9 +226,11 @@ export function createProceduresRouter() {
 			if (!existing) {
 				throwRpcError("NOT_FOUND", 404, "Procedure not found");
 			}
+			enforceNoDigitalDocuments(payload.allowsDigitalDocuments);
 
 			const updates: Record<string, unknown> = {
 				updatedAt: new Date(),
+				allowsDigitalDocuments: false,
 			};
 
 			let configChanged = false;
@@ -215,8 +245,6 @@ export function createProceduresRouter() {
 				updates.requiresVehicle = payload.requiresVehicle;
 			if (payload.allowsPhysicalDocuments !== undefined)
 				updates.allowsPhysicalDocuments = payload.allowsPhysicalDocuments;
-			if (payload.allowsDigitalDocuments !== undefined)
-				updates.allowsDigitalDocuments = payload.allowsDigitalDocuments;
 			if (payload.instructions !== undefined)
 				updates.instructions = payload.instructions;
 			if (payload.eligibilitySchema !== undefined) {
@@ -269,9 +297,13 @@ export function createProceduresRouter() {
 				userAgent: clientInfo.userAgent,
 			});
 
-			return await db.query.procedureType.findFirst({
+			const updated = await db.query.procedureType.findFirst({
 				where: eq(schema.procedureType.id, payload.id),
 			});
+			if (!updated) {
+				throwRpcError("NOT_FOUND", 404, "Procedure not found");
+			}
+			return toPhysicalOnlyProcedure(updated);
 		}),
 
 		remove: rpc.handler(async ({ context, input }) => {

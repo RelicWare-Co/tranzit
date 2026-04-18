@@ -55,7 +55,6 @@ const entityTypes = [
 	{ value: "procedure_type", label: "procedure_type" },
 	{ value: "service_request", label: "service_request" },
 	{ value: "booking_series", label: "booking_series" },
-	{ value: "request_document", label: "request_document" },
 ];
 
 // Common actions observed in the system

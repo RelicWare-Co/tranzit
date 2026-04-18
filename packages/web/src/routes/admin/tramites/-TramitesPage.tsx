@@ -130,7 +130,7 @@ export function TramitesPage() {
 				description: procedure.description ?? undefined,
 				requiresVehicle: procedure.requiresVehicle,
 				allowsPhysicalDocuments: procedure.allowsPhysicalDocuments,
-				allowsDigitalDocuments: procedure.allowsDigitalDocuments,
+				allowsDigitalDocuments: false,
 				instructions: procedure.instructions ?? undefined,
 				eligibilitySchema: procedure.eligibilitySchema,
 				formSchema: procedure.formSchema,

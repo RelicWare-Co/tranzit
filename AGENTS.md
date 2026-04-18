@@ -8,7 +8,7 @@ El objetivo del producto es reemplazar un proceso manual por correo por un siste
 - portal ciudadano,
 - autenticacion ligera por OTP,
 - formularios dinamicos por tramite,
-- carga documental,
+- requisitos y plantillas descargables para entrega fisica,
 - agenda configurable,
 - reservas temporales de cupos,
 - confirmacion de citas,
@@ -47,6 +47,7 @@ Estas reglas son obligatorias para cualquier agente que trabaje en este repo:
 - si el cambio afecta rutas, contratos o comportamiento backend, actualiza `packages/server/src/BACKEND_STATUS.md` en el mismo cambio,
 - si un cambio deja obsoleto algun `.md` enlazado desde este archivo, tambien debes actualizar ese documento en el mismo cambio,
 - no cierres una tarea dejando drift entre codigo y documentacion.
+- si estas haciendo tareas de frontend o disenando UI, debes leer obligatoriamente `.impeccable.md` en la raiz del proyecto antes de comenzar para respetar el contexto de diseno.
 
 Lista minima de `.md` enlazados que debes mantener sincronizados cuando aplique:
 - `AGENTS.md`,
@@ -63,13 +64,14 @@ No asumas que el sistema ya esta completo. Hoy el repo esta en una fase intermed
 - Ya existen endpoints reales para schedule, staff, bookings y reservation-series, con capacidad y reasignacion en backend.
 - El backend expone la capa administrativa por oRPC en `/api/rpc/*`; `/api/admin/*` ya no se expone como superficie publica.
 - Ya existe una capa ciudadana inicial por oRPC para procedimientos, disponibilidad y ciclo base de reserva (hold/confirm/cancel/mis citas).
-- Todavia faltan APIs ciudadanas completas para gestion documental y ciclo de vida avanzado de `service_request`.
+- El flujo ciudadano opera en modo documental fisico: descarga de plantillas y entrega presencial.
+- Todavia faltan APIs ciudadanas completas para ciclo de vida avanzado de `service_request`.
 
 Hoy hay piezas ya conectadas y otras aun parciales:
 - `src/routes/login.tsx` ya usa OTP por correo para flujo ciudadano.
-- `src/routes/agendar.tsx` ya consume backend real para trámites, disponibilidad y reserva/confirmación.
+- `src/routes/agendar.tsx` ya consume backend real para trámites, disponibilidad y reserva/confirmación, con flujo guiado por pasos (trámite -> requisitos -> horario -> datos).
 - `src/routes/mi-perfil.tsx` ya consume citas reales del ciudadano desde backend.
-- Sigue pendiente la parte documental y el ciclo completo de solicitud ciudadana.
+- Sigue pendiente robustecer el ciclo completo de `service_request` y pruebas E2E ciudadanas.
 
 Conclusion practica:
 - no construyas logica importante encima de mocks,
@@ -207,7 +209,7 @@ Ciudadano:
 - valida correo por OTP,
 - continua autenticado sin password,
 - completa requisitos,
-- sube documentos o marca entrega fisica,
+- descarga formatos/plantillas y lleva documentos en fisico,
 - ve agenda en tiempo real,
 - toma una reserva temporal,
 - confirma la cita,
@@ -251,7 +253,6 @@ Resumen corto del modelo actual:
 
 - `procedure_type` concentra definicion configurable del tramite en JSON.
 - `service_request` representa el flujo del ciudadano.
-- `request_document` guarda entregas documentales con historial simple.
 - `schedule_template` y `calendar_override` definen la agenda base y sus excepciones.
 - `appointment_slot` materializa slots reservables.
 - `booking` unifica hold temporal, cita confirmada y reserva administrativa.
@@ -270,7 +271,6 @@ Lee tambien `packages/server/src/db/SCHEMA.md` para el detalle. Los puntos mas d
 - si una reserva/cita deja de ser vigente por expiracion, cancelacion, atencion o reprogramacion, marca `isActive = false`.
 - `procedure_type.configVersion` y `service_request.procedureConfigVersion` existen para anclar la configuracion efectiva.
 - antes de confirmar o consolidar flujos importantes, persiste `service_request.procedureSnapshot`.
-- `request_document` ya no es 1 archivo por requisito; usa `isCurrent` y `replacesDocumentId` en vez de sobrescribir.
 - `booking_series` es la fuente para recurrencias administrativas; no uses `seriesKey` como string libre.
 - `staff_date_override.availableStartTime` y `availableEndTime` existen para disponibilidad parcial de un auxiliar en una fecha puntual.
 
@@ -301,7 +301,7 @@ La app está conectada de forma funcional en admin y en un primer alcance ciudad
 
 Puntos concretos:
 - `src/routes/login.tsx` usa OTP ciudadano real.
-- `src/routes/agendar.tsx` usa procedimientos + disponibilidad + hold/confirm real via backend.
+- `src/routes/agendar.tsx` usa procedimientos + disponibilidad + hold/confirm real via backend en un wizard de pasos para reducir fricción en ciudadano.
 - `src/routes/mi-perfil.tsx` muestra citas reales del ciudadano y cancelación real.
 - `src/routes/index.tsx` y `src/routes/__root.tsx` ya tienen un lenguaje visual definido. Si editas UI, intenta preservar esa direccion y no volver a un layout generico.
 
@@ -329,7 +329,7 @@ El detalle endpoint por endpoint vive en `packages/server/src/BACKEND_STATUS.md`
 
 Lo que todavia no esta completo:
 - APIs ciudadanas avanzadas de `service_request` (beyond hold/confirm base),
-- flujo documental ciudadano completo,
+- robustecer validaciones operativas de requisitos físicos en flujo ciudadano,
 - instrumentacion de auditoria/notificaciones mas completa para flujo ciudadano.
 
 Si vas a construir esa parte:
@@ -382,6 +382,7 @@ Ciudadano conectado hoy en frontend:
 - `src/routes/login.tsx`:
   - OTP real (`/api/auth/email-otp/send-verification-otp` + `signIn.emailOtp`).
 - `src/routes/agendar.tsx`:
+  - UI guiada por pasos (trámite, requisitos, horario y datos personales),
   - `citizen.procedures.list`,
   - `citizen.slots.range`,
   - `citizen.bookings.hold`,
@@ -401,7 +402,7 @@ Siguientes pasos operativos prioritarios:
 
 Brecha ciudadana que sigue pendiente:
 - API de ciclo de vida avanzado de `service_request` (estados y snapshots mas ricos),
-- flujo documental ciudadano real,
+- robustecer flujo ciudadano de requisitos fisicos con más validaciones operativas,
 - robustecer pruebas automáticas para el flujo ciudadano conectado end-to-end.
 
 ## Workflow para cambios de schema

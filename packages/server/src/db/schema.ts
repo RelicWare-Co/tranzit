@@ -336,7 +336,6 @@ export const serviceRequest = sqliteTable(
 		procedureConfigVersion: integer("procedure_config_version")
 			.default(1)
 			.notNull(),
-		documentMode: text("document_mode"),
 		draftData: text("draft_data", { mode: "json" })
 			.$type<JsonValue>()
 			.default({}),
@@ -375,57 +374,6 @@ export const serviceRequest = sqliteTable(
 		index("service_request_email_idx").on(table.email),
 		index("service_request_procedure_idx").on(table.procedureTypeId),
 		index("service_request_active_booking_idx").on(table.activeBookingId),
-	],
-);
-
-export const requestDocument = sqliteTable(
-	"request_document",
-	{
-		id: text("id").primaryKey(),
-		requestId: text("request_id")
-			.notNull()
-			.references(() => serviceRequest.id, { onDelete: "cascade" }),
-		requirementKey: text("requirement_key").notNull(),
-		label: text("label").notNull(),
-		deliveryMode: text("delivery_mode").notNull(),
-		isCurrent: integer("is_current", { mode: "boolean" })
-			.default(true)
-			.notNull(),
-		replacesDocumentId: text("replaces_document_id").references(
-			(): AnySQLiteColumn => requestDocument.id,
-			{
-				onDelete: "set null",
-			},
-		),
-		storageKey: text("storage_key"),
-		fileName: text("file_name"),
-		mimeType: text("mime_type"),
-		fileSizeBytes: integer("file_size_bytes"),
-		status: text("status").default("pending").notNull(),
-		notes: text("notes"),
-		reviewedByUserId: text("reviewed_by_user_id").references(() => user.id, {
-			onDelete: "set null",
-		}),
-		reviewedAt: integer("reviewed_at", { mode: "timestamp_ms" }),
-		createdAt: integer("created_at", { mode: "timestamp_ms" })
-			.default(now)
-			.notNull(),
-		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-			.default(now)
-			.$onUpdate(() => new Date())
-			.notNull(),
-	},
-	(table) => [
-		index("request_document_requirement_idx").on(
-			table.requestId,
-			table.requirementKey,
-		),
-		index("request_document_current_idx").on(
-			table.requestId,
-			table.requirementKey,
-			table.isCurrent,
-		),
-		index("request_document_status_idx").on(table.status),
 	],
 );
 
@@ -688,26 +636,7 @@ export const serviceRequestRelations = relations(
 			fields: [serviceRequest.activeBookingId],
 			references: [booking.id],
 		}),
-		documents: many(requestDocument),
 		bookings: many(booking),
-	}),
-);
-
-export const requestDocumentRelations = relations(
-	requestDocument,
-	({ one, many }) => ({
-		request: one(serviceRequest, {
-			fields: [requestDocument.requestId],
-			references: [serviceRequest.id],
-		}),
-		replacesDocument: one(requestDocument, {
-			fields: [requestDocument.replacesDocumentId],
-			references: [requestDocument.id],
-			relationName: "document_replacement",
-		}),
-		replacedByDocuments: many(requestDocument, {
-			relationName: "document_replacement",
-		}),
 	}),
 );
 
