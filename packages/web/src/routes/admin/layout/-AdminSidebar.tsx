@@ -11,27 +11,36 @@ import {
 import { SidebarItem } from "./-SidebarItem";
 
 const sectionClass =
-	"mb-5 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400";
+	"mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-tertiary)]";
 
+/**
+ * Sidebar compacto (208px) con iconos + labels para navegación administrativa.
+ * Diseñado con ancho reducido para maximizar espacio de contenido.
+ * Responsive: colapsa en mobile (<768px) mostrando solo iconos.
+ */
 export function AdminSidebar({ activeSection }: { activeSection: string }) {
 	return (
 		<Box
 			component="nav"
 			aria-label="Administración"
 			className={[
-				"w-full shrink-0 md:w-[276px]",
-				"border-zinc-200/95 bg-zinc-100/90 shadow-[inset_-1px_0_0_rgba(9,9,11,0.05)]",
+				"w-full shrink-0 md:w-[208px]",
+				"border-[var(--border-subtle)] bg-[var(--bg-secondary)]",
 				"border-b md:border-b-0 md:border-r",
 				"md:min-h-0 md:overflow-y-auto",
 			].join(" ")}
-			px={{ base: "md", md: "md" }}
-			py={{ base: "md", md: "lg" }}
+			px={{ base: "sm", md: "sm" }}
+			py={{ base: "sm", md: "md" }}
 		>
 			<Stack gap={0}>
-				<Text component="p" className={sectionClass}>
+				{/* Sección Gestión - visible solo en desktop */}
+				<Text
+					component="p"
+					className={[sectionClass, "hidden md:block"].join(" ")}
+				>
 					Gestión
 				</Text>
-				<Stack gap={4}>
+				<Stack gap={1}>
 					<SidebarItem
 						icon={LayoutDashboard}
 						label="Dashboard"
@@ -64,23 +73,30 @@ export function AdminSidebar({ activeSection }: { activeSection: string }) {
 					/>
 				</Stack>
 
-				<Box className="my-8 border-t border-zinc-200/90" />
+				{/* Divisor visible solo en desktop */}
+				<Box className="my-4 hidden border-t border-[var(--border-subtle)] md:block" />
 
-				<Text component="p" className={sectionClass}>
+				{/* Sección Sistema - visible solo en desktop */}
+				<Text
+					component="p"
+					className={[sectionClass, "hidden md:block"].join(" ")}
+				>
 					Sistema
 				</Text>
-				<SidebarItem
-					icon={ShieldCheck}
-					label="Auditoría"
-					isActive={activeSection === "auditoria"}
-					to="/admin/auditoria"
-				/>
-				<SidebarItem
-					icon={Settings}
-					label="Configuración"
-					isActive={activeSection === "configuracion"}
-					to="/admin/configuracion"
-				/>
+				<Stack gap={1}>
+					<SidebarItem
+						icon={ShieldCheck}
+						label="Auditoría"
+						isActive={activeSection === "auditoria"}
+						to="/admin/auditoria"
+					/>
+					<SidebarItem
+						icon={Settings}
+						label="Configuración"
+						isActive={activeSection === "configuracion"}
+						to="/admin/configuracion"
+					/>
+				</Stack>
 			</Stack>
 		</Box>
 	);

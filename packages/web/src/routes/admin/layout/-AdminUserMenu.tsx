@@ -1,8 +1,12 @@
-import { Avatar, Box, Menu, UnstyledButton } from "@mantine/core";
+import { Menu, UnstyledButton } from "@mantine/core";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, LogOut, Shield } from "lucide-react";
 import { useAuth } from "../../../lib/AuthContext";
 
+/**
+ * Menú de usuario en navbar administrativa.
+ * Muestra avatar con iniciales, nombre y dropdown con opciones.
+ */
 export function AdminUserMenu() {
 	const { user, logout } = useAuth();
 	const navigate = useNavigate();
@@ -27,49 +31,36 @@ export function AdminUserMenu() {
 	return (
 		<Menu
 			position="bottom-end"
-			offset={8}
+			offset={6}
 			withArrow
 			arrowPosition="center"
 			styles={{
 				dropdown: {
-					backgroundColor: "rgba(255, 255, 255, 0.96)",
-					backdropFilter: "blur(16px)",
-					border: "1px solid rgba(24, 24, 27, 0.08)",
-					borderRadius: 16,
-					padding: 8,
-					boxShadow:
-						"0 24px 48px -20px rgba(9, 9, 11, 0.28), inset 0 1px 0 rgba(255,255,255,0.7)",
-					minWidth: 228,
+					backgroundColor: "var(--bg-elevated)",
+					border: "1px solid var(--border-subtle)",
+					borderRadius: 8,
+					padding: 4,
+					boxShadow: "0 8px 24px -8px rgba(0, 0, 0, 0.12)",
+					minWidth: 200,
 				},
 				arrow: {
-					backgroundColor: "rgba(255, 255, 255, 0.96)",
-					border: "1px solid rgba(24, 24, 27, 0.08)",
+					backgroundColor: "var(--bg-elevated)",
+					border: "1px solid var(--border-subtle)",
 				},
 			}}
 		>
 			<Menu.Target>
-				<UnstyledButton className="inline-flex h-9 cursor-pointer items-center gap-2.5 rounded-lg border-0 bg-white py-1 pl-1.5 pr-2.5 text-left font-sans shadow-none outline-none transition-[background-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-zinc-100 active:bg-zinc-200">
-					<Avatar
-						size="sm"
-						radius="md"
-						classNames={{ root: "border-0 bg-zinc-100" }}
-						styles={{
-							root: {
-								fontWeight: 600,
-								fontSize: 11,
-								color: "#3f3f46",
-							},
-						}}
-					>
+				<UnstyledButton className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border-0 bg-[var(--bg-secondary)] px-2 py-1 text-left text-sm font-medium shadow-none outline-none transition-all duration-150 hover:bg-[var(--bg-tertiary)]">
+					<div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[var(--brand-200)] font-['Public_Sans'] text-xs font-semibold text-[var(--brand-700)]">
 						{initials}
-					</Avatar>
-					<span className="hidden max-w-[140px] truncate text-sm font-medium leading-normal text-zinc-700 sm:inline">
+					</div>
+					<span className="hidden max-w-[120px] truncate text-[var(--text-secondary)] sm:inline">
 						{user?.name || "Administrador"}
 					</span>
 					<ChevronDown
-						size={15}
-						className="shrink-0 text-zinc-500"
-						strokeWidth={1.5}
+						size={14}
+						className="shrink-0 text-[var(--text-tertiary)]"
+						strokeWidth={1.75}
 					/>
 				</UnstyledButton>
 			</Menu.Target>
@@ -79,33 +70,41 @@ export function AdminUserMenu() {
 					component={Link}
 					to="/mi-perfil"
 					leftSection={
-						<Box className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-zinc-100">
-							<Shield size={16} className="text-zinc-600" strokeWidth={1.75} />
-						</Box>
+						<div className="flex h-7 w-7 items-center justify-center rounded bg-[var(--bg-secondary)]">
+							<Shield
+								size={14}
+								className="text-[var(--text-secondary)]"
+								strokeWidth={1.75}
+							/>
+						</div>
 					}
-					className="rounded-xl font-semibold text-zinc-900"
+					className="rounded-md py-2 text-sm font-medium text-[var(--text-primary)]"
 					styles={{
 						item: {
-							borderRadius: 12,
-							padding: "10px 12px",
+							borderRadius: 6,
+							padding: "8px 10px",
 						},
 					}}
 				>
 					Ver mi perfil
 				</Menu.Item>
-				<Menu.Divider className="border-zinc-200/90" />
+				<Menu.Divider className="border-[var(--border-subtle)]" />
 				<Menu.Item
 					leftSection={
-						<Box className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-red-50">
-							<LogOut size={16} className="text-red-700" strokeWidth={1.75} />
-						</Box>
+						<div className="flex h-7 w-7 items-center justify-center rounded bg-[var(--brand-100)]">
+							<LogOut
+								size={14}
+								className="text-[var(--brand-700)]"
+								strokeWidth={1.75}
+							/>
+						</div>
 					}
 					onClick={handleLogout}
-					className="rounded-xl font-semibold text-red-700"
+					className="rounded-md py-2 text-sm font-medium text-[var(--brand-700)]"
 					styles={{
 						item: {
-							borderRadius: 12,
-							padding: "10px 12px",
+							borderRadius: 6,
+							padding: "8px 10px",
 						},
 					}}
 				>

@@ -52,9 +52,9 @@ export function AdminLayout() {
 				<Container size="lg">
 					<Box className={`${adminUi.surface} p-14 md:p-16`}>
 						<Stack align="center" gap="md">
-							<Box className="h-16 w-16 animate-pulse rounded-full bg-zinc-200/90" />
-							<Box className="h-6 w-48 max-w-full animate-pulse rounded-lg bg-zinc-200/90" />
-							<Box className="h-4 w-64 max-w-full animate-pulse rounded bg-zinc-100" />
+							<Box className="h-16 w-16 animate-pulse rounded-full bg-[var(--bg-tertiary)]" />
+							<Box className="h-6 w-48 max-w-full animate-pulse rounded-lg bg-[var(--bg-tertiary)]" />
+							<Box className="h-4 w-64 max-w-full animate-pulse rounded bg-[var(--bg-secondary)]" />
 						</Stack>
 					</Box>
 				</Container>
@@ -68,15 +68,15 @@ export function AdminLayout() {
 				<Container size="lg">
 					<Box className={`${adminUi.surface} p-12 md:p-16`}>
 						<Stack align="center" gap="lg">
-							<Text className="text-center text-lg font-semibold text-red-700">
+							<Text className="text-center text-lg font-semibold text-[var(--error-600)]">
 								Acceso denegado
 							</Text>
-							<Text className="max-w-md text-center text-zinc-500 leading-relaxed">
+							<Text className="max-w-md text-center text-[var(--text-secondary)] leading-relaxed">
 								No tenés permisos para acceder al panel administrativo.
 							</Text>
 							<Link
 								to="/"
-								className="font-semibold text-zinc-900 underline decoration-zinc-300 underline-offset-4 transition hover:decoration-red-600/80"
+								className="font-semibold text-[var(--text-primary)] underline decoration-[var(--border-default)] underline-offset-4 transition hover:decoration-[var(--accent-default)]/80"
 							>
 								Volver al inicio
 							</Link>
@@ -94,7 +94,7 @@ export function AdminLayout() {
 	return (
 		<Box
 			component="div"
-			className="flex min-h-[100dvh] flex-col bg-zinc-50 pt-12"
+			className="flex min-h-[100dvh] flex-col bg-[var(--bg-primary)]"
 		>
 			<AdminNavbar />
 
