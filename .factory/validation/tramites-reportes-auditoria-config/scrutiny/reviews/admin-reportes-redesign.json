@@ -1,0 +1,85 @@
+{
+  "featureId": "admin-reportes-redesign",
+  "reviewedAt": "2026-04-20T17:30:00.000Z",
+  "commitId": "f7f57b8",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The redesign fulfills all expectedBehavior requirements: filters organized (dateFrom, dateTo, status, isActive), bookings table with correct columns, selection highlighting, all booking actions (confirm, release, reassign, preview, availabilityCheck), series RRULE creation form, series list with selection and actions (update, move, release), and instances with actions (update, move, release). Mantine v9 Grid gap/gutter issue was fixed. No TypeScript errors in the reportes page. However, there are functional gaps (no date range validation, no destructive-action confirmations) and design inconsistencies (double-border on callout cards, shadow conflicts, hardcoded colors in ActionPanel, no shared empty state component). None of these are blocking for testing.",
+    "issues": [
+      {
+        "file": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+        "line": 204,
+        "severity": "non_blocking",
+        "description": "Filter date range not validated: dateTo can be before dateFrom with no error. Should validate that dateTo >= dateFrom before applying filters."
+      },
+      {
+        "file": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+        "line": 1013,
+        "severity": "non_blocking",
+        "description": "Destructive booking action 'release' (and reassign at line ~1020) has no confirmation dialog. User could accidentally release a booking. Consider adding a confirm step."
+      },
+      {
+        "file": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+        "line": 1605,
+        "severity": "non_blocking",
+        "description": "ActionPanel uses hardcoded 'bg-zinc-50/80' instead of design token (adminUi.surfaceInset or similar). Inconsistent with design system approach used elsewhere."
+      },
+      {
+        "file": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+        "line": 229,
+        "severity": "non_blocking",
+        "description": "FilterBar Card uses 'withBorder' AND 'adminUi.callout' which itself contains 'border-[var(--border-subtle)]'. This creates double-border rendering (two 1px borders stacked). Should either use withBorder={false} or not use the border from adminUi.callout."
+      },
+      {
+        "file": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+        "line": 671,
+        "severity": "non_blocking",
+        "description": "Stats cards use 'adminUi.surface' class (which includes shadow-[0_4px20px_-4px_rgba(0,0,0,0.08)]) combined with Mantine 'shadow=\"none\"'. The Mantine prop overrides the Tailwind class, making the shadow inconsistent with adminUi.surface contract. Either remove shadow=\"none\" or use a different surface token."
+      },
+      {
+        "file": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+        "line": 1174,
+        "severity": "non_blocking",
+        "description": "Bookings table has no pagination - displays all results. Could be a performance issue with large datasets. Backend supports pagination (via cursor/limit) but it's not used here."
+      },
+      {
+        "file": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+        "line": 99,
+        "severity": "non_blocking",
+        "description": "No BookingStatus type defined. Status strings ('confirmed', 'held', etc.) are used as string literals throughout. A shared BookingStatus type would improve type safety and discoverability."
+      },
+      {
+        "file": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+        "line": 125,
+        "severity": "non_blocking",
+        "description": "asNullableText, isReservationInstance, stringifyJson, getStatusBadgeProps, and SectionCard/FilterBar/ActionPanel components are defined locally but could be shared admin components. Consider extracting to admin/_shared/ for consistency with other pages."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "The worker defined local utility functions (asNullableText, isReservationInstance, stringifyJson) and local UI primitives (SectionCard, FilterBar, ActionPanel) in the page file itself, rather than in admin/_shared/. These patterns appear across multiple redesigned admin pages (configuracion, reportes, auditoria) and are good candidates for shared components. AGENTS.md doesn't document when to extract shared components.",
+      "evidence": "-AdminReportesPage.tsx:99-238 (utility functions and local UI primitives)"
+    },
+    {
+      "area": "conventions",
+      "observation": "getStatusBadgeProps uses status string literals ('confirmed', 'held', 'pending', 'cancelled') but there is no shared BookingStatus type in the codebase. This pattern likely exists in other pages too.",
+      "evidence": "-AdminReportesPage.tsx:99 — status string literals used in getStatusBadgeProps without a shared type"
+    },
+    {
+      "area": "conventions",
+      "observation": "The design uses Mantine's rem() function for pixel-to-rem conversion (mt={rem(28)}) for vertical alignment in Grid layouts. This is an anti-pattern - proper Mantine Stack/Group gap spacing should be used instead. Not documented in AGENTS.md.",
+      "evidence": "-AdminReportesPage.tsx:1125, 1148 — rem(28) used for alignment"
+    },
+    {
+      "area": "skills",
+      "observation": "The impeccable-admin-worker skill instructs to use design tokens from adminUi consistently. The worker applied them for surface, callout, tableHeader. However, ActionPanel uses hardcoded bg-zinc-50/80 instead of an adminUi token. The skill doesn't define what token to use for inset/muted panels.",
+      "evidence": "-AdminReportesPage.tsx:1605 — ActionPanel className=\"bg-zinc-50/80\" hardcoded instead of design token"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The admin-reportes-redesign feature passes review. The implementation covers all expectedBehavior requirements: organized filters, bookings table with status badges and row highlighting, all booking actions (confirm/release/reassign/preview/availabilityCheck), series creation with RRULE, series list with selection and actions (update/move/release), and instances with actions (update/move/release). Mantine v9 Grid gap prop was correctly applied. No TypeScript errors in the reportes page after the gutter->gap fix. The main non-blocking issues are: (1) no date range validation in filters allowing dateTo < dateFrom, (2) no confirmation dialogs for destructive release/reassign actions, (3) design inconsistencies (double-border on callout, shadow conflicts with Mantine shadow=\"none\", hardcoded bg-zinc in ActionPanel), (4) no pagination on bookings table, (5) no shared BookingStatus type. These are functional quality issues but none block user testing."
+}

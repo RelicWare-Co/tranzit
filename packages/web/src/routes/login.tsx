@@ -70,7 +70,7 @@ function PinInput({
 		>
 			{Array.from({ length }).map((_, i) => (
 				<input
-					key={`pin-${i}`}
+					key={`pin-${value[i] ?? i}`}
 					id={`pin-${i}`}
 					type="text"
 					inputMode="numeric"
