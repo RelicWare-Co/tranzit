@@ -1,29 +1,27 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 9,
-  "status": "fail",
+  "round": 10,
+  "status": "pass",
   "validatorsRun": {
     "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
     "typecheck": { "passed": true, "command": "cd packages/server && bunx tsc --noEmit", "exitCode": 0 },
     "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 }
   },
   "reviewsSummary": {
-    "total": 5,
-    "passed": 4,
-    "failed": 1,
-    "failedFeatures": ["admin-dashboard-redesign"],
-    "note": "Re-run (round 9). Validators pass. admin-citas-redesign and admin-usuarios-redesign reviewed in round 8 and passed. admin-dashboard-redesign still has blocking issue. Fix feature 'admin-dashboard-datasource-fix' remains pending with no worker assigned."
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "failedFeatures": [],
+    "note": "Re-run (round 10). Validators pass. admin-citas-redesign (round 8), admin-usuarios-redesign (round 8), admin-dashboard-datasource-fix (this round) all reviewed and pass. admin-dashboard-redesign blocking issue fully resolved."
   },
-  "blockingIssues": [
+  "blockingIssues": [],
+  "appliedUpdates": [
     {
-      "featureId": "admin-dashboard-redesign",
-      "severity": "blocking",
-      "description": "admin.bookings.list does not populate the `request` relation. The Recent Appointments list tries to access booking.request?.citizen?.name but request is undefined, so it falls back to staff.email. Similarly, booking.request?.procedureType?.name is always undefined, so procedure names fall back to generic labels ('Trámite' or 'Reserva administrativa'). Fix feature 'admin-dashboard-datasource-fix' (id: admin-dashboard-datasource-fix, status: pending, no worker assigned) has not been implemented yet.",
-      "fixFeature": "admin-dashboard-datasource-fix",
-      "fixStatus": "pending"
+      "target": "library/architecture.md",
+      "description": "Added note about admin.bookings.list API relation behavior: it populates slot, staff, and (after fix d4b5c6b) request relations. Before the fix, only slot and staff were populated, causing dashboard to show staff email instead of citizen name.",
+      "sourceFeature": "admin-dashboard-datasource-fix"
     }
   ],
-  "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
       "target": "AGENTS.md",
@@ -32,14 +30,8 @@
       "isSystemic": true
     },
     {
-      "target": "library",
-      "suggestion": "Document that `admin.bookings.list` only populates `slot` and `staff` relations — not `request`. Workers building dashboard UIs that need citizen name and procedure type should use a different API or the API should be enhanced to include request relations.",
-      "evidence": "admin-dashboard-redesign failed because worker assumed request relation was available. The actual API (bookings-read.service.ts) only returns slot and staff. This caused blocking bug in Recent Appointments list.",
-      "isSystemic": false
-    },
-    {
-      "target": "library",
-      "suggestion": "Add a note about CSS design token coverage: error/warning/info color scales only go up to *-600 in design-tokens.css. Components referencing *-700 tokens (e.g., --error-700) will fall back to browser defaults.",
+      "target": "library/architecture.md",
+      "suggestion": "Document CSS design token coverage: error/warning/info color scales only go up to *-600 in design-tokens.css. Components referencing *-700 tokens (e.g., --error-700) will fall back to browser defaults.",
       "evidence": "admin-citas-redesign referenced --error-700, --warning-700, --info-700 in admin-schedule.css but these tokens are not defined.",
       "isSystemic": true
     }

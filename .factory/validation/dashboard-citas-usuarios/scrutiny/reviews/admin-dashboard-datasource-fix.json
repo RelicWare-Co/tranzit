@@ -1,0 +1,31 @@
+{
+  "featureId": "admin-dashboard-datasource-fix",
+  "reviewedAt": "2026-04-20T14:35:00.000Z",
+  "commitId": "d4b5c6b",
+  "transcriptSkeletonReviewed": false,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix correctly addresses the blocking issue from admin-dashboard-redesign. The listBookings function now fetches service_request, procedureType, and citizen user data, populating booking.request with the fields needed for the Recent Appointments list: citizen name and procedure type name.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "knowledge",
+      "observation": "The blocking issue was in backend service layer (bookings-read.service.ts). The fix adds three sequential DB queries per booking (service_request, procedure_type, user) for bookings that have a requestId. While this is correct, it could be a performance concern for large lists. However, since admin.bookings.list already does per-booking queries for slot and staffUser, this pattern was already established.",
+      "evidence": "listBookings in bookings-read.service.ts lines 97-158"
+    }
+  ],
+  "addressesFailureFrom": "admin-dashboard-redesign",
+  "originalFailureIssues": [
+    "booking.request was always undefined because admin.bookings.list only populated slot and staff relations",
+    "booking.request?.citizen?.name fell through to staff.email (wrong data)",
+    "booking.request?.procedureType?.name was always undefined (generic labels)"
+  ],
+  "fixAddressesIssues": [
+    "serviceReq is fetched when booking.requestId exists - provides email and citizenUserId",
+    "citizenUser is fetched via serviceReq.citizenUserId - provides name for citizen.name",
+    "procedureType is fetched via serviceReq.procedureTypeId - provides name for procedureType.name"
+  ],
+  "summary": "Fix correctly resolves all three blocking issues from admin-dashboard-redesign. The dashboard Recent Appointments list will now show actual citizen names and procedure type names. No new issues introduced."
+}
