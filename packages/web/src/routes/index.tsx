@@ -336,7 +336,7 @@ function TestimonialCard({
 					<div className="flex mb-4">
 						{Array.from({ length: 5 }).map((_, i) => (
 							<Star
-								key={i}
+								key={`star-${i}`}
 								size={16}
 								className={i < testimonial.rating ? "fill-current" : ""}
 								style={{

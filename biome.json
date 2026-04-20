@@ -48,6 +48,16 @@
 					}
 				}
 			}
+		},
+		{
+			"includes": ["**/routes/login.tsx", "**/routes/index.tsx"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noArrayIndexKey": "off"
+					}
+				}
+			}
 		}
 	]
 }
