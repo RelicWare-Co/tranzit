@@ -1,6 +1,6 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 7,
+  "round": 8,
   "status": "failure",
   "assertionsSummary": {
     "total": 49,
@@ -72,5 +72,5 @@
   "blockedAssertions": [],
   "appliedUpdates": [],
   "previousRound": ".factory/validation/dashboard-citas-usuarios/user-testing/synthesis.json",
-  "summary": "Round 7 user testing: 45/49 pass. 4 assertions remain failed due to data blockers (no bookings/series in database) or missing feature (duplicate procedure pending in future milestone). All implementation features for dashboard-citas-usuarios are complete. Blockers require either: (1) seeding booking/series data into database, or (2) implementing admin-tramites-redesign in tramites-reportes-auditoria-config milestone."
+  "summary": "Round 8 user testing: 45/49 pass. 4 assertions remain failed due to data blockers (no bookings/series in database) or missing feature (duplicate procedure pending in future milestone). All implementation features for dashboard-citas-usuarios are complete. Blockers require either: (1) seeding booking/series data into database, or (2) implementing admin-tramites-redesign in tramites-reportes-auditoria-config milestone."
 }
