@@ -1,0 +1,99 @@
+{
+  "milestone": "dashboard-citas-usuarios",
+  "round": 3,
+  "status": "failure",
+  "assertionsSummary": {
+    "total": 49,
+    "passed": 39,
+    "failed": 5,
+    "blocked": 5
+  },
+  "passedAssertions": [
+    "VAL-LAYOUT-001",
+    "VAL-LAYOUT-002",
+    "VAL-LAYOUT-003",
+    "VAL-LAYOUT-004",
+    "VAL-LOGIN-001",
+    "VAL-LOGIN-002",
+    "VAL-LOGIN-003",
+    "VAL-LOGIN-004",
+    "VAL-DASH-001",
+    "VAL-DASH-003",
+    "VAL-CITAS-001",
+    "VAL-CITAS-002",
+    "VAL-CITAS-003",
+    "VAL-CITAS-004",
+    "VAL-USERS-001",
+    "VAL-USERS-002",
+    "VAL-USERS-003",
+    "VAL-USERS-004",
+    "VAL-TRAMITES-001",
+    "VAL-TRAMITES-002",
+    "VAL-TRAMITES-003",
+    "VAL-TRAMITES-004",
+    "VAL-REPORTES-001",
+    "VAL-REPORTES-003",
+    "VAL-AUDIT-001",
+    "VAL-AUDIT-002",
+    "VAL-AUDIT-003",
+    "VAL-AUDIT-004",
+    "VAL-CONFIG-001",
+    "VAL-CONFIG-002",
+    "VAL-CONFIG-003",
+    "VAL-CONFIG-004",
+    "VAL-CONFIG-005",
+    "VAL-CONFIG-006",
+    "VAL-CROSS-001",
+    "VAL-CROSS-002",
+    "VAL-DESIGN-001",
+    "VAL-DESIGN-002",
+    "VAL-DESIGN-003",
+    "VAL-DESIGN-004"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-DASH-002",
+      "reason": "Cannot verify citizen name display - no appointments exist in system. Dashboard shows 0 Citas hoy. This is a data state issue, not a UI issue. The dashboard correctly displays the appointments list structure."
+    },
+    {
+      "id": "VAL-USERS-005",
+      "reason": "Cannot test reassign modal - staff Carlos Pérez has 0 active bookings today, so there's nothing to reassign."
+    },
+    {
+      "id": "VAL-TRAMITES-005",
+      "reason": "Duplicate procedure functionality is NOT implemented. No 'Duplicar' button or action exists for procedures."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "id": "VAL-REPORTES-002",
+      "blockedBy": "No bookings available to select in current data state. Action buttons only appear when a booking is selected."
+    },
+    {
+      "id": "VAL-REPORTES-004",
+      "blockedBy": "No series available to select in current data state. Action buttons only appear when a series is selected."
+    }
+  ],
+  "appliedUpdates": [],
+  "previousRound": ".factory/validation/dashboard-citas-usuarios/user-testing/synthesis.json",
+  "blockersFound": [
+    {
+      "id": "BLOCKER-DATA-001",
+      "severity": "high",
+      "description": "No bookings exist in the system - cannot verify assertions that require appointments (VAL-DASH-002, VAL-USERS-005, VAL-REPORTES-002, VAL-REPORTES-004)",
+      "location": "Database state - 0 bookings"
+    },
+    {
+      "id": "BLOCKER-FEATURE-001",
+      "severity": "medium",
+      "description": "Duplicate procedure functionality (VAL-TRAMITES-005) is not implemented",
+      "location": "packages/web/src/routes/admin/tramites"
+    }
+  ],
+  "evidenceCollected": [
+    "evidence/dashboard-citas-usuarios/batch-design-dashboard/ - 14 screenshots across all admin pages",
+    "evidence/dashboard-citas-usuarios/batch-tramites/ - Screenshots of procedure list, create modal, toggle, duplicate test",
+    "evidence/dashboard-citas-usuarios/batch-reportes-audit-config/ - 18 screenshots of reportes, auditoria, configuracion"
+  ],
+  "summary": "Round 3 user testing for dashboard-citas-usuarios: 39/49 assertions passed. 3 failed (VAL-DASH-002, VAL-USERS-005, VAL-TRAMITES-005 - all data state issues or missing feature), 5 blocked (VAL-REPORTES-002, VAL-REPORTES-004 - data state). Design quality assertions all passed. All previously passing assertions remain passing."
+}

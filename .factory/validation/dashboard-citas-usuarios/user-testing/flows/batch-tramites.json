@@ -1,0 +1,102 @@
+{
+  "groupId": "batch-tramites",
+  "testedAt": "2026-04-20T00:00:00.000Z",
+  "isolation": {
+    "appUrl": "http://localhost:3000",
+    "loginUrl": "http://localhost:3000/admin/login",
+    "email": "admin@simut.test",
+    "password": "admin123",
+    "workingDirectory": "/Users/verzach3/Projects/tranzit",
+    "missionDir": "/Users/verzach3/.factory/missions/6d45bbd3-f6d4-497f-902b-cc6d0ef470c6"
+  },
+  "toolsUsed": ["agent-browser"],
+  "assertions": [
+    {
+      "id": "VAL-TRAMITES-001",
+      "title": "Procedure list renders",
+      "status": "pass",
+      "steps": [
+        { "action": "Navigate to /admin/tramites", "expected": "Procedure list visible", "observed": "Procedure list with empty state message '0 de 0 trámites activos' displayed" },
+        { "action": "Create a new procedure via modal", "expected": "Procedure card appears in list", "observed": "Procedure 'Renovación de Licencia' with 'Activo' badge and slug 'renovacion-de-licencia' appears in list" }
+      ],
+      "evidence": {
+        "screenshots": [
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-001-procedure-list.png",
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-001-with-procedure.png",
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-001-with-procedure-list.png"
+        ],
+        "consoleErrors": "none",
+        "network": "Admin login and procedure list API calls"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-TRAMITES-002",
+      "title": "Procedure detail panel shows on selection",
+      "status": "pass",
+      "steps": [
+        { "action": "Click on procedure card 'Renovación de Licencia'", "expected": "Detail panel opens with full config", "observed": "Detail panel shows with tabs (General, Formulario, Documentos), active switch, description, version v1, form schema, and document schema" }
+      ],
+      "evidence": {
+        "screenshots": [
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-003-after-create.png",
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-001-with-procedure.png"
+        ],
+        "consoleErrors": "none"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-TRAMITES-003",
+      "title": "Create procedure modal works",
+      "status": "pass",
+      "steps": [
+        { "action": "Click 'Nuevo trámite' button", "expected": "Create modal opens", "observed": "Modal opens with fields: name (textbox), slug (textbox), description (textarea), active switch, Cancel and Create buttons" },
+        { "action": "Fill name 'Renovación de Licencia' and description", "expected": "Fields populated, Create button enabled", "observed": "Name and description filled, Create button enabled" },
+        { "action": "Click 'Crear trámite' button", "expected": "Procedure created and appears in list", "observed": "Procedure created successfully, toast notification shown, detail panel opens for new procedure" }
+      ],
+      "evidence": {
+        "screenshots": [
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-003-create-modal.png",
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-003-after-create.png"
+        ],
+        "consoleErrors": "none"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-TRAMITES-004",
+      "title": "Toggle procedure active state",
+      "status": "pass",
+      "steps": [
+        { "action": "Click 'Trámite activo' switch while procedure is active", "expected": "Switch toggles to inactive", "observed": "Switch changed from [checked] to unchecked, procedure badge changed from 'Activo' to 'Inactivo'" }
+      ],
+      "evidence": {
+        "screenshots": [
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-004-toggle-off.png"
+        ],
+        "consoleErrors": "none"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-TRAMITES-005",
+      "title": "Duplicate procedure functionality",
+      "status": "fail",
+      "steps": [
+        { "action": "Search UI for duplicate action", "expected": "Duplicate button or action exists", "observed": "No 'Duplicar' button or duplicate action found in procedure list or detail panel" },
+        { "action": "Search page text for 'duplicar' or similar", "expected": "Duplicate-related text found", "observed": "No duplicate-related text found on page" }
+      ],
+      "evidence": {
+        "screenshots": [
+          "evidence/dashboard-citas-usuarios/batch-tramites/VAL-TRAMITES-005-duplicate-test.png"
+        ],
+        "consoleErrors": "none"
+      },
+      "issues": "The duplicate procedure functionality is NOT implemented in the UI. There is no 'Duplicar' button or action available for procedures."
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 5 assertions for Trámites (Procedures) area: 4 passed (VAL-TRAMITES-001, 002, 003, 004), 1 failed (VAL-TRAMITES-005: duplicate functionality not implemented). No console errors detected. Empty state displays correctly. Create modal works as expected. Toggle active state works correctly. Duplicate functionality is missing from the UI."
+}

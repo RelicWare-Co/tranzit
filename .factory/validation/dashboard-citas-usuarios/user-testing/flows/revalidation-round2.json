@@ -1,0 +1,43 @@
+{
+  "milestone": "dashboard-citas-usuarios",
+  "round": 2,
+  "startedAt": "2026-04-20T10:00:00Z",
+  "assertionsTested": [
+    "VAL-DASH-002",
+    "VAL-USERS-005"
+  ],
+  "results": {
+    "VAL-DASH-002": {
+      "status": "blocked",
+      "reason": "Could not verify citizen name display - no appointments exist in system to verify. Dashboard shows 'No hay citas programadas para hoy' which confirms zero bookings in the database.",
+      "evidence": "Dashboard screenshot shows 0 Citas hoy, 0 Pendientes, with appointments list empty",
+      "dataState": "Database has 0 bookings, only staff user exists (testadmin@example.com and carlos.perez@simut.test)"
+    },
+    "VAL-USERS-005": {
+      "status": "blocked",
+      "reason": "Reportes page crash ('Alert is not defined') prevents testing the reassign modal. The usuarios page loads but the reassign functionality depends on the Reportes page being functional. Additionally, the staff detail panel shows 0 active bookings for today, so there's nothing to reassign.",
+      "evidence": "Navigating to /admin/reportes shows 'Alert is not defined' error. Staff Carlos Pérez has 0 active bookings today.",
+      "blockerRootCause": "Missing Alert import in AdminReportesPage.tsx - Alert is used but not imported from @mantine/core"
+    }
+  },
+  "appliedUpdates": [],
+  "frictions": [],
+  "blockers": [
+    {
+      "id": "BLOCKER-001",
+      "severity": "critical",
+      "description": "Reportes page crashes with 'Alert is not defined' - Alert component from @mantine/core is used but not imported",
+      "location": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+      "suggestedFix": "Add 'Alert' to the import statement from '@mantine/core'"
+    },
+    {
+      "id": "BLOCKER-002", 
+      "severity": "high",
+      "description": "No bookings exist in the system - cannot verify VAL-DASH-002 which requires appointments to check citizen name display",
+      "location": "Database state",
+      "suggestedFix": "Seed test bookings with citizen data to enable testing VAL-DASH-002"
+    }
+  ],
+  "toolsUsed": ["agent-browser"],
+  "completedAt": "2026-04-20T10:05:00Z"
+}
