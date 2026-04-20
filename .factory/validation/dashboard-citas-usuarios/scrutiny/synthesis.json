@@ -1,6 +1,6 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 2,
+  "round": 5,
   "status": "fail",
   "validatorsRun": {
     "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
@@ -8,11 +8,11 @@
     "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 }
   },
   "reviewsSummary": {
-    "total": 0,
-    "passed": 0,
-    "failed": 0,
-    "failedFeatures": [],
-    "note": "No new features to review in this round. Fix feature 'admin-dashboard-datasource-fix' is still pending."
+    "total": 3,
+    "passed": 2,
+    "failed": 1,
+    "failedFeatures": ["admin-dashboard-redesign"],
+    "note": "Re-run (round 5). admin-citas-redesign and admin-usuarios-redesign passed review in prior rounds. admin-dashboard-redesign has one blocking issue still open. Fix feature 'admin-dashboard-datasource-fix' remains pending and has not been implemented yet."
   },
   "blockingIssues": [
     {
@@ -45,5 +45,5 @@
     }
   ],
   "rejectedObservations": [],
-  "previousRound": ".factory/validation/dashboard-citas-usuarios/scrutiny/synthesis-round1-snapshot.json"
+  "previousRound": ".factory/validation/dashboard-citas-usuarios/scrutiny/synthesis-round4.json"
 }
