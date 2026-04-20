@@ -13,9 +13,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, Building2, Lock, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Badge } from "../../components/ui";
 import { useAuth } from "../../lib/AuthContext";
 import { orpc } from "../../lib/orpc-client";
-import { Badge } from "../../components/ui";
 
 export const Route = createFileRoute("/admin/login")({
 	component: AdminLoginPage,
@@ -163,7 +163,8 @@ function AdminLoginPage() {
 								Backoffice operativo
 							</p>
 							<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
-								Plataforma administrativa para la gestión de citas y trámites del SIMUT.
+								Plataforma administrativa para la gestión de citas y trámites
+								del SIMUT.
 							</p>
 						</div>
 					</div>
@@ -217,7 +218,8 @@ function AdminLoginPage() {
 								Configurar administrador
 							</p>
 							<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
-								No hay administradores en el sistema. Tu cuenta puede ser elevada a administrador principal.
+								No hay administradores en el sistema. Tu cuenta puede ser
+								elevada a administrador principal.
 							</p>
 						</div>
 					</div>
@@ -231,7 +233,11 @@ function AdminLoginPage() {
 								<Stack gap="sm" align="flex-start">
 									<div className="lg:hidden flex items-center gap-2 mb-2">
 										<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--brand-600)]">
-											<ShieldCheck size={16} className="text-white" strokeWidth={2} />
+											<ShieldCheck
+												size={16}
+												className="text-white"
+												strokeWidth={2}
+											/>
 										</div>
 										<span className="font-['Sora'] text-sm font-semibold text-[var(--neutral-900)]">
 											SIMUT Tuluá
@@ -244,7 +250,8 @@ function AdminLoginPage() {
 										Configurar administrador
 									</Title>
 									<p className="font-['Public_Sans'] text-sm leading-relaxed text-[var(--neutral-500)]">
-										No hay administradores en el sistema. Tu cuenta puede ser elevada a administrador principal.
+										No hay administradores en el sistema. Tu cuenta puede ser
+										elevada a administrador principal.
 									</p>
 									<Badge variant="success">Primer administrador</Badge>
 								</Stack>
@@ -252,8 +259,13 @@ function AdminLoginPage() {
 								{error ? (
 									<div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
 										<div className="flex items-start gap-3">
-											<AlertCircle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
-											<p className="font-['Public_Sans'] text-sm text-red-700">{error}</p>
+											<AlertCircle
+												size={16}
+												className="text-red-600 mt-0.5 flex-shrink-0"
+											/>
+											<p className="font-['Public_Sans'] text-sm text-red-700">
+												{error}
+											</p>
 										</div>
 									</div>
 								) : null}
@@ -317,7 +329,8 @@ function AdminLoginPage() {
 							Backoffice operativo
 						</p>
 						<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
-							Acceso restringido para personal autorizado. Las acciones quedan sujetas a auditoría del sistema.
+							Acceso restringido para personal autorizado. Las acciones quedan
+							sujetas a auditoría del sistema.
 						</p>
 						<div className="pt-4 border-t border-[var(--neutral-700)]">
 							<p className="font-['Public_Sans'] text-xs text-[var(--neutral-500)]">
@@ -356,8 +369,13 @@ function AdminLoginPage() {
 							{error ? (
 								<div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
 									<div className="flex items-start gap-3">
-										<AlertCircle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
-										<p className="font-['Public_Sans'] text-sm text-red-700">{error}</p>
+										<AlertCircle
+											size={16}
+											className="text-red-600 mt-0.5 flex-shrink-0"
+										/>
+										<p className="font-['Public_Sans'] text-sm text-red-700">
+											{error}
+										</p>
 									</div>
 								</div>
 							) : null}

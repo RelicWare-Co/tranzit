@@ -1,4 +1,5 @@
 import { Stack, Text } from "@mantine/core";
+import { CalendarDays, CheckCircle, Clock, XCircle } from "lucide-react";
 import { adminUi } from "../_shared/-admin-ui";
 
 type Stats = {
@@ -11,11 +12,13 @@ type Stats = {
 function Cell({
 	label,
 	value,
+	icon: Icon,
 	valueClass,
 	className,
 }: {
 	label: string;
 	value: number;
+	icon: React.ElementType;
 	valueClass: string;
 	className?: string;
 }) {
@@ -24,9 +27,12 @@ function Cell({
 			gap={4}
 			className={`min-w-0 items-center text-center sm:items-start sm:text-left ${className ?? ""}`}
 		>
-			<Text className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-zinc-400">
-				{label}
-			</Text>
+			<div className="flex items-center gap-1.5">
+				<Icon size={14} className="text-zinc-400 shrink-0" strokeWidth={1.75} />
+				<Text className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+					{label}
+				</Text>
+			</div>
 			<Text
 				className={`${adminUi.monoStat} text-2xl font-semibold leading-none sm:text-[1.5rem] ${valueClass}`}
 			>
@@ -39,28 +45,32 @@ function Cell({
 /** Franja de KPI: cuatro columnas iguales en escritorio; en móvil 2×2 equilibrado. */
 export function BookingStatsGrid({ stats }: { stats: Stats }) {
 	return (
-		<div className="grid w-full min-w-0 grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4 sm:gap-x-0 sm:gap-y-0 sm:divide-x sm:divide-zinc-200/75">
+		<div className="grid w-full min-w-0 grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4 sm:gap-x-0 sm:gap-y-0 sm:divide-x sm:divide-[var(--border-subtle)]">
 			<Cell
 				label="Hoy"
 				value={stats.citasHoy}
-				valueClass="text-zinc-900"
+				icon={CalendarDays}
+				valueClass="text-[var(--text-primary)]"
 				className="px-0.5 sm:px-2.5 sm:py-0.5"
 			/>
 			<Cell
 				label="Confirmadas"
 				value={stats.confirmadas}
+				icon={CheckCircle}
 				valueClass="text-emerald-700"
 				className="px-0.5 sm:px-2.5 sm:py-0.5"
 			/>
 			<Cell
 				label="Pendientes"
 				value={stats.pendientes}
+				icon={Clock}
 				valueClass="text-amber-700"
 				className="px-0.5 sm:px-2.5 sm:py-0.5"
 			/>
 			<Cell
 				label="Canceladas"
 				value={stats.canceladas}
+				icon={XCircle}
 				valueClass="text-red-700"
 				className="px-0.5 sm:px-2.5 sm:py-0.5"
 			/>

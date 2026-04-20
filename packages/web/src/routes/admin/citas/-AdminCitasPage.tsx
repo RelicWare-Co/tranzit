@@ -13,9 +13,10 @@ import {
 	ScheduleHeader,
 	type ScheduleViewLevel,
 } from "@mantine/schedule";
-import { AlertCircle, Plus } from "lucide-react";
+import { AlertCircle, CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "../../../lib/orpc-client";
+import { AdminPageHeader } from "../_shared/-AdminPageHeader";
 import { formatDateLocal } from "../_shared/-dates";
 import { getErrorMessage } from "../_shared/-errors";
 import "./admin-schedule.css";
@@ -75,12 +76,17 @@ export function AdminCitasPage() {
 						return [];
 					}
 
+					const procedureName = booking.request?.procedure?.name || booking.request?.procedure?.slug;
+					const staffName = booking.staff?.name || booking.staff?.email || "Sin asignar";
+
 					return [
 						{
 							id: booking.id,
-							title: `${booking.kind === "administrative" ? "[Admin] " : ""}${
-								booking.staff?.name || booking.staff?.email || "Sin asignar"
-							}`,
+							title: booking.kind === "administrative"
+								? `[Admin] ${staffName}`
+								: procedureName
+									? `${procedureName} — ${staffName}`
+									: staffName,
 							start: toDateTimeString(
 								booking.slot.slotDate,
 								booking.slot.startTime,
@@ -400,27 +406,44 @@ export function AdminCitasPage() {
 
 	return (
 		<Box className="admin-citas-calendar-scope flex min-h-0 flex-1 flex-col">
-			{bookingsError ? (
-				<Box className="shrink-0 border-b border-zinc-200/90 bg-zinc-50/95 px-3 py-2 sm:px-4">
-					<Alert
-						icon={<AlertCircle size={16} />}
-						color="red"
-						radius="md"
+			<AdminPageHeader
+				title="Gestión de Citas"
+				description="Visualiza y administra las citas en el calendario. Usa los filtros de vista para navegar por día, semana, mes o año."
+				actions={
+					<Button
+						leftSection={<CalendarDays size={18} strokeWidth={1.5} />}
 						variant="light"
+						color="red"
+						size="md"
+						className="font-semibold"
+						onClick={() => setDate(new Date())}
 					>
-						{bookingsError}
-					</Alert>
-				</Box>
-			) : null}
+						Hoy
+					</Button>
+				}
+			/>
 
 			<Card
 				p={0}
 				withBorder={false}
-				className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 border-b border-zinc-200/90 bg-white shadow-none"
+				className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-white shadow-sm"
 			>
-				<Box className="shrink-0 border-b border-zinc-200/90 bg-zinc-50/95 px-4 py-3 sm:px-5">
+				<Box className="shrink-0 border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-3 sm:px-5">
 					<BookingStatsGrid stats={stats} />
 				</Box>
+
+				{bookingsError ? (
+					<Box className="shrink-0 px-4 py-3 sm:px-5">
+						<Alert
+							icon={<AlertCircle size={16} />}
+							color="red"
+							variant="light"
+							radius="md"
+						>
+							{bookingsError}
+						</Alert>
+					</Box>
+				) : null}
 
 				<Box className="shrink-0 px-4 pb-2 pt-3 sm:px-5">
 					<ScheduleHeader
@@ -447,7 +470,7 @@ export function AdminCitasPage() {
 								}
 								setDate(new Date(d));
 							}}
-							aria-label="Previous"
+							aria-label="Anterior"
 						/>
 						<ScheduleHeader.Control interactive={false} miw={200}>
 							{date.toLocaleDateString("es-CO", {
@@ -475,7 +498,7 @@ export function AdminCitasPage() {
 								}
 								setDate(new Date(d));
 							}}
-							aria-label="Next"
+							aria-label="Siguiente"
 						/>
 						<ScheduleHeader.Today onClick={() => setDate(new Date())} />
 						<div style={{ marginInlineStart: "auto" }}>

@@ -1,39 +1,21 @@
-import {
-	Alert,
-	Anchor,
-	Badge,
-	Box,
-	Button,
-	Checkbox,
-	Container,
-	Divider,
-	Flex,
-	Grid,
-	Group,
-	Loader,
-	Modal,
-	PinInput,
-	Select,
-	SimpleGrid,
-	Stack,
-	Text,
-	TextInput,
-	ThemeIcon,
-	Title,
-	UnstyledButton,
-} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
-	AlertCircle,
-	CalendarClock,
-	CheckCircle2,
 	ChevronRight,
 	Clock,
 	FileText,
+	Loader2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import {
+	Alert,
+	Badge,
+	Button,
+	Card,
+	CardContent,
+	Input,
+} from "../components/ui";
 import { useAuth } from "../lib/AuthContext";
 import { orpcClient } from "../lib/orpc-client";
 import classes from "./agendar.module.css";
@@ -520,975 +502,708 @@ function AgendarPage() {
 		goToStep(3);
 	};
 
-	return (
-		<Box py={{ base: 32, md: 64 }} className={classes.root}>
-			<Container size="xl">
-				{error && (
-					<Alert
-						color="red"
-						icon={<AlertCircle size={16} />}
-						mb="xl"
-						className={classes.alert}
+	// Step 1: Procedure Selection
+	const renderProcedureStep = () => (
+		<div className={classes.stepContent}>
+			<h2 className={classes.stepHeading}>¿Qué trámite necesitas?</h2>
+			{proceduresQuery.isPending ? (
+				<div className={classes.loadingContainer}>
+					<Loader2 size={24} className={classes.spinner} />
+					<span>Cargando trámites...</span>
+				</div>
+			) : proceduresQuery.data && proceduresQuery.data.length > 0 ? (
+				<div className={classes.procedureGrid}>
+					{proceduresQuery.data.map((proc) => (
+						<button
+							type="button"
+							key={proc.id}
+							className={`${classes.procedureCard} ${
+								detailsForm.values.procedureTypeId === proc.id
+									? classes.procedureCardSelected
+									: ""
+							}`}
+							onClick={() => {
+								const changedProcedure =
+									detailsForm.values.procedureTypeId !== proc.id;
+								detailsForm.setFieldValue("procedureTypeId", proc.id);
+								if (changedProcedure) {
+									setRequirementsAcknowledged(false);
+									setSelectedDate(null);
+									setSelectedSlotId(null);
+								}
+								if (!proc.requiresVehicle) {
+									detailsForm.setFieldValue("plate", "");
+								}
+							}}
+						>
+							<div className={classes.procedureRadio}>
+								<div
+									className={`${classes.radioCircle} ${
+										detailsForm.values.procedureTypeId === proc.id
+											? classes.radioCircleSelected
+											: ""
+									}`}
+								>
+									{detailsForm.values.procedureTypeId === proc.id && (
+										<div className={classes.radioDot} />
+									)}
+								</div>
+							</div>
+							<div className={classes.procedureInfo}>
+								<h3 className={classes.procedureName}>{proc.name}</h3>
+								{proc.requiresVehicle && (
+									<Badge variant="brand" size="sm">
+										Requiere placa
+									</Badge>
+								)}
+							</div>
+						</button>
+					))}
+				</div>
+			) : (
+				<Alert variant="warning" title="Sin trámites disponibles">
+					No hay trámites disponibles por ahora. Por favor, intenta más tarde.
+				</Alert>
+			)}
+			<div className={classes.stepActions}>
+				<span className={classes.stepHint}>
+					Selecciona un trámite para habilitar el siguiente paso.
+				</span>
+				<Button
+					size="lg"
+					disabled={!selectedProcedure}
+					onClick={handleProcedureContinue}
+					rightIcon={<ChevronRight size={18} />}
+				>
+					Continuar
+				</Button>
+			</div>
+		</div>
+	);
+
+	// Step 2: Requirements
+	const renderRequirementsStep = () =>
+		selectedProcedure && (
+			<div className={classes.stepContent}>
+				<h2 className={classes.stepHeading}>Requisitos del trámite</h2>
+
+				<Card variant="inset" padding="lg" className={classes.requirementsCard}>
+					{procedureRequirements.length > 0 ? (
+						<div className={classes.requirementsList}>
+							{procedureRequirements.map((req) => (
+								<div key={req.key} className={classes.requirementItem}>
+									<div className={classes.requirementHeader}>
+										<div className={classes.requirementIcon}>
+											<FileText size={20} />
+										</div>
+										<div className={classes.requirementContent}>
+											<h4 className={classes.requirementTitle}>{req.label}</h4>
+											{req.instructions && (
+												<p className={classes.requirementInstructions}>
+													{req.instructions}
+												</p>
+											)}
+										</div>
+										{req.downloadUrl && (
+											<a
+												href={req.downloadUrl}
+												target="_blank"
+												rel="noopener noreferrer"
+												className={classes.downloadLink}
+												download
+											>
+												Descargar
+											</a>
+										)}
+									</div>
+								</div>
+							))}
+						</div>
+					) : (
+						<p className={classes.noRequirements}>
+							No hay plantillas requeridas para este trámite.
+						</p>
+					)}
+
+					<div className={classes.acknowledgeSection}>
+						<label className={classes.checkboxLabel}>
+							<input
+								type="checkbox"
+								checked={requirementsAcknowledged}
+								onChange={(e) =>
+									setRequirementsAcknowledged(e.currentTarget.checked)
+								}
+								className={classes.checkbox}
+							/>
+							<span>
+								He revisado los requisitos y llevaré los documentos impresos día
+								de mi cita.
+							</span>
+						</label>
+					</div>
+				</Card>
+
+				<div className={classes.stepActions}>
+					<Button
+						variant="ghost"
+						size="lg"
+						onClick={() => goToStep(0)}
+						leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
 					>
-						{error}
+						Volver
+					</Button>
+					<Button
+						size="lg"
+						onClick={handleRequirementsContinue}
+						disabled={!requirementsAcknowledged}
+						rightIcon={<ChevronRight size={18} />}
+					>
+						Continuar
+					</Button>
+				</div>
+			</div>
+		);
+
+	// Step 3: Schedule
+	const renderScheduleStep = () =>
+		selectedProcedure &&
+		requirementsAcknowledged && (
+			<div className={classes.stepContent}>
+				<h2 className={classes.stepHeading}>Fecha y horario</h2>
+
+				{slotsRangeQuery.isPending ? (
+					<div className={classes.loadingContainer}>
+						<Loader2 size={24} className={classes.spinner} />
+						<span>Cargando disponibilidad...</span>
+					</div>
+				) : availableDates.length > 0 ? (
+					<div className={classes.scheduleContainer}>
+						{/* Date Pills - Vertical */}
+						<div className={classes.dateList}>
+							{availableDates.map((day) => (
+								<button
+									type="button"
+									key={day.date}
+									className={`${classes.datePill} ${
+										resolvedSelectedDate === day.date
+											? classes.datePillActive
+											: ""
+									}`}
+									onClick={() => {
+										setSelectedDate(day.date);
+										setSelectedSlotId(null);
+									}}
+								>
+									<span className={classes.dateMonth}>
+										{new Date(`${day.date}T00:00:00`).toLocaleDateString(
+											"es-CO",
+											{
+												month: "short",
+											},
+										)}
+									</span>
+									<span className={classes.dateDay}>
+										{new Date(`${day.date}T00:00:00`).getDate()}
+									</span>
+									<span className={classes.dateWeekday}>
+										{new Date(`${day.date}T00:00:00`).toLocaleDateString(
+											"es-CO",
+											{
+												weekday: "short",
+											},
+										)}
+									</span>
+								</button>
+							))}
+						</div>
+
+						{/* Slots Grid */}
+						<div className={classes.slotsSection}>
+							{selectedDaySlots.length > 0 ? (
+								<div className={classes.slotsGrid}>
+									{selectedDaySlots.map((slot) => (
+										<button
+											type="button"
+											key={slot.id}
+											className={`${classes.slotButton} ${
+												resolvedSelectedSlotId === slot.id
+													? classes.slotButtonSelected
+													: ""
+											}`}
+											onClick={() => setSelectedSlotId(slot.id)}
+										>
+											<Clock size={14} />
+											<span className={classes.slotTime}>{slot.startTime}</span>
+										</button>
+									))}
+								</div>
+							) : (
+								<Alert variant="warning" title="Sin horarios">
+									No hay horarios disponibles en esta fecha. Selecciona otra
+									fecha.
+								</Alert>
+							)}
+						</div>
+					</div>
+				) : (
+					<Alert variant="warning" title="Sin cupos disponibles">
+						No hay cupos disponibles. Intenta más adelante.
 					</Alert>
 				)}
-				{feedback && !holdBooking && (
-					<Alert
-						color="green"
-						icon={<CheckCircle2 size={16} />}
-						mb="xl"
-						className={classes.alert}
+
+				<div className={classes.stepActions}>
+					<Button
+						variant="ghost"
+						size="lg"
+						onClick={() => goToStep(1)}
+						leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
 					>
-						{feedback}
-					</Alert>
+						Volver
+					</Button>
+					<Button
+						size="lg"
+						onClick={handleSlotsContinue}
+						disabled={!resolvedSelectedSlotId}
+						rightIcon={<ChevronRight size={18} />}
+					>
+						Continuar
+					</Button>
+				</div>
+			</div>
+		);
+
+	// Step 4: Details
+	const renderDetailsStep = () =>
+		selectedProcedure &&
+		requirementsAcknowledged &&
+		resolvedSelectedSlotId && (
+			<div className={classes.stepContent}>
+				<h2 className={classes.stepHeading}>Datos personales</h2>
+
+				<form onSubmit={handleReserveClick} className={classes.detailsForm}>
+					<div className={classes.formGrid}>
+						<Input
+							label="Nombre completo"
+							placeholder="Ana Gómez"
+							{...detailsForm.getInputProps("applicantName")}
+						/>
+
+						<div className={classes.documentRow}>
+							<div className={classes.documentType}>
+								<label className={classes.formLabel} htmlFor="documentType">Tipo</label>
+								<select
+									id="documentType"
+									className={classes.select}
+									{...detailsForm.getInputProps("documentType")}
+								>
+									<option value="CC">CC</option>
+									<option value="CE">CE</option>
+									<option value="PP">PP</option>
+								</select>
+							</div>
+							<Input
+								label="Documento"
+								placeholder="123456789"
+								{...detailsForm.getInputProps("applicantDocument")}
+							/>
+						</div>
+
+						<Input
+							type="email"
+							label="Correo electrónico"
+							placeholder="correo@ejemplo.com"
+							{...detailsForm.getInputProps("email")}
+							disabled={isAuthenticated}
+						/>
+
+						<Input
+							label="Teléfono"
+							placeholder="3001234567"
+							{...detailsForm.getInputProps("phone")}
+						/>
+
+						{selectedProcedure.requiresVehicle && (
+							<Input
+								label="Placa del vehículo"
+								placeholder="ABC123"
+								{...detailsForm.getInputProps("plate")}
+								onChange={(e) =>
+									detailsForm.setFieldValue(
+										"plate",
+										e.currentTarget.value.toUpperCase(),
+									)
+								}
+							/>
+						)}
+					</div>
+
+					<div className={classes.stepActions}>
+						<Button
+							variant="ghost"
+							size="lg"
+							onClick={() => goToStep(2)}
+							leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
+						>
+							Volver
+						</Button>
+						<Button
+							size="lg"
+							type="submit"
+							isLoading={holdMutation.isPending || sendOtpMutation.isPending}
+							rightIcon={<ChevronRight size={18} />}
+						>
+							Asegurar mi cupo
+						</Button>
+					</div>
+				</form>
+			</div>
+		);
+
+	// Render the appropriate step
+	const renderStep = () => {
+		switch (activeStep) {
+			case 0:
+				return renderProcedureStep();
+			case 1:
+				return renderRequirementsStep();
+			case 2:
+				return renderScheduleStep();
+			case 3:
+				return renderDetailsStep();
+			default:
+				return renderProcedureStep();
+		}
+	};
+
+	return (
+		<div className={classes.root}>
+			<div className={classes.container}>
+				{/* Header */}
+				<div className={classes.header}>
+					<h1 className={classes.pageTitle}>Agendar Cita</h1>
+					<p className={classes.pageSubtitle}>
+						Avanza paso a paso para reservar sin perderte en el proceso.
+					</p>
+				</div>
+
+				{/* Error/Feedback Alerts */}
+				{error && (
+					<div className={classes.alertContainer}>
+						<Alert variant="error">{error}</Alert>
+					</div>
+				)}
+				{feedback && !holdBooking && (
+					<div className={classes.alertContainer}>
+						<Alert variant="success">{feedback}</Alert>
+					</div>
 				)}
 
 				{!holdBooking ? (
-					<Grid style={{ gap: 48 }}>
-						<Grid.Col span={{ base: 12, md: 7, lg: 7 }}>
-							<Stack gap="xl">
-								<Box>
-									<Title order={1} className={classes.pageTitle}>
-										Agendar Cita
-									</Title>
-									<Text
-										size="lg"
-										c="dimmed"
-										mt="xs"
-										className={classes.pageSubtitle}
-									>
-										Avanza paso a paso para reservar sin perderte en el proceso.
-									</Text>
-								</Box>
+					<div className={classes.wizardLayout}>
+						{/* Main Content */}
+						<div className={classes.mainContent}>
+							{/* Step Rail */}
+							<div className={classes.stepRail}>
+								{BOOKING_STEPS.map((step, index) => {
+									const state =
+										index < activeStep
+											? "done"
+											: index === activeStep
+												? "active"
+												: "upcoming";
+									const isClickable = index <= maxReachableStep;
 
-								<div className={classes.stepRail}>
-									{BOOKING_STEPS.map((step, index) => {
-										const state =
-											index < activeStep
-												? "done"
-												: index === activeStep
-													? "active"
-													: "upcoming";
-										const isClickable = index <= maxReachableStep;
-
-										return (
-											<UnstyledButton
-												key={step.key}
-												type="button"
-												className={classes.stepRailItem}
-												data-state={state}
-												data-clickable={isClickable || undefined}
-												onClick={() => goToStep(index)}
-												disabled={!isClickable}
-											>
-												<span className={classes.stepRailIndex}>
-													{index + 1}
+									return (
+										<button
+											type="button"
+											key={step.key}
+											className={`${classes.stepRailItem} ${
+												state === "active" ? classes.stepRailActive : ""
+											} ${state === "done" ? classes.stepRailDone : ""}`}
+											onClick={() => goToStep(index)}
+											disabled={!isClickable}
+										>
+											<div className={classes.stepNumber}>{index + 1}</div>
+											<div className={classes.stepInfo}>
+												<span className={classes.stepLabel}>{step.label}</span>
+												<span className={classes.stepDescription}>
+													{step.description}
 												</span>
-												<span className={classes.stepRailText}>
-													<Text
-														size="xs"
-														fw={700}
-														tt="uppercase"
-														style={{ letterSpacing: 0.6 }}
-													>
-														{step.label}
-													</Text>
-													<Text size="xs" c="dimmed">
-														{step.description}
-													</Text>
-												</span>
-											</UnstyledButton>
-										);
-									})}
-								</div>
+											</div>
+										</button>
+									);
+								})}
+							</div>
 
-								<div className={`${classes.wizardPanel} ${classes.fadeEnter}`}>
+							{/* Wizard Panel */}
+							<Card
+								variant="elevated"
+								padding="xl"
+								className={classes.wizardPanel}
+							>
+								{/* Progress Bar */}
+								<div className={classes.progressSection}>
 									<div className={classes.progressTrack}>
 										<div
 											className={classes.progressFill}
 											style={{ width: `${wizardProgress}%` }}
 										/>
 									</div>
-
-									<Group justify="space-between" align="center" my="xl">
-										<div>
-											<Text
-												size="xs"
-												c="dimmed"
-												tt="uppercase"
-												fw={700}
-												style={{ letterSpacing: 0.8 }}
-											>
-												Paso {activeStep + 1} de {BOOKING_STEPS.length}
-											</Text>
-											<Text fw={700} size="xl" className={classes.stepTitle}>
-												{BOOKING_STEPS[activeStep]?.label}
-											</Text>
-										</div>
-										<Badge color="red" variant="light" size="lg" radius="sm">
-											{wizardProgress}% completado
-										</Badge>
-									</Group>
-
-									<form onSubmit={handleReserveClick}>
-										<Stack gap="xl">
-											{activeStep === 0 && (
-												<Box>
-													<Text
-														fw={600}
-														size="xl"
-														className={classes.stepTitle}
-														mb="xl"
-													>
-														¿Qué trámite necesitas?
-													</Text>
-													{proceduresQuery.isPending ? (
-														<Loader size="sm" color="red" />
-													) : proceduresQuery.data &&
-														proceduresQuery.data.length > 0 ? (
-														<div className={classes.radioList}>
-															{proceduresQuery.data.map((proc) => (
-																<UnstyledButton
-																	key={proc.id}
-																	type="button"
-																	className={classes.radioCard}
-																	data-checked={
-																		detailsForm.values.procedureTypeId ===
-																			proc.id || undefined
-																	}
-																	onClick={() => {
-																		const changedProcedure =
-																			detailsForm.values.procedureTypeId !==
-																			proc.id;
-																		detailsForm.setFieldValue(
-																			"procedureTypeId",
-																			proc.id,
-																		);
-																		if (changedProcedure) {
-																			setRequirementsAcknowledged(false);
-																			setSelectedDate(null);
-																			setSelectedSlotId(null);
-																		}
-																		if (!proc.requiresVehicle) {
-																			detailsForm.setFieldValue("plate", "");
-																		}
-																	}}
-																>
-																	<div className={classes.radioCheck} />
-																	<div>
-																		<Text fw={600} size="md">
-																			{proc.name}
-																		</Text>
-																		{proc.requiresVehicle && (
-																			<Badge
-																				color="blue"
-																				variant="dot"
-																				size="xs"
-																				mt={8}
-																			>
-																				Requiere placa
-																			</Badge>
-																		)}
-																	</div>
-																</UnstyledButton>
-															))}
-														</div>
-													) : (
-														<Alert
-															color="yellow"
-															icon={<CalendarClock size={16} />}
-														>
-															No hay trámites disponibles por ahora.
-														</Alert>
-													)}
-													<Group justify="space-between" mt={40}>
-														<Text size="sm" c="dimmed">
-															Selecciona un trámite para habilitar el siguiente
-															paso.
-														</Text>
-														<Button
-															type="button"
-															size="lg"
-															color="red"
-															disabled={!selectedProcedure}
-															onClick={handleProcedureContinue}
-															rightSection={<ChevronRight size={18} />}
-														>
-															Continuar
-														</Button>
-													</Group>
-												</Box>
-											)}
-
-											{activeStep === 1 && selectedProcedure && (
-												<Box className={classes.fadeEnter}>
-													<Text
-														fw={600}
-														size="xl"
-														className={classes.stepTitle}
-														mb="xl"
-													>
-														Requisitos del trámite
-													</Text>
-
-													<div className={classes.requirementsBox}>
-														{procedureRequirements.length > 0 ? (
-															<Stack gap="lg" mb="xl">
-																{procedureRequirements.map((req) => (
-																	<Box
-																		key={req.key}
-																		className={classes.requirementItem}
-																	>
-																		<Group
-																			justify="space-between"
-																			align="center"
-																			wrap="nowrap"
-																		>
-																			<div>
-																				<Text fw={600} size="sm">
-																					{req.label}
-																				</Text>
-																				{req.instructions && (
-																					<Text size="sm" c="dimmed" mt={4}>
-																						{req.instructions}
-																					</Text>
-																				)}
-																			</div>
-																			{req.downloadUrl && (
-																				<Anchor
-																					href={req.downloadUrl}
-																					target="_blank"
-																					className={classes.downloadLink}
-																				>
-																					Descargar formato
-																				</Anchor>
-																			)}
-																		</Group>
-																	</Box>
-																))}
-															</Stack>
-														) : (
-															<Text size="sm" c="dimmed" fs="italic" mb="xl">
-																No hay plantillas requeridas para este trámite.
-															</Text>
-														)}
-
-														<Checkbox
-															size="md"
-															color="red"
-															label="He revisado los requisitos y llevaré los documentos impresos el día de mi cita."
-															checked={requirementsAcknowledged}
-															onChange={(e) =>
-																setRequirementsAcknowledged(
-																	e.currentTarget.checked,
-																)
-															}
-															className={classes.acknowledgeCheck}
-														/>
-													</div>
-
-													<Group justify="space-between" mt={40}>
-														<Button
-															type="button"
-															variant="subtle"
-															color="gray"
-															size="lg"
-															onClick={() => goToStep(0)}
-														>
-															Volver
-														</Button>
-														<Button
-															type="button"
-															size="lg"
-															color="red"
-															onClick={handleRequirementsContinue}
-															disabled={!requirementsAcknowledged}
-															rightSection={<ChevronRight size={18} />}
-														>
-															Continuar
-														</Button>
-													</Group>
-												</Box>
-											)}
-
-											{activeStep === 2 &&
-												selectedProcedure &&
-												requirementsAcknowledged && (
-													<Box className={classes.fadeEnter}>
-														<Text
-															fw={600}
-															size="xl"
-															className={classes.stepTitle}
-															mb="xl"
-														>
-															Fecha y horario
-														</Text>
-
-														{slotsRangeQuery.isPending ? (
-															<Loader size="sm" color="red" />
-														) : availableDates.length > 0 ? (
-															<Grid
-																style={{ gap: "var(--mantine-spacing-xl)" }}
-															>
-																<Grid.Col span={{ base: 12, sm: 5 }}>
-																	<Stack gap="sm" className={classes.dateList}>
-																		{availableDates.map((day) => (
-																			<UnstyledButton
-																				key={day.date}
-																				type="button"
-																				className={classes.datePill}
-																				data-active={
-																					resolvedSelectedDate === day.date ||
-																					undefined
-																				}
-																				onClick={() => {
-																					setSelectedDate(day.date);
-																					setSelectedSlotId(null);
-																				}}
-																			>
-																				<Text
-																					size="xs"
-																					tt="uppercase"
-																					fw={700}
-																					className={classes.dateMonth}
-																				>
-																					{new Date(
-																						`${day.date}T00:00:00`,
-																					).toLocaleDateString("es-CO", {
-																						month: "short",
-																					})}
-																				</Text>
-																				<Text
-																					size="xl"
-																					fw={700}
-																					className={classes.dateDay}
-																				>
-																					{new Date(
-																						`${day.date}T00:00:00`,
-																					).getDate()}
-																				</Text>
-																				<Text
-																					size="xs"
-																					fw={500}
-																					className={classes.dateWeekday}
-																				>
-																					{new Date(
-																						`${day.date}T00:00:00`,
-																					).toLocaleDateString("es-CO", {
-																						weekday: "short",
-																					})}
-																				</Text>
-																			</UnstyledButton>
-																		))}
-																	</Stack>
-																</Grid.Col>
-																<Grid.Col span={{ base: 12, sm: 7 }}>
-																	{selectedDaySlots.length > 0 ? (
-																		<SimpleGrid cols={2} spacing="md">
-																			{selectedDaySlots.map((slot) => (
-																				<UnstyledButton
-																					key={slot.id}
-																					type="button"
-																					className={classes.slotButton}
-																					data-active={
-																						resolvedSelectedSlotId ===
-																							slot.id || undefined
-																					}
-																					onClick={() =>
-																						setSelectedSlotId(slot.id)
-																					}
-																				>
-																					<Text
-																						fw={600}
-																						size="md"
-																						ff="monospace"
-																						style={{ letterSpacing: 0.5 }}
-																					>
-																						{slot.startTime}
-																					</Text>
-																				</UnstyledButton>
-																			))}
-																		</SimpleGrid>
-																	) : (
-																		<Text c="dimmed" size="sm">
-																			No hay horarios disponibles en esta fecha.
-																		</Text>
-																	)}
-																</Grid.Col>
-															</Grid>
-														) : (
-															<Alert
-																color="yellow"
-																icon={<CalendarClock size={16} />}
-															>
-																No hay cupos disponibles. Intenta más adelante.
-															</Alert>
-														)}
-
-														<Group justify="space-between" mt={40}>
-															<Button
-																type="button"
-																variant="subtle"
-																color="gray"
-																size="lg"
-																onClick={() => goToStep(1)}
-															>
-																Volver
-															</Button>
-															<Button
-																type="button"
-																size="lg"
-																color="red"
-																onClick={handleSlotsContinue}
-																disabled={!resolvedSelectedSlotId}
-																rightSection={<ChevronRight size={18} />}
-															>
-																Continuar
-															</Button>
-														</Group>
-													</Box>
-												)}
-
-											{activeStep === 3 &&
-												selectedProcedure &&
-												requirementsAcknowledged &&
-												resolvedSelectedSlotId && (
-													<Box className={classes.fadeEnter}>
-														<Text
-															fw={600}
-															size="xl"
-															className={classes.stepTitle}
-															mb="xl"
-														>
-															Datos personales
-														</Text>
-
-														<div className={classes.formGrid}>
-															<TextInput
-																required
-																label="Nombre completo"
-																placeholder="Ana Gómez"
-																classNames={{
-																	input: classes.input,
-																	label: classes.inputLabel,
-																}}
-																{...detailsForm.getInputProps("applicantName")}
-															/>
-															<Flex gap="sm">
-																<Select
-																	label="Tipo"
-																	data={["CC", "CE", "PP"]}
-																	w={90}
-																	classNames={{
-																		input: classes.input,
-																		label: classes.inputLabel,
-																	}}
-																	{...detailsForm.getInputProps("documentType")}
-																/>
-																<TextInput
-																	required
-																	label="Documento"
-																	placeholder="123456789"
-																	style={{ flex: 1 }}
-																	classNames={{
-																		input: classes.input,
-																		label: classes.inputLabel,
-																	}}
-																	{...detailsForm.getInputProps(
-																		"applicantDocument",
-																	)}
-																/>
-															</Flex>
-															<TextInput
-																required
-																type="email"
-																label="Correo electrónico"
-																placeholder="correo@ejemplo.com"
-																classNames={{
-																	input: classes.input,
-																	label: classes.inputLabel,
-																}}
-																{...detailsForm.getInputProps("email")}
-																disabled={isAuthenticated}
-															/>
-															<TextInput
-																label="Teléfono"
-																placeholder="3001234567"
-																classNames={{
-																	input: classes.input,
-																	label: classes.inputLabel,
-																}}
-																{...detailsForm.getInputProps("phone")}
-															/>
-															{selectedProcedure.requiresVehicle && (
-																<TextInput
-																	required
-																	label="Placa del vehículo"
-																	placeholder="ABC123"
-																	classNames={{
-																		input: classes.input,
-																		label: classes.inputLabel,
-																	}}
-																	{...detailsForm.getInputProps("plate")}
-																	onChange={(e) =>
-																		detailsForm.setFieldValue(
-																			"plate",
-																			e.currentTarget.value.toUpperCase(),
-																		)
-																	}
-																/>
-															)}
-														</div>
-
-														<Group justify="space-between" mt={40}>
-															<Button
-																type="button"
-																variant="subtle"
-																color="gray"
-																size="lg"
-																onClick={() => goToStep(2)}
-															>
-																Volver
-															</Button>
-															<Button
-																type="submit"
-																size="xl"
-																color="red"
-																loading={
-																	holdMutation.isPending ||
-																	sendOtpMutation.isPending
-																}
-																className={classes.actionButton}
-																rightSection={<ChevronRight size={20} />}
-															>
-																Asegurar mi cupo
-															</Button>
-														</Group>
-													</Box>
-												)}
-										</Stack>
-									</form>
-								</div>
-							</Stack>
-						</Grid.Col>
-
-						<Grid.Col span={{ base: 12, md: 5, lg: 5 }}>
-							<div className={classes.stickySummary}>
-								<Text
-									fw={700}
-									tt="uppercase"
-									size="xs"
-									c="red"
-									mb="xl"
-									style={{ letterSpacing: 1.5 }}
-								>
-									Tu Cita en Curso
-								</Text>
-
-								<Stack gap="xl">
-									<Box>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={8}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Paso actual
-										</Text>
-										<Badge color="red" variant="light" size="lg" radius="sm">
-											{activeStep + 1} / {BOOKING_STEPS.length} ·{" "}
+									<div className={classes.progressInfo}>
+										<span className={classes.progressText}>
+											Paso {activeStep + 1} de {BOOKING_STEPS.length} ·{" "}
 											{BOOKING_STEPS[activeStep]?.label}
-										</Badge>
-									</Box>
+										</span>
+										<Badge variant="brand">{wizardProgress}% completado</Badge>
+									</div>
+								</div>
 
-									<Box>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={8}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Trámite
-										</Text>
-										{selectedProcedure?.name ? (
-											<Text fw={500} size="lg" lh={1.3}>
-												{selectedProcedure.name}
-											</Text>
-										) : (
-											<Badge
-												variant="outline"
-												color="gray"
-												style={{ borderStyle: "dashed", borderWidth: 2 }}
-												radius="sm"
-												size="md"
-												tt="none"
-												fw={500}
-											>
-												Pendiente
-											</Badge>
-										)}
-									</Box>
+								{/* Step Content */}
+								<div className={classes.fadeEnter}>{renderStep()}</div>
+							</Card>
+						</div>
 
-									<Box>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={8}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Horario
-										</Text>
-										{resolvedSelectedDate ? (
-											<Text fw={500} size="lg">
-												{formatDateLabel(resolvedSelectedDate)}
-												{resolvedSelectedSlotId &&
-													` • ${selectedDaySlots.find((s) => s.id === resolvedSelectedSlotId)?.startTime || ""}`}
-											</Text>
-										) : (
-											<Badge
-												variant="outline"
-												color="gray"
-												style={{ borderStyle: "dashed", borderWidth: 2 }}
-												radius="sm"
-												size="md"
-												tt="none"
-												fw={500}
-											>
-												Pendiente
-											</Badge>
-										)}
-									</Box>
+						{/* Sidebar Summary */}
+						<div className={classes.sidebar}>
+							<Card
+								variant="elevated"
+								padding="xl"
+								className={classes.summaryCard}
+							>
+								<h3 className={classes.summaryTitle}>Tu Cita en Curso</h3>
 
-									<Box>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={8}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Requisitos
-										</Text>
-										<Badge
-											color={requirementsAcknowledged ? "green" : "gray"}
-											variant="light"
-											size="lg"
-											radius="sm"
-										>
-											{requirementsAcknowledged ? "Listos" : "Pendientes"}
-										</Badge>
-									</Box>
+								<div className={classes.summarySection}>
+									<span className={classes.summaryLabel}>Paso actual</span>
+									<Badge variant="brand">
+										{activeStep + 1} / {BOOKING_STEPS.length} ·{" "}
+										{BOOKING_STEPS[activeStep]?.label}
+									</Badge>
+								</div>
 
-									<Box>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={8}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Estado
-										</Text>
-										<Badge
-											color={resolvedSelectedSlotId ? "red" : "gray"}
-											variant="light"
-											size="lg"
-											radius="sm"
-										>
-											{resolvedSelectedSlotId
-												? "Listo para reservar"
-												: "Configurando"}
-										</Badge>
-									</Box>
-								</Stack>
-							</div>
-						</Grid.Col>
-					</Grid>
+								<div className={classes.summarySection}>
+									<span className={classes.summaryLabel}>Trámite</span>
+									{selectedProcedure?.name ? (
+										<span className={classes.summaryValue}>
+											{selectedProcedure.name}
+										</span>
+									) : (
+										<Badge variant="neutral">Pendiente</Badge>
+									)}
+								</div>
+
+								<div className={classes.summarySection}>
+									<span className={classes.summaryLabel}>Horario</span>
+									{resolvedSelectedDate ? (
+										<span className={classes.summaryValue}>
+											{formatDateLabel(resolvedSelectedDate)}
+											{resolvedSelectedSlotId && (
+												<>
+													{" · "}
+													{selectedDaySlots.find(
+														(s) => s.id === resolvedSelectedSlotId,
+													)?.startTime || ""}
+												</>
+											)}
+										</span>
+									) : (
+										<Badge variant="neutral">Pendiente</Badge>
+									)}
+								</div>
+
+								<div className={classes.summarySection}>
+									<span className={classes.summaryLabel}>Requisitos</span>
+									<Badge
+										variant={requirementsAcknowledged ? "success" : "neutral"}
+									>
+										{requirementsAcknowledged ? "Listos" : "Pendientes"}
+									</Badge>
+								</div>
+
+								<div className={classes.summarySection}>
+									<span className={classes.summaryLabel}>Estado</span>
+									<Badge
+										variant={resolvedSelectedSlotId ? "success" : "neutral"}
+									>
+										{resolvedSelectedSlotId
+											? "Listo para reservar"
+											: "Configurando"}
+									</Badge>
+								</div>
+							</Card>
+						</div>
+					</div>
 				) : (
 					/* Confirmation View */
-					<Container size="sm" className={classes.fadeEnter}>
-						<div className={classes.holdContainer}>
-							<div className={classes.holdHeader}>
+					<div className={classes.confirmationContainer}>
+						<Card variant="elevated" className={classes.confirmationCard}>
+							{/* Hold Header */}
+							<div className={classes.confirmationHeader}>
 								{holdExpired ? (
-									<Group
-										wrap="nowrap"
-										gap="md"
-										bg="red.0"
-										c="red.9"
-										p="lg"
-										style={{ borderRadius: "var(--mantine-radius-md)" }}
-									>
-										<ThemeIcon
-											color="red"
-											variant="light"
-											size="lg"
-											radius="xl"
-										>
-											<Clock size={20} />
-										</ThemeIcon>
-										<Text fw={600} size="md">
-											Tu reserva expiró. Por favor, selecciona otro horario.
-										</Text>
-									</Group>
+									<Alert variant="error" title="Reserva expirada">
+										Tu reserva expiró. Por favor, selecciona otro horario.
+									</Alert>
 								) : (
-									<Group
-										wrap="nowrap"
-										gap="md"
-										bg="gray.0"
-										p="lg"
-										style={{
-											borderRadius: "var(--mantine-radius-md)",
-											border: "1px solid var(--mantine-color-gray-2)",
-										}}
-									>
-										<ThemeIcon
-											color="gray"
-											variant="light"
-											size="lg"
-											radius="xl"
-										>
-											<Clock size={20} />
-										</ThemeIcon>
-										<div style={{ flex: 1 }}>
-											<Text fw={600} size="md" c="dark.9">
-												Cupo temporal asegurado
-											</Text>
-											<Text size="sm" c="dimmed">
-												Completa la confirmación antes de que termine el tiempo.
-											</Text>
+									<div className={classes.holdBanner}>
+										<div className={classes.holdIcon}>
+											<Clock size={24} />
 										</div>
-										<Badge
-											size="xl"
-											variant="light"
-											color="dark"
-											radius="sm"
-											ff="monospace"
-											fw={700}
-											style={{ letterSpacing: 1 }}
-										>
+										<div className={classes.holdInfo}>
+											<h3 className={classes.holdTitle}>
+												Cupo temporal asegurado
+											</h3>
+											<p className={classes.holdDescription}>
+												Completa la confirmación antes de que termine el tiempo.
+											</p>
+										</div>
+										<div className={classes.holdTimer}>
 											{formatSeconds(holdRemainingSeconds)}
-										</Badge>
-									</Group>
+										</div>
+									</div>
 								)}
 							</div>
 
-							<Box p={{ base: 32, md: 48 }}>
-								<Text
-									fw={700}
-									tt="uppercase"
-									size="xs"
-									c="red"
-									mb="xl"
-									style={{ letterSpacing: 1.5 }}
-								>
+							<CardContent padding="xl">
+								<h3 className={classes.confirmationTitle}>
 									Confirma tu asistencia
-								</Text>
+								</h3>
 
-								<Grid style={{ gap: "var(--mantine-spacing-xl)" }}>
-									<Grid.Col span={12}>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={4}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Trámite
-										</Text>
-										<Text fw={600} size="lg">
+								<div className={classes.confirmationDetails}>
+									<div className={classes.detailRow}>
+										<span className={classes.detailLabel}>Trámite</span>
+										<span className={classes.detailValue}>
 											{holdBooking.request?.procedure?.name}
-										</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={4}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Fecha
-										</Text>
-										<Text fw={600} size="md">
+										</span>
+									</div>
+									<div className={classes.detailRow}>
+										<span className={classes.detailLabel}>Fecha</span>
+										<span className={classes.detailValue}>
 											{holdBooking.slot?.slotDate}
-										</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={4}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Hora
-										</Text>
-										<Text fw={600} size="md" ff="monospace">
+										</span>
+									</div>
+									<div className={classes.detailRow}>
+										<span className={classes.detailLabel}>Hora</span>
+										<span className={classes.detailValueMono}>
 											{holdBooking.slot?.startTime}
-										</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={4}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											A nombre de
-										</Text>
-										<Text fw={500} size="md">
+										</span>
+									</div>
+									<div className={classes.detailRow}>
+										<span className={classes.detailLabel}>A nombre de</span>
+										<span className={classes.detailValue}>
 											{holdBooking.request?.applicantName}
-										</Text>
-									</Grid.Col>
-									<Grid.Col span={{ base: 12, sm: 6 }}>
-										<Text
-											size="xs"
-											c="dimmed"
-											mb={4}
-											tt="uppercase"
-											fw={600}
-											style={{ letterSpacing: 0.5 }}
-										>
-											Documento
-										</Text>
-										<Text fw={500} size="md">
+										</span>
+									</div>
+									<div className={classes.detailRow}>
+										<span className={classes.detailLabel}>Documento</span>
+										<span className={classes.detailValue}>
 											{holdBooking.request?.applicantDocument}
-										</Text>
-									</Grid.Col>
-								</Grid>
-
-								<Divider my={48} />
-
-								<div className={classes.warningBox}>
-									<Group wrap="nowrap" align="flex-start" gap="md">
-										<FileText size={24} className={classes.warningIcon} />
-										<div>
-											<Text fw={700} mb={4}>
-												Presentación Física Obligatoria
-											</Text>
-											<Text size="sm" c="dimmed" lh={1.5}>
-												Recuerda que debes presentarte el día de tu cita con
-												todos los requisitos y plantillas impresas. No se
-												aceptan envíos digitales.
-											</Text>
-										</div>
-									</Group>
+										</span>
+									</div>
 								</div>
 
-								<Group justify="space-between" mt={48}>
+								<div className={classes.warningBox}>
+									<FileText size={24} className={classes.warningIcon} />
+									<div>
+										<h4 className={classes.warningTitle}>
+											Presentación Física Obligatoria
+										</h4>
+										<p className={classes.warningText}>
+											Recuerda que debes presentarte el día de tu cita con todos
+											los requisitos y plantillas impresas. No se aceptan envíos
+											digitales.
+										</p>
+									</div>
+								</div>
+
+								<div className={classes.confirmationActions}>
 									<Button
-										variant="subtle"
-										color="gray"
+										variant="ghost"
 										size="lg"
 										onClick={() => cancelHoldMutation.mutate()}
-										loading={cancelHoldMutation.isPending}
+										isLoading={cancelHoldMutation.isPending}
 									>
 										{holdExpired ? "Elegir otro horario" : "Cancelar"}
 									</Button>
 									<Button
-										size="xl"
-										color="red"
+										size="lg"
 										onClick={() => confirmMutation.mutate()}
-										loading={confirmMutation.isPending}
+										isLoading={confirmMutation.isPending}
 										disabled={holdExpired}
-										className={classes.actionButton}
+										variant="success"
 									>
 										Confirmar cita definitivamente
 									</Button>
-								</Group>
-							</Box>
-						</div>
-					</Container>
+								</div>
+							</CardContent>
+						</Card>
+					</div>
 				)}
-			</Container>
+			</div>
 
 			{/* OTP Modal */}
-			<Modal
-				opened={isAuthModalOpen}
-				onClose={() => setIsAuthModalOpen(false)}
-				withCloseButton={false}
-				size="sm"
-				centered
-				classNames={{ body: classes.modalBody }}
-				padding="xl"
-				radius="md"
-			>
-				<Stack gap="xl">
-					<Box ta="center">
-						<Title order={3} mb="xs" fw={700}>
-							Verifica tu correo
-						</Title>
-						<Text size="sm" c="dimmed" lh={1.5}>
-							Ingresa el código de 6 dígitos que enviamos a <br />
-							<Text component="span" fw={600} c="dark.9">
-								{authEmail}
-							</Text>
-						</Text>
-					</Box>
+			{isAuthModalOpen && (
+				<button
+					className={classes.modalOverlay}
+					onClick={() => setIsAuthModalOpen(false)}
+					type="button"
+					aria-label="Cerrar modal"
+				>
+					<div className={classes.modal} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="dialog">
+						<Card variant="elevated" padding="xl">
+							<div className={classes.modalHeader}>
+								<h3 className={classes.modalTitle}>Verifica tu correo</h3>
+								<p className={classes.modalDescription}>
+									Ingresa el código de 6 dígitos que enviamos a <br />
+									<strong>{authEmail}</strong>
+								</p>
+							</div>
 
-					{error && (
-						<Alert color="red" variant="light">
-							{error}
-						</Alert>
-					)}
+							{error && (
+								<Alert variant="error" className={classes.modalAlert}>
+									{error}
+								</Alert>
+							)}
 
-					<Box>
-						<Group justify="center">
-							<PinInput
-								length={6}
-								type="number"
-								size="xl"
-								value={otpCode}
-								onChange={setOtpCode}
-								disabled={verifyOtpMutation.isPending}
-								className={classes.pinInput}
-							/>
-						</Group>
-					</Box>
+							<div className={classes.pinContainer}>
+								<input
+									type="text"
+									inputMode="numeric"
+									maxLength={6}
+									value={otpCode}
+									onChange={(e) => {
+										const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+										setOtpCode(value);
+									}}
+									className={classes.pinInput}
+									placeholder="000000"
+									disabled={verifyOtpMutation.isPending}
+								/>
+							</div>
 
-					<Stack gap="md" mt="xl">
-						<Button
-							color="red"
-							size="xl"
-							fullWidth
-							onClick={() =>
-								verifyOtpMutation.mutate({ email: authEmail, otp: otpCode })
-							}
-							loading={verifyOtpMutation.isPending}
-							disabled={otpCode.length !== 6}
-							className={classes.actionButton}
-						>
-							Validar y Reservar
-						</Button>
-
-						<Anchor
-							component="button"
-							size="sm"
-							ta="center"
-							c="dimmed"
-							fw={500}
-							onClick={() => sendOtpMutation.mutate(authEmail)}
-							disabled={sendOtpMutation.isPending}
-						>
-							Reenviar código
-						</Anchor>
-					</Stack>
-				</Stack>
-			</Modal>
-		</Box>
+							<div className={classes.modalActions}>
+								<Button
+									fullWidth
+									size="lg"
+									onClick={() =>
+										verifyOtpMutation.mutate({ email: authEmail, otp: otpCode })
+									}
+									isLoading={verifyOtpMutation.isPending}
+									disabled={otpCode.length !== 6}
+								>
+									Validar y Reservar
+								</Button>
+								<button
+									type="button"
+									className={classes.resendLink}
+									onClick={() => sendOtpMutation.mutate(authEmail)}
+									disabled={sendOtpMutation.isPending}
+								>
+									Reenviar código
+								</button>
+							</div>
+						</Card>
+					</div>
+				</button>
+			)}
+		</div>
 	);
 }

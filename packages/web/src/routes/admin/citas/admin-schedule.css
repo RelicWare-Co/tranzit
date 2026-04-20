@@ -5,26 +5,26 @@
 
 [data-mantine-color-scheme="light"] .admin-schedule-wv {
 	--schedule-radius: 0.625rem;
-	--week-view-border-color: rgb(228 228 231);
-	--week-view-business-hours-bg: rgb(255 255 255);
-	--week-view-non-business-hours-bg: rgb(250 250 250);
+	--week-view-border-color: var(--neutral-200);
+	--week-view-business-hours-bg: white;
+	--week-view-non-business-hours-bg: var(--neutral-50);
 }
 
 [data-mantine-color-scheme="light"] .admin-schedule-dv {
 	--schedule-radius: 0.625rem;
-	--day-view-border-color: rgb(228 228 231);
-	--day-view-business-hours-bg: rgb(255 255 255);
-	--day-view-non-business-hours-bg: rgb(250 250 250);
+	--day-view-border-color: var(--neutral-200);
+	--day-view-business-hours-bg: white;
+	--day-view-non-business-hours-bg: var(--neutral-50);
 }
 
 [data-mantine-color-scheme="light"] .admin-schedule-mv {
 	--schedule-radius: 0.625rem;
-	--month-view-border-color: rgb(228 228 231);
+	--month-view-border-color: var(--neutral-200);
 }
 
 [data-mantine-color-scheme="light"] .admin-schedule-yv {
 	--schedule-radius: 0.625rem;
-	--year-view-border-color: rgb(228 228 231);
+	--year-view-border-color: var(--neutral-200);
 }
 
 .admin-schedule-toolbar {
@@ -36,10 +36,63 @@
 }
 
 [data-mantine-color-scheme="light"] .admin-schedule-week-head {
-	background-color: rgb(250 250 250);
-	border-bottom-color: rgb(228 228 231);
+	background-color: var(--neutral-50);
+	border-bottom-color: var(--neutral-200);
 }
 
 [data-mantine-color-scheme="light"] .admin-schedule-week-head[data-scrolled] {
 	box-shadow: 0 1px 0 rgba(9, 9, 11, 0.06);
+}
+
+/* Event colors aligned with design system */
+/* Using higher specificity to override Mantine defaults without !important */
+.admin-schedule-wv .admin-schedule-event--red,
+.admin-schedule-dv .admin-schedule-event--red,
+.admin-schedule-mv .admin-schedule-event--red,
+.admin-schedule-yv .admin-schedule-event--red {
+	background-color: var(--error-50);
+	border-left-color: var(--error-500);
+	color: var(--error-700);
+}
+
+.admin-schedule-wv .admin-schedule-event--orange,
+.admin-schedule-dv .admin-schedule-event--orange,
+.admin-schedule-mv .admin-schedule-event--orange,
+.admin-schedule-yv .admin-schedule-event--orange {
+	background-color: var(--warning-50);
+	border-left-color: var(--warning-500);
+	color: var(--warning-700);
+}
+
+.admin-schedule-wv .admin-schedule-event--violet,
+.admin-schedule-dv .admin-schedule-event--violet,
+.admin-schedule-mv .admin-schedule-event--violet,
+.admin-schedule-yv .admin-schedule-event--violet {
+	background-color: oklch(96% 0.03 280);
+	border-left-color: oklch(55% 0.14 280);
+	color: oklch(35% 0.12 280);
+}
+
+.admin-schedule-wv .admin-schedule-event--blue,
+.admin-schedule-dv .admin-schedule-event--blue,
+.admin-schedule-mv .admin-schedule-event--blue,
+.admin-schedule-yv .admin-schedule-event--blue {
+	background-color: var(--info-50);
+	border-left-color: var(--info-500);
+	color: var(--info-700);
+}
+
+/* Toolbar button refinement */
+.admin-schedule-toolbar button {
+	border-radius: var(--radius-md);
+	transition: all var(--duration-fast) var(--ease-out-quart);
+}
+
+.admin-schedule-toolbar button:hover {
+	background-color: var(--neutral-100);
+}
+
+/* View select refinement */
+.admin-schedule-toolbar [data-mantine-select] {
+	border-radius: var(--radius-md);
 }
