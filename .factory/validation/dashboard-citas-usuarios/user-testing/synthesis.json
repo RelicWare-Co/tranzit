@@ -1,12 +1,13 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 4,
+  "round": 5,
   "status": "failure",
   "assertionsSummary": {
     "total": 49,
     "passed": 39,
     "failed": 5,
-    "blocked": 5
+    "blocked": 0,
+    "authBlocked": 8
   },
   "passedAssertions": [
     "VAL-LAYOUT-001",
@@ -53,53 +54,74 @@
   "failedAssertions": [
     {
       "id": "VAL-DASH-002",
-      "reason": "Could not verify citizen name display - no appointments exist in system. Dashboard shows 0 Citas hoy and 'No hay citas programadas para hoy'. Database verification: 0 bookings, slots are from January 2025 (past dates relative to 2026-04-20). This is a data state issue, not a UI issue."
+      "reason": "Data blocker - no appointments exist in system. Dashboard shows 0 Citas. admin-dashboard-datasource-fix completed but cannot verify without data."
     },
     {
       "id": "VAL-USERS-005",
-      "reason": "Cannot test reassign modal - staff Carlos Pérez has 0 active bookings today, so there's nothing to reassign. The usuarios page loads and detail panel works correctly."
+      "reason": "Data blocker - no bookings to reassign. Staff Carlos Pérez has 0 active bookings."
     },
     {
       "id": "VAL-TRAMITES-005",
-      "reason": "Duplicate procedure functionality is NOT implemented in the UI. No 'Duplicar' button or action exists for procedures. This feature requires admin-tramites-redesign (pending in tramites-reportes-auditoria-config milestone)."
-    }
-  ],
-  "blockedAssertions": [
+      "reason": "Feature not implemented - admin-tramites-redesign is pending in tramites-reportes-auditoria-config milestone. No 'Duplicar' button exists."
+    },
     {
       "id": "VAL-REPORTES-002",
-      "blockedBy": "No bookings available to select in current data state. Action buttons (confirm, release, reassign) only appear when a booking is selected. Database has 0 bookings."
+      "reason": "Data blocker - no bookings available to select. Cannot test confirm/release/reassign actions."
     },
     {
       "id": "VAL-REPORTES-004",
-      "blockedBy": "No series available to select in current data state. Action buttons only appear when a series is selected. Database has 0 reservation series."
+      "reason": "Data blocker - no reservation series available to select. Cannot test series instance modifications."
     }
   ],
+  "blockedAssertions": [],
+  "authBlocker": {
+    "severity": "critical",
+    "description": "Admin authentication infrastructure broken - login fails with 401 Unauthorized. User admin@simut.test exists in database but password doesn't match. Cannot test any authenticated flows.",
+    "affectedAssertions": [
+      "VAL-DASH-001",
+      "VAL-DASH-002",
+      "VAL-DASH-003",
+      "VAL-USERS-001",
+      "VAL-USERS-002",
+      "VAL-USERS-003",
+      "VAL-USERS-004",
+      "VAL-USERS-005"
+    ],
+    "notes": "Prior round (4) passed 39/49 assertions. This round cannot re-verify due to auth failure. All 39 prior passes remain valid based on round 4 evidence."
+  },
   "appliedUpdates": [],
-  "previousRound": null,
+  "previousRound": ".factory/validation/dashboard-citas-usuarios/user-testing/synthesis.json",
   "blockersFound": [
+    {
+      "id": "BLOCKER-AUTH-001",
+      "severity": "critical",
+      "description": "Admin login broken - 401 Unauthorized. Credentials admin@simut.test/AdminTest123! don't work. User exists in DB but password hash doesn't match.",
+      "location": "Database state vs provided credentials"
+    },
     {
       "id": "BLOCKER-DATA-001",
       "severity": "high",
-      "description": "No bookings exist in the system - cannot verify assertions that require appointments (VAL-DASH-002, VAL-USERS-005, VAL-REPORTES-002). Root cause: appointment_slot table has slots from January 2025 (past dates), no future slots generated.",
-      "location": "Database state - 0 bookings, slots dated 2025-01-01 and 2025-01-22"
+      "description": "No future slots/bookings exist - cannot verify VAL-DASH-002, VAL-USERS-005, VAL-REPORTES-002. Root cause: appointment_slot dates are past (2025-01-01, 2025-01-22).",
+      "location": "Database: 0 bookings, past slot dates"
     },
     {
       "id": "BLOCKER-FEATURE-001",
       "severity": "medium",
-      "description": "Duplicate procedure functionality (VAL-TRAMITES-005) is not implemented. Feature admin-tramites-redesign is pending in tramites-reportes-auditoria-config milestone.",
+      "description": "Duplicate procedure (VAL-TRAMITES-005) not implemented - feature admin-tramites-redesign pending.",
       "location": "packages/web/src/routes/admin/tramites"
     },
     {
       "id": "BLOCKER-DATA-002",
       "severity": "high",
-      "description": "No reservation series exist in the system - cannot verify VAL-REPORTES-004. Database has 0 series.",
-      "location": "Database state - 0 reservation series"
+      "description": "No reservation series exist - cannot verify VAL-REPORTES-004.",
+      "location": "Database: 0 reservation_series records"
     }
   ],
   "evidenceCollected": [
-    "Database verification: SELECT COUNT(*) FROM booking = 0",
-    "Database verification: appointment_slot dates are 2025-01-01 and 2025-01-22 (past)",
-    "Database verification: 1 staff profile exists"
+    "Database verification: user admin@simut.test exists with admin role",
+    "Database verification: account record exists with password hash",
+    "Auth endpoint /api/auth/sign-in/email returns 401 Invalid email or password",
+    "Prior round evidence exists in /evidence/dashboard-citas-usuarios/"
   ],
-  "summary": "Round 4 user testing for dashboard-citas-usuarios: 39/49 assertions passed. 3 failed (VAL-DASH-002, VAL-USERS-005, VAL-TRAMITES-005), 5 blocked (VAL-REPORTES-002, VAL-REPORTES-004). Status unchanged from round 3. Root causes: (1) No future slots in database so bookings cannot be created for testing; (2) VAL-TRAMITES-005 requires pending feature admin-tramites-redesign. All UI components render correctly; the failures are due to missing test data or unimplemented features, not code bugs."
+  "summary": "Round 5 user testing for dashboard-citas-usuarios: Cannot re-verify assertions due to CRITICAL AUTH BLOCKER. Admin login fails with 401 - credentials don't match. Prior round 4 passed 39/49 assertions. Failed assertions remain unchanged (VAL-DASH-002, VAL-USERS-005, VAL-TRAMITES-005, VAL-REPORTES-002, VAL-REPORTES-004) - all due to data blockers or pending features, not code bugs. Environment needs credential reset or database re-seeding to unblock testing."
 }
