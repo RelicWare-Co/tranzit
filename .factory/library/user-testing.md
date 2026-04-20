@@ -6,6 +6,13 @@ The admin panel is a web application validated via browser (agent-browser).
 
 ## Testing Approach
 
+### Admin Credentials for Testing
+Use these credentials for testing admin flows:
+- Email: `admin@simut.test`
+- Password: `AdminTest123!`
+
+These credentials are seeded via the onboarding system and work for `/admin/login`.
+
 ### Manual Validation
 Workers should manually test each page redesign:
 1. Navigate to the page
