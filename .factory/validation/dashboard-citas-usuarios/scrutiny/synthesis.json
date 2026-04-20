@@ -1,6 +1,6 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 7,
+  "round": 8,
   "status": "fail",
   "validatorsRun": {
     "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
@@ -8,11 +8,11 @@
     "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 }
   },
   "reviewsSummary": {
-    "total": 3,
-    "passed": 2,
+    "total": 5,
+    "passed": 4,
     "failed": 1,
     "failedFeatures": ["admin-dashboard-redesign"],
-    "note": "Re-run (round 7). admin-citas-redesign and admin-usuarios-redesign passed in prior rounds. admin-dashboard-redesign still has the same blocking issue. Fix feature 'admin-dashboard-datasource-fix' remains pending - not yet implemented."
+    "note": "Re-run (round 8). admin-citas-redesign and admin-usuarios-redesign reviewed this round and passed. admin-dashboard-redesign still has blocking issue. Fix feature 'admin-dashboard-datasource-fix' remains pending."
   },
   "blockingIssues": [
     {
@@ -32,7 +32,7 @@
       "isSystemic": true
     },
     {
-      "target": "BACKEND_STATUS.md or library",
+      "target": "library",
       "suggestion": "Document that `admin.bookings.list` only populates `slot` and `staff` relations — not `request`. Workers building dashboard UIs that need citizen name and procedure type should use a different API or the API should be enhanced to include request relations.",
       "evidence": "admin-dashboard-redesign failed because worker assumed request relation was available. The actual API (bookings-read.service.ts) only returns slot and staff. This caused blocking bug in Recent Appointments list.",
       "isSystemic": false
