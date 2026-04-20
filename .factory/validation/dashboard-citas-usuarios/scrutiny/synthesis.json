@@ -1,6 +1,6 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 5,
+  "round": 7,
   "status": "fail",
   "validatorsRun": {
     "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
@@ -12,13 +12,13 @@
     "passed": 2,
     "failed": 1,
     "failedFeatures": ["admin-dashboard-redesign"],
-    "note": "Re-run (round 5). admin-citas-redesign and admin-usuarios-redesign passed review in prior rounds. admin-dashboard-redesign has one blocking issue still open. Fix feature 'admin-dashboard-datasource-fix' remains pending and has not been implemented yet."
+    "note": "Re-run (round 7). admin-citas-redesign and admin-usuarios-redesign passed in prior rounds. admin-dashboard-redesign still has the same blocking issue. Fix feature 'admin-dashboard-datasource-fix' remains pending - not yet implemented."
   },
   "blockingIssues": [
     {
       "featureId": "admin-dashboard-redesign",
       "severity": "blocking",
-      "description": "admin.bookings.list does not populate the `request` relation. The Recent Appointments list tries to access booking.request?.citizen?.name but request is undefined, so it falls back to staff.email. Similarly, booking.request?.procedureType?.name is always undefined, so procedure names fall back to generic labels ('Trámite' or 'Reserva administrativa'). Fix feature 'admin-dashboard-datasource-fix' is pending and has not been implemented yet.",
+      "description": "admin.bookings.list does not populate the `request` relation. The Recent Appointments list tries to access booking.request?.citizen?.name but request is undefined, so it falls back to staff.email. Similarly, booking.request?.procedureType?.name is always undefined, so procedure names fall back to generic labels ('Trámite' or 'Reserva administrativa'). Fix feature 'admin-dashboard-datasource-fix' (id: admin-dashboard-datasource-fix, status: pending, no worker assigned) has not been implemented yet.",
       "fixFeature": "admin-dashboard-datasource-fix",
       "fixStatus": "pending"
     }
@@ -45,5 +45,5 @@
     }
   ],
   "rejectedObservations": [],
-  "previousRound": ".factory/validation/dashboard-citas-usuarios/scrutiny/synthesis-round4.json"
+  "previousRound": ".factory/validation/dashboard-citas-usuarios/scrutiny/synthesis.json"
 }
