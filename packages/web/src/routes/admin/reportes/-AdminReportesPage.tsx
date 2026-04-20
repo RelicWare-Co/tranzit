@@ -1,11 +1,17 @@
 import {
 	Alert,
+	Badge,
+	Box,
 	Button,
+	Card,
 	Checkbox,
+	Divider,
 	Grid,
 	Group,
 	Loader,
+	Menu,
 	Paper,
+	rem,
 	Select,
 	Stack,
 	Table,
@@ -15,10 +21,24 @@ import {
 	Title,
 } from "@mantine/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import {
+	AlertCircle,
+	ArrowDownUp,
+	Calendar,
+	CheckCircle2,
+	Clock,
+	FileText,
+	Filter,
+	MoreVertical,
+	RefreshCw,
+	Search,
+	Users,
+	XCircle,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "../../../lib/orpc-client";
 import { AdminPageHeader } from "../_shared/-AdminPageHeader";
+import { adminUi } from "../_shared/-admin-ui";
 import { getErrorMessage } from "../_shared/-errors";
 
 const SESSION_QUERY_KEY = ["admin", "reportes", "session"] as const;
@@ -103,6 +123,135 @@ function stringifyJson(value: unknown) {
 function asNullableText(value: string): string | null {
 	const trimmed = value.trim();
 	return trimmed ? trimmed : null;
+}
+
+function getStatusBadgeProps(status: string) {
+	const normalized = status.toLowerCase();
+	if (normalized === "confirmed") {
+		return { color: "teal", variant: "light" as const };
+	}
+	if (normalized === "held" || normalized === "pending") {
+		return { color: "yellow", variant: "light" as const };
+	}
+	if (normalized === "cancelled") {
+		return { color: "red", variant: "light" as const };
+	}
+	return { color: "gray", variant: "light" as const };
+}
+
+interface SectionCardProps {
+	title: string;
+	description?: string;
+	icon?: React.ReactNode;
+	children: React.ReactNode;
+	actions?: React.ReactNode;
+}
+
+function SectionCard({
+	title,
+	description,
+	icon,
+	children,
+	actions,
+}: SectionCardProps) {
+	return (
+		<Paper withBorder radius="lg" p="md" shadow="sm">
+			<Stack gap="md">
+				<Group justify="space-between" wrap="nowrap">
+					<Group gap="md" wrap="nowrap">
+						{icon && (
+							<Box className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
+								{icon}
+							</Box>
+						)}
+						<Stack gap={0}>
+							<Title
+								order={4}
+								className="text-base font-semibold text-zinc-900"
+							>
+								{title}
+							</Title>
+							{description && (
+								<Text size="sm" className="text-zinc-500">
+									{description}
+								</Text>
+							)}
+						</Stack>
+					</Group>
+					{actions && <Group gap="xs">{actions}</Group>}
+				</Group>
+				{children}
+			</Stack>
+		</Paper>
+	);
+}
+
+interface FilterBarProps {
+	children: React.ReactNode;
+	onApply: () => void;
+	onClear: () => void;
+	isLoading?: boolean;
+}
+
+function FilterBar({ children, onApply, onClear, isLoading }: FilterBarProps) {
+	return (
+		<Card className={adminUi.callout} radius="lg" p="md" shadow="none">
+			<Stack gap="md">
+				<Group gap="sm" wrap="nowrap">
+					<Filter size={16} className="text-zinc-500" strokeWidth={1.75} />
+					<Text fw={600} size="sm" className="text-zinc-900">
+						Filtros
+					</Text>
+				</Group>
+				{children}
+				<Group justify="flex-end" gap="sm">
+					<Button
+						variant="default"
+						size="sm"
+						onClick={onClear}
+						leftSection={<XCircle size={14} />}
+					>
+						Limpiar
+					</Button>
+					<Button
+						size="sm"
+						onClick={onApply}
+						loading={isLoading}
+						leftSection={<Search size={14} />}
+					>
+						Aplicar filtros
+					</Button>
+				</Group>
+			</Stack>
+		</Card>
+	);
+}
+
+interface ActionPanelProps {
+	title: string;
+	bookingInfo?: string;
+	children: React.ReactNode;
+}
+
+function ActionPanel({ title, bookingInfo, children }: ActionPanelProps) {
+	return (
+		<Card className="bg-zinc-50/80" radius="lg" p="md" shadow="none">
+			<Stack gap="md">
+				<Stack gap={2}>
+					<Title order={5} className="text-sm font-semibold text-zinc-900">
+						{title}
+					</Title>
+					{bookingInfo && (
+						<Text size="xs" className="font-mono text-zinc-500">
+							{bookingInfo}
+						</Text>
+					)}
+				</Stack>
+				<Divider />
+				{children}
+			</Stack>
+		</Card>
+	);
 }
 
 export function AdminReportesPage() {
@@ -502,6 +651,13 @@ export function AdminReportesPage() {
 		}
 	};
 
+	const totalBookings = bookingsQuery.data?.length ?? 0;
+	const confirmedBookings =
+		bookingsQuery.data?.filter((b) => b.status === "confirmed").length ?? 0;
+	const heldBookings =
+		bookingsQuery.data?.filter((b) => b.status === "held").length ?? 0;
+	const activeSeries = seriesQuery.data?.filter((s) => s.isActive).length ?? 0;
+
 	return (
 		<Stack gap="xl">
 			<AdminPageHeader
@@ -512,6 +668,7 @@ export function AdminReportesPage() {
 						leftSection={<RefreshCw size={16} />}
 						onClick={() => void refreshAll()}
 						variant="light"
+						size="sm"
 					>
 						Refrescar
 					</Button>
@@ -526,33 +683,147 @@ export function AdminReportesPage() {
 			) : null}
 
 			{globalError ? (
-				<Alert color="red" icon={<AlertCircle size={16} />}>
+				<Alert
+					color="red"
+					variant="light"
+					icon={<AlertCircle size={16} />}
+					radius="md"
+				>
 					{globalError}
 				</Alert>
 			) : null}
 
 			{globalNotice ? (
-				<Alert color="teal" icon={<CheckCircle2 size={16} />}>
+				<Alert
+					color="teal"
+					variant="light"
+					icon={<CheckCircle2 size={16} />}
+					radius="md"
+				>
 					{globalNotice}
 				</Alert>
 			) : null}
 
 			{sessionQuery.data ? (
-				<Alert color="blue" variant="light">
-					Sesión: {sessionQuery.data.user.email} (
-					{sessionQuery.data.user.role ?? "sin rol"})
-				</Alert>
+				<Card className={adminUi.callout} radius="lg" p="md" shadow="none">
+					<Group gap="md" wrap="nowrap">
+						<Box className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-zinc-200">
+							<Users size={18} className="text-red-700" strokeWidth={1.75} />
+						</Box>
+						<Stack gap={0}>
+							<Text className="text-sm font-semibold text-zinc-900">
+								Sesión activa
+							</Text>
+							<Text size="sm" className="text-zinc-500">
+								{sessionQuery.data.user.email} (
+								{sessionQuery.data.user.role ?? "sin rol"})
+							</Text>
+						</Stack>
+					</Group>
+				</Card>
 			) : null}
 
-			<Paper withBorder p="md">
-				<Stack>
-					<Title order={4}>Citas administrativas</Title>
+			{/* Stats Overview */}
+			<Grid gap="md">
+				<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+					<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
+						<Stack gap="xs">
+							<Group gap="xs" wrap="nowrap">
+								<Box className="flex h-8 w-8 items-center justify-center rounded-md bg-teal-50">
+									<CheckCircle2 size={16} className="text-teal-700" />
+								</Box>
+								<Text
+									size="xs"
+									className="text-zinc-500 font-medium uppercase tracking-wider"
+								>
+									Confirmadas
+								</Text>
+							</Group>
+							<Text className="text-2xl font-bold text-zinc-900 font-mono">
+								{confirmedBookings}
+							</Text>
+						</Stack>
+					</Card>
+				</Grid.Col>
+				<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+					<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
+						<Stack gap="xs">
+							<Group gap="xs" wrap="nowrap">
+								<Box className="flex h-8 w-8 items-center justify-center rounded-md bg-yellow-50">
+									<Clock size={16} className="text-yellow-700" />
+								</Box>
+								<Text
+									size="xs"
+									className="text-zinc-500 font-medium uppercase tracking-wider"
+								>
+									Pendientes
+								</Text>
+							</Group>
+							<Text className="text-2xl font-bold text-zinc-900 font-mono">
+								{heldBookings}
+							</Text>
+						</Stack>
+					</Card>
+				</Grid.Col>
+				<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+					<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
+						<Stack gap="xs">
+							<Group gap="xs" wrap="nowrap">
+								<Box className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50">
+									<Calendar size={16} className="text-blue-700" />
+								</Box>
+								<Text
+									size="xs"
+									className="text-zinc-500 font-medium uppercase tracking-wider"
+								>
+									Total citas
+								</Text>
+							</Group>
+							<Text className="text-2xl font-bold text-zinc-900 font-mono">
+								{totalBookings}
+							</Text>
+						</Stack>
+					</Card>
+				</Grid.Col>
+				<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+					<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
+						<Stack gap="xs">
+							<Group gap="xs" wrap="nowrap">
+								<Box className="flex h-8 w-8 items-center justify-center rounded-md bg-purple-50">
+									<FileText size={16} className="text-purple-700" />
+								</Box>
+								<Text
+									size="xs"
+									className="text-zinc-500 font-medium uppercase tracking-wider"
+								>
+									Series activas
+								</Text>
+							</Group>
+							<Text className="text-2xl font-bold text-zinc-900 font-mono">
+								{activeSeries}
+							</Text>
+						</Stack>
+					</Card>
+				</Grid.Col>
+			</Grid>
 
-					<Grid>
-						<Grid.Col span={{ base: 12, sm: 3 }}>
+			{/* Bookings Section */}
+			<SectionCard
+				title="Citas administrativas"
+				description="Gestioná reservas individuales con filtros por fecha, estado y funcionario."
+				icon={<Calendar size={20} className="text-red-700" />}
+				actions={bookingsQuery.isLoading && <Loader size="sm" />}
+			>
+				<FilterBar
+					onApply={() => setBookingFilters(bookingFiltersDraft)}
+					onClear={() => setBookingFiltersDraft(defaultBookingFilters)}
+				>
+					<Grid gap="md">
+						<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
 							<TextInput
 								label="Desde"
 								type="date"
+								size="sm"
 								value={bookingFiltersDraft.dateFrom}
 								onChange={(event) =>
 									setBookingFiltersDraft((prev) => ({
@@ -562,10 +833,11 @@ export function AdminReportesPage() {
 								}
 							/>
 						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 3 }}>
+						<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
 							<TextInput
 								label="Hasta"
 								type="date"
+								size="sm"
 								value={bookingFiltersDraft.dateTo}
 								onChange={(event) =>
 									setBookingFiltersDraft((prev) => ({
@@ -575,10 +847,11 @@ export function AdminReportesPage() {
 								}
 							/>
 						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 3 }}>
+						<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
 							<TextInput
 								label="Estado"
 								placeholder="confirmed / held"
+								size="sm"
 								value={bookingFiltersDraft.status}
 								onChange={(event) =>
 									setBookingFiltersDraft((prev) => ({
@@ -588,9 +861,10 @@ export function AdminReportesPage() {
 								}
 							/>
 						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 3 }}>
+						<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
 							<Select
 								label="Activo"
+								size="sm"
 								value={bookingFiltersDraft.isActive}
 								onChange={(value) =>
 									setBookingFiltersDraft((prev) => ({
@@ -606,88 +880,205 @@ export function AdminReportesPage() {
 							/>
 						</Grid.Col>
 					</Grid>
+				</FilterBar>
 
-					<Group justify="flex-end">
-						<Button
-							variant="default"
-							onClick={() => setBookingFiltersDraft(defaultBookingFilters)}
-						>
-							Limpiar
-						</Button>
-						<Button onClick={() => setBookingFilters(bookingFiltersDraft)}>
-							Aplicar filtros
-						</Button>
-					</Group>
+				{bookingsQuery.isError ? (
+					<Alert
+						color="red"
+						variant="light"
+						icon={<AlertCircle size={16} />}
+						radius="md"
+						mt="md"
+					>
+						{getErrorMessage(
+							bookingsQuery.error,
+							"No se pudieron cargar las citas",
+						)}
+					</Alert>
+				) : null}
 
-					{bookingsQuery.isLoading ? (
-						<Group justify="center" py="md">
-							<Loader size="sm" />
-						</Group>
-					) : null}
-
-					{bookingsQuery.isError ? (
-						<Alert color="red" icon={<AlertCircle size={16} />}>
-							{getErrorMessage(
-								bookingsQuery.error,
-								"No se pudieron cargar las citas",
-							)}
-						</Alert>
-					) : null}
-
-					<Table.ScrollContainer minWidth={1000}>
-						<Table striped withTableBorder withColumnBorders>
-							<Table.Thead>
-								<Table.Tr>
-									<Table.Th>Seleccionar</Table.Th>
-									<Table.Th>ID</Table.Th>
-									<Table.Th>Fecha</Table.Th>
-									<Table.Th>Hora</Table.Th>
-									<Table.Th>Estado</Table.Th>
-									<Table.Th>Activo</Table.Th>
-									<Table.Th>Staff</Table.Th>
-								</Table.Tr>
-							</Table.Thead>
-							<Table.Tbody>
-								{(bookingsQuery.data ?? []).map((booking) => (
-									<Table.Tr key={booking.id}>
-										<Table.Td>
-											<Button
-												variant={
-													booking.id === selectedBookingId ? "filled" : "light"
-												}
-												size="xs"
-												onClick={() => setSelectedBookingId(booking.id)}
-											>
-												Usar
-											</Button>
-										</Table.Td>
-										<Table.Td>{booking.id}</Table.Td>
-										<Table.Td>{booking.slot?.slotDate ?? "-"}</Table.Td>
-										<Table.Td>
-											{booking.slot?.startTime ?? "--"} -{" "}
-											{booking.slot?.endTime ?? "--"}
-										</Table.Td>
-										<Table.Td>{booking.status}</Table.Td>
-										<Table.Td>{booking.isActive ? "Sí" : "No"}</Table.Td>
-										<Table.Td>
-											{booking.staff?.name || booking.staff?.email || "-"}
-										</Table.Td>
-									</Table.Tr>
-								))}
-							</Table.Tbody>
-						</Table>
-					</Table.ScrollContainer>
-
-					{selectedBooking ? (
-						<Stack>
-							<Title order={5}>Acciones sobre cita seleccionada</Title>
-							<Text size="sm" c="dimmed">
-								ID: {selectedBooking.id} | Slot:{" "}
-								{selectedBooking.slot?.slotDate ?? "-"}{" "}
-								{selectedBooking.slot?.startTime ?? "--"}
+				{totalBookings === 0 && !bookingsQuery.isLoading ? (
+					<Card
+						className={`${adminUi.surface} text-center`}
+						radius="lg"
+						p={48}
+						shadow="none"
+						mt="md"
+					>
+						<Stack align="center" gap="md">
+							<Box className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
+								<Calendar
+									size={22}
+									className="text-zinc-400"
+									strokeWidth={1.5}
+								/>
+							</Box>
+							<Text className="text-base font-semibold text-zinc-900">
+								No hay citas para mostrar
 							</Text>
-							<Group>
+							<Text
+								size="sm"
+								className="max-w-sm leading-relaxed text-zinc-500"
+							>
+								No se encontraron citas con los filtros actuales. Ajustá los
+								filtros o creá una nueva cita.
+							</Text>
+						</Stack>
+					</Card>
+				) : (
+					<Box mt="md">
+						<Table.ScrollContainer minWidth={1000}>
+							<Table striped withTableBorder withColumnBorders fz="sm">
+								<Table.Thead>
+									<Table.Tr>
+										<Table.Th className={adminUi.tableHeader}>
+											Seleccionar
+										</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>ID</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>Fecha</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>Hora</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>Estado</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>Activo</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>Staff</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>
+											Acciones
+										</Table.Th>
+									</Table.Tr>
+								</Table.Thead>
+								<Table.Tbody>
+									{(bookingsQuery.data ?? []).map((booking) => (
+										<Table.Tr
+											key={booking.id}
+											className={
+												booking.id === selectedBookingId ? "bg-red-50/40" : ""
+											}
+										>
+											<Table.Td>
+												<Button
+													variant={
+														booking.id === selectedBookingId
+															? "filled"
+															: "light"
+													}
+													size="xs"
+													onClick={() => setSelectedBookingId(booking.id)}
+												>
+													Usar
+												</Button>
+											</Table.Td>
+											<Table.Td className="font-mono text-xs">
+												{booking.id.slice(0, 8)}...
+											</Table.Td>
+											<Table.Td>{booking.slot?.slotDate ?? "-"}</Table.Td>
+											<Table.Td>
+												{booking.slot?.startTime ?? "--"} -{" "}
+												{booking.slot?.endTime ?? "--"}
+											</Table.Td>
+											<Table.Td>
+												<Badge
+													{...getStatusBadgeProps(booking.status)}
+													size="sm"
+												>
+													{booking.status}
+												</Badge>
+											</Table.Td>
+											<Table.Td>
+												{booking.isActive ? (
+													<Badge color="teal" variant="light" size="sm">
+														Sí
+													</Badge>
+												) : (
+													<Badge color="gray" variant="light" size="sm">
+														No
+													</Badge>
+												)}
+											</Table.Td>
+											<Table.Td>
+												{booking.staff?.name || booking.staff?.email || "-"}
+											</Table.Td>
+											<Table.Td>
+												<Menu position="bottom-end">
+													<Menu.Target>
+														<Button variant="subtle" size="xs" p={0}>
+															<MoreVertical size={14} />
+														</Button>
+													</Menu.Target>
+													<Menu.Dropdown>
+														<Menu.Item
+															leftSection={<CheckCircle2 size={14} />}
+															onClick={() =>
+																void runBookingAction(
+																	"booking-confirm",
+																	async () =>
+																		await orpcClient.admin.bookings.confirm({
+																			id: booking.id,
+																		}),
+																	"Cita confirmada.",
+																)
+															}
+														>
+															Confirmar
+														</Menu.Item>
+														<Menu.Item
+															leftSection={<ArrowDownUp size={14} />}
+															onClick={() => {
+																if (!targetStaffUserId) {
+																	setGlobalError(
+																		"Seleccioná funcionario destino.",
+																	);
+																	return;
+																}
+																void runBookingAction(
+																	"booking-reassign",
+																	async () =>
+																		await orpcClient.admin.bookings.reassign({
+																			id: booking.id,
+																			targetStaffUserId,
+																		}),
+																	"Cita reasignada.",
+																);
+															}}
+														>
+															Reasignar
+														</Menu.Item>
+														<Menu.Divider />
+														<Menu.Item
+															color="red"
+															leftSection={<XCircle size={14} />}
+															onClick={() =>
+																void runBookingAction(
+																	"booking-release",
+																	async () =>
+																		await orpcClient.admin.bookings.release({
+																			id: booking.id,
+																			reason: releaseReason,
+																		}),
+																	"Cita liberada.",
+																)
+															}
+														>
+															Liberar
+														</Menu.Item>
+													</Menu.Dropdown>
+												</Menu>
+											</Table.Td>
+										</Table.Tr>
+									))}
+								</Table.Tbody>
+							</Table>
+						</Table.ScrollContainer>
+					</Box>
+				)}
+
+				{selectedBooking && (
+					<Box mt="md">
+						<ActionPanel
+							title="Acciones sobre cita seleccionada"
+							bookingInfo={`ID: ${selectedBooking.id.slice(0, 8)}... | Slot: ${selectedBooking.slot?.slotDate ?? "-"} ${selectedBooking.slot?.startTime ?? "--"}`}
+						>
+							<Group gap="sm" wrap="wrap">
 								<Button
+									size="sm"
 									loading={isRunning === "booking-confirm"}
 									onClick={() =>
 										void runBookingAction(
@@ -704,6 +1095,7 @@ export function AdminReportesPage() {
 								</Button>
 								<Button
 									variant="light"
+									size="sm"
 									loading={isRunning === "booking-capacity"}
 									onClick={() =>
 										void runBookingAction(
@@ -720,10 +1112,13 @@ export function AdminReportesPage() {
 								</Button>
 							</Group>
 
-							<Grid>
+							<Divider my="sm" />
+
+							<Grid gap="md">
 								<Grid.Col span={{ base: 12, sm: 4 }}>
 									<Select
-										label="Razón release"
+										label="Razón de liberación"
+										size="sm"
 										value={releaseReason}
 										onChange={(value) =>
 											setReleaseReason(
@@ -732,16 +1127,18 @@ export function AdminReportesPage() {
 											)
 										}
 										data={[
-											{ value: "cancelled", label: "cancelled" },
-											{ value: "expired", label: "expired" },
-											{ value: "attended", label: "attended" },
+											{ value: "cancelled", label: "Cancelada" },
+											{ value: "expired", label: "Expirada" },
+											{ value: "attended", label: "Atendida" },
 										]}
 									/>
 								</Grid.Col>
-								<Grid.Col span={{ base: 12, sm: 8 }}>
-									<Group align="flex-end">
+								<Grid.Col span="auto">
+									<Group align="flex-end" gap="sm" h="100%" mt={rem(28)}>
 										<Button
 											color="red"
+											variant="light"
+											size="sm"
 											loading={isRunning === "booking-release"}
 											onClick={() =>
 												void runBookingAction(
@@ -755,31 +1152,35 @@ export function AdminReportesPage() {
 												)
 											}
 										>
-											Release
+											Liberar cita
 										</Button>
 									</Group>
 								</Grid.Col>
 							</Grid>
 
-							<Grid>
+							<Divider my="sm" />
+
+							<Grid gap="md">
 								<Grid.Col span={{ base: 12, sm: 5 }}>
 									<Select
 										label="Reasignar a"
-										placeholder="Selecciona funcionario"
+										size="sm"
+										placeholder="Seleccioná funcionario"
 										value={targetStaffUserId}
 										onChange={setTargetStaffUserId}
 										data={staffOptions}
 									/>
 								</Grid.Col>
 								<Grid.Col span={{ base: 12, sm: 7 }}>
-									<Group align="flex-end">
+									<Group align="flex-end" gap="sm" h="100%" mt={rem(28)}>
 										<Button
 											variant="light"
+											size="sm"
 											loading={isRunning === "booking-reassign-preview"}
 											onClick={() => {
 												if (!targetStaffUserId) {
 													setGlobalError(
-														"Selecciona funcionario destino para previsualizar.",
+														"Seleccioná funcionario destino para previsualizar.",
 													);
 													return;
 												}
@@ -794,14 +1195,15 @@ export function AdminReportesPage() {
 												);
 											}}
 										>
-											Preview reasignación
+											Preview
 										</Button>
 										<Button
+											size="sm"
 											loading={isRunning === "booking-reassign"}
 											onClick={() => {
 												if (!targetStaffUserId) {
 													setGlobalError(
-														"Selecciona funcionario destino para reasignar.",
+														"Seleccioná funcionario destino para reasignar.",
 													);
 													return;
 												}
@@ -820,11 +1222,12 @@ export function AdminReportesPage() {
 										</Button>
 										<Button
 											variant="default"
+											size="sm"
 											loading={isRunning === "booking-availability"}
 											onClick={() => {
 												if (!targetStaffUserId) {
 													setGlobalError(
-														"Selecciona funcionario destino para availability check.",
+														"Seleccioná funcionario destino para availability check.",
 													);
 													return;
 												}
@@ -844,411 +1247,529 @@ export function AdminReportesPage() {
 									</Group>
 								</Grid.Col>
 							</Grid>
-						</Stack>
-					) : (
-						<Text c="dimmed" size="sm">
-							No hay cita seleccionada.
-						</Text>
-					)}
-				</Stack>
-			</Paper>
+						</ActionPanel>
+					</Box>
+				)}
+			</SectionCard>
 
-			<Paper withBorder p="md">
-				<Stack>
-					<Title order={4}>Series de reserva administrativa</Title>
-
-					<Grid>
-						<Grid.Col span={{ base: 12, sm: 4 }}>
-							<TextInput
-								label="Regla RRULE"
-								value={createSeriesForm.recurrenceRule}
-								onChange={(event) =>
-									setCreateSeriesForm((prev) => ({
-										...prev,
-										recurrenceRule: event.currentTarget.value,
-									}))
-								}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 4 }}>
-							<TextInput
-								label="Fecha para slot base"
-								type="date"
-								value={createSeriesForm.slotDate}
-								onChange={(event) =>
-									setCreateSeriesForm((prev) => ({
-										...prev,
-										slotDate: event.currentTarget.value,
-										slotId: "",
-									}))
-								}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 4 }}>
-							<Select
-								label="Slot base"
-								placeholder="Selecciona slot"
-								value={createSeriesForm.slotId}
-								onChange={(value) =>
-									setCreateSeriesForm((prev) => ({
-										...prev,
-										slotId: value ?? "",
-									}))
-								}
-								data={createSeriesSlotOptions}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 4 }}>
-							<Select
-								label="Funcionario"
-								placeholder="Selecciona funcionario"
-								value={createSeriesForm.staffUserId}
-								onChange={(value) =>
-									setCreateSeriesForm((prev) => ({
-										...prev,
-										staffUserId: value ?? "",
-									}))
-								}
-								data={staffOptions}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 4 }}>
-							<TextInput
-								label="Inicio serie"
-								type="date"
-								value={createSeriesForm.startDate}
-								onChange={(event) =>
-									setCreateSeriesForm((prev) => ({
-										...prev,
-										startDate: event.currentTarget.value,
-									}))
-								}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 4 }}>
-							<TextInput
-								label="Fin serie"
-								type="date"
-								value={createSeriesForm.endDate}
-								onChange={(event) =>
-									setCreateSeriesForm((prev) => ({
-										...prev,
-										endDate: event.currentTarget.value,
-									}))
-								}
-							/>
-						</Grid.Col>
-						<Grid.Col span={12}>
-							<Textarea
-								label="Notas"
-								minRows={2}
-								value={createSeriesForm.notes}
-								onChange={(event) =>
-									setCreateSeriesForm((prev) => ({
-										...prev,
-										notes: event.currentTarget.value,
-									}))
-								}
-							/>
-						</Grid.Col>
-					</Grid>
-
-					<Group justify="flex-end">
-						<Button
-							loading={isRunning === "create-series"}
-							onClick={() => void createSeries()}
-						>
-							Crear serie
-						</Button>
-					</Group>
-
-					<Group>
-						<Select
-							label="Filtrar series activas"
-							value={seriesFilters.isActive}
-							onChange={(value) =>
-								setSeriesFilters({
-									isActive:
-										(value as ReservationSeriesFilters["isActive"]) ?? "all",
-								})
-							}
-							data={[
-								{ value: "all", label: "Todas" },
-								{ value: "true", label: "Activas" },
-								{ value: "false", label: "Inactivas" },
-							]}
-						/>
-					</Group>
-
-					{seriesQuery.isLoading ? (
-						<Group justify="center" py="md">
-							<Loader size="sm" />
-						</Group>
-					) : null}
-
-					<Table.ScrollContainer minWidth={960}>
-						<Table striped withTableBorder withColumnBorders>
-							<Table.Thead>
-								<Table.Tr>
-									<Table.Th>Seleccionar</Table.Th>
-									<Table.Th>ID</Table.Th>
-									<Table.Th>Activa</Table.Th>
-									<Table.Th>Instancias activas</Table.Th>
-									<Table.Th>Notas</Table.Th>
-								</Table.Tr>
-							</Table.Thead>
-							<Table.Tbody>
-								{(seriesQuery.data ?? []).map((series) => (
-									<Table.Tr key={series.id}>
-										<Table.Td>
-											<Button
-												variant={
-													series.id === selectedSeriesId ? "filled" : "light"
-												}
-												size="xs"
-												onClick={() => setSelectedSeriesId(series.id)}
-											>
-												Usar
-											</Button>
-										</Table.Td>
-										<Table.Td>{series.id}</Table.Td>
-										<Table.Td>{series.isActive ? "Sí" : "No"}</Table.Td>
-										<Table.Td>{series.activeInstanceCount ?? "-"}</Table.Td>
-										<Table.Td>{series.notes ?? "-"}</Table.Td>
-									</Table.Tr>
-								))}
-							</Table.Tbody>
-						</Table>
-					</Table.ScrollContainer>
-
-					{selectedSeries ? (
-						<Stack>
-							<Title order={5}>Acciones sobre serie seleccionada</Title>
-							<Grid>
-								<Grid.Col span={{ base: 12, sm: 4 }}>
-									<Select
-										label="Nuevo staff (serie)"
-										placeholder="Opcional"
-										value={seriesUpdateForm.staffUserId}
-										onChange={(value) =>
-											setSeriesUpdateForm((prev) => ({
-												...prev,
-												staffUserId: value ?? "",
-											}))
-										}
-										data={staffOptions}
-									/>
-								</Grid.Col>
-								<Grid.Col span={{ base: 12, sm: 6 }}>
-									<TextInput
-										label="Notas"
-										value={seriesUpdateForm.notes}
-										onChange={(event) =>
-											setSeriesUpdateForm((prev) => ({
-												...prev,
-												notes: event.currentTarget.value,
-											}))
-										}
-									/>
-								</Grid.Col>
-								<Grid.Col span={{ base: 12, sm: 2 }}>
-									<Checkbox
-										label="Force"
-										checked={seriesUpdateForm.force}
-										onChange={(event) =>
-											setSeriesUpdateForm((prev) => ({
-												...prev,
-												force: event.currentTarget.checked,
-											}))
-										}
-									/>
-								</Grid.Col>
-							</Grid>
-							<Group>
-								<Button
-									loading={isRunning === "series-update"}
-									onClick={() =>
-										void runSeriesAction(
-											"series-update",
-											async () =>
-												await orpcClient.admin.reservationSeries.update({
-													id: selectedSeries.id,
-													staffUserId:
-														asNullableText(seriesUpdateForm.staffUserId) ??
-														undefined,
-													notes: asNullableText(seriesUpdateForm.notes),
-													force: seriesUpdateForm.force,
-												}),
-											"Serie actualizada.",
-										)
+			{/* Series Section */}
+			<SectionCard
+				title="Series de reserva administrativa"
+				description="Creá y gestioná reservas recurrentes con reglas RRULE."
+				icon={<FileText size={20} className="text-red-700" />}
+			>
+				{/* Create Series Form */}
+				<Card className="bg-zinc-50/80" radius="lg" p="md" shadow="none">
+					<Stack gap="md">
+						<Title order={5} className="text-sm font-semibold text-zinc-900">
+							Nueva serie
+						</Title>
+						<Grid gap="md">
+							<Grid.Col span={{ base: 12, md: 4 }}>
+								<TextInput
+									label="Regla RRULE"
+									size="sm"
+									value={createSeriesForm.recurrenceRule}
+									onChange={(event) =>
+										setCreateSeriesForm((prev) => ({
+											...prev,
+											recurrenceRule: event.currentTarget.value,
+										}))
 									}
-								>
-									Actualizar serie
-								</Button>
-							</Group>
+									placeholder="FREQ=WEEKLY;BYDAY=MO"
+								/>
+							</Grid.Col>
+							<Grid.Col span={{ base: 12, md: 4 }}>
+								<TextInput
+									label="Fecha para slot base"
+									size="sm"
+									type="date"
+									value={createSeriesForm.slotDate}
+									onChange={(event) =>
+										setCreateSeriesForm((prev) => ({
+											...prev,
+											slotDate: event.currentTarget.value,
+											slotId: "",
+										}))
+									}
+								/>
+							</Grid.Col>
+							<Grid.Col span={{ base: 12, md: 4 }}>
+								<Select
+									label="Slot base"
+									size="sm"
+									placeholder="Seleccioná slot"
+									value={createSeriesForm.slotId}
+									onChange={(value) =>
+										setCreateSeriesForm((prev) => ({
+											...prev,
+											slotId: value ?? "",
+										}))
+									}
+									data={createSeriesSlotOptions}
+								/>
+							</Grid.Col>
+							<Grid.Col span={{ base: 12, md: 4 }}>
+								<Select
+									label="Funcionario"
+									size="sm"
+									placeholder="Seleccioná funcionario"
+									value={createSeriesForm.staffUserId}
+									onChange={(value) =>
+										setCreateSeriesForm((prev) => ({
+											...prev,
+											staffUserId: value ?? "",
+										}))
+									}
+									data={staffOptions}
+								/>
+							</Grid.Col>
+							<Grid.Col span={{ base: 12, md: 4 }}>
+								<TextInput
+									label="Inicio serie"
+									size="sm"
+									type="date"
+									value={createSeriesForm.startDate}
+									onChange={(event) =>
+										setCreateSeriesForm((prev) => ({
+											...prev,
+											startDate: event.currentTarget.value,
+										}))
+									}
+								/>
+							</Grid.Col>
+							<Grid.Col span={{ base: 12, md: 4 }}>
+								<TextInput
+									label="Fin serie"
+									size="sm"
+									type="date"
+									value={createSeriesForm.endDate}
+									onChange={(event) =>
+										setCreateSeriesForm((prev) => ({
+											...prev,
+											endDate: event.currentTarget.value,
+										}))
+									}
+								/>
+							</Grid.Col>
+							<Grid.Col span={12}>
+								<Textarea
+									label="Notas"
+									size="sm"
+									minRows={2}
+									value={createSeriesForm.notes}
+									onChange={(event) =>
+										setCreateSeriesForm((prev) => ({
+											...prev,
+											notes: event.currentTarget.value,
+										}))
+									}
+								/>
+							</Grid.Col>
+						</Grid>
+						<Group justify="flex-end">
+							<Button
+								size="sm"
+								loading={isRunning === "create-series"}
+								onClick={() => void createSeries()}
+								leftSection={<FileText size={14} />}
+							>
+								Crear serie
+							</Button>
+						</Group>
+					</Stack>
+				</Card>
 
-							<Grid>
-								<Grid.Col span={{ base: 12, sm: 4 }}>
-									<TextInput
-										label="Effective from"
-										type="date"
-										value={seriesUpdateFromDateForm.effectiveFrom}
-										onChange={(event) =>
-											setSeriesUpdateFromDateForm((prev) => ({
-												...prev,
-												effectiveFrom: event.currentTarget.value,
-											}))
-										}
-									/>
-								</Grid.Col>
-								<Grid.Col span={{ base: 12, sm: 4 }}>
-									<Select
-										label="Staff desde fecha"
-										placeholder="Opcional"
-										value={seriesUpdateFromDateForm.staffUserId}
-										onChange={(value) =>
-											setSeriesUpdateFromDateForm((prev) => ({
-												...prev,
-												staffUserId: value ?? "",
-											}))
-										}
-										data={staffOptions}
-									/>
-								</Grid.Col>
-								<Grid.Col span={{ base: 12, sm: 4 }}>
-									<TextInput
-										label="Notas desde fecha"
-										value={seriesUpdateFromDateForm.notes}
-										onChange={(event) =>
-											setSeriesUpdateFromDateForm((prev) => ({
-												...prev,
-												notes: event.currentTarget.value,
-											}))
-										}
-									/>
-								</Grid.Col>
-							</Grid>
-							<Group>
-								<Button
-									variant="light"
-									loading={isRunning === "series-update-from-date"}
-									onClick={() => {
-										if (!seriesUpdateFromDateForm.effectiveFrom) {
-											setGlobalError(
-												"Define la fecha efectiva para updateFromDate.",
-											);
-											return;
-										}
-										void runSeriesAction(
-											"series-update-from-date",
-											async () =>
-												await orpcClient.admin.reservationSeries.updateFromDate(
-													{
+				{/* Series Filter */}
+				<Group gap="sm" mt="sm">
+					<Select
+						label="Filtrar series"
+						size="sm"
+						value={seriesFilters.isActive}
+						onChange={(value) =>
+							setSeriesFilters({
+								isActive:
+									(value as ReservationSeriesFilters["isActive"]) ?? "all",
+							})
+						}
+						data={[
+							{ value: "all", label: "Todas" },
+							{ value: "true", label: "Activas" },
+							{ value: "false", label: "Inactivas" },
+						]}
+					/>
+				</Group>
+
+				{seriesQuery.isLoading ? (
+					<Group justify="center" py="md">
+						<Loader size="sm" />
+					</Group>
+				) : null}
+
+				{/* Series Table */}
+				{(seriesQuery.data ?? []).length === 0 ? (
+					<Card
+						className={`${adminUi.surface} text-center`}
+						radius="lg"
+						p={48}
+						shadow="none"
+						mt="md"
+					>
+						<Stack align="center" gap="md">
+							<Box className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
+								<FileText
+									size={22}
+									className="text-zinc-400"
+									strokeWidth={1.5}
+								/>
+							</Box>
+							<Text className="text-base font-semibold text-zinc-900">
+								No hay series de reserva
+							</Text>
+							<Text
+								size="sm"
+								className="max-w-sm leading-relaxed text-zinc-500"
+							>
+								Creá una serie usando el formulario de arriba para generar
+								reservas recurrentes automáticamente.
+							</Text>
+						</Stack>
+					</Card>
+				) : (
+					<Box mt="md">
+						<Table.ScrollContainer minWidth={960}>
+							<Table striped withTableBorder withColumnBorders fz="sm">
+								<Table.Thead>
+									<Table.Tr>
+										<Table.Th className={adminUi.tableHeader}>
+											Seleccionar
+										</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>ID</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>Activa</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>
+											Instancias activas
+										</Table.Th>
+										<Table.Th className={adminUi.tableHeader}>Notas</Table.Th>
+									</Table.Tr>
+								</Table.Thead>
+								<Table.Tbody>
+									{(seriesQuery.data ?? []).map((series) => (
+										<Table.Tr
+											key={series.id}
+											className={
+												series.id === selectedSeriesId ? "bg-red-50/40" : ""
+											}
+										>
+											<Table.Td>
+												<Button
+													variant={
+														series.id === selectedSeriesId ? "filled" : "light"
+													}
+													size="xs"
+													onClick={() => setSelectedSeriesId(series.id)}
+												>
+													Usar
+												</Button>
+											</Table.Td>
+											<Table.Td className="font-mono text-xs">
+												{series.id.slice(0, 8)}...
+											</Table.Td>
+											<Table.Td>
+												{series.isActive ? (
+													<Badge color="teal" variant="light" size="sm">
+														Sí
+													</Badge>
+												) : (
+													<Badge color="gray" variant="light" size="sm">
+														No
+													</Badge>
+												)}
+											</Table.Td>
+											<Table.Td>
+												<span className="font-mono">
+													{series.activeInstanceCount ?? "-"}
+												</span>
+											</Table.Td>
+											<Table.Td>
+												<Text size="sm" c="dimmed" lineClamp={1}>
+													{series.notes ?? "-"}
+												</Text>
+											</Table.Td>
+										</Table.Tr>
+									))}
+								</Table.Tbody>
+							</Table>
+						</Table.ScrollContainer>
+					</Box>
+				)}
+
+				{selectedSeries && (
+					<Box mt="md">
+						<ActionPanel title="Acciones sobre serie seleccionada">
+							{/* Update Series */}
+							<Stack gap="md">
+								<Grid gap="md">
+									<Grid.Col span={{ base: 12, sm: 4 }}>
+										<Select
+											label="Nuevo staff (serie)"
+											size="sm"
+											placeholder="Opcional"
+											value={seriesUpdateForm.staffUserId}
+											onChange={(value) =>
+												setSeriesUpdateForm((prev) => ({
+													...prev,
+													staffUserId: value ?? "",
+												}))
+											}
+											data={staffOptions}
+										/>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 6 }}>
+										<TextInput
+											label="Notas"
+											size="sm"
+											value={seriesUpdateForm.notes}
+											onChange={(event) =>
+												setSeriesUpdateForm((prev) => ({
+													...prev,
+													notes: event.currentTarget.value,
+												}))
+											}
+										/>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 2 }}>
+										<Checkbox
+											label="Force"
+											size="sm"
+											checked={seriesUpdateForm.force}
+											onChange={(event) =>
+												setSeriesUpdateForm((prev) => ({
+													...prev,
+													force: event.currentTarget.checked,
+												}))
+											}
+										/>
+									</Grid.Col>
+								</Grid>
+								<Group gap="sm">
+									<Button
+										size="sm"
+										loading={isRunning === "series-update"}
+										onClick={() =>
+											void runSeriesAction(
+												"series-update",
+												async () =>
+													await orpcClient.admin.reservationSeries.update({
 														id: selectedSeries.id,
-														effectiveFrom:
-															seriesUpdateFromDateForm.effectiveFrom,
 														staffUserId:
-															asNullableText(
-																seriesUpdateFromDateForm.staffUserId,
-															) ?? undefined,
-														notes: asNullableText(
-															seriesUpdateFromDateForm.notes,
-														),
-													},
-												),
-											"Serie actualizada desde fecha.",
-										);
-									}}
-								>
-									Update from date
-								</Button>
-							</Group>
+															asNullableText(seriesUpdateForm.staffUserId) ??
+															undefined,
+														notes: asNullableText(seriesUpdateForm.notes),
+														force: seriesUpdateForm.force,
+													}),
+												"Serie actualizada.",
+											)
+										}
+									>
+										Actualizar serie
+									</Button>
+								</Group>
+							</Stack>
 
-							<Grid>
-								<Grid.Col span={{ base: 12, sm: 4 }}>
-									<TextInput
-										label="Fecha target slot"
-										type="date"
-										value={seriesMoveForm.slotDate}
-										onChange={(event) =>
-											setSeriesMoveForm((prev) => ({
-												...prev,
-												slotDate: event.currentTarget.value,
-												targetSlotId: "",
-											}))
-										}
-									/>
-								</Grid.Col>
-								<Grid.Col span={{ base: 12, sm: 4 }}>
-									<Select
-										label="Target slot"
-										value={seriesMoveForm.targetSlotId}
-										onChange={(value) =>
-											setSeriesMoveForm((prev) => ({
-												...prev,
-												targetSlotId: value ?? "",
-											}))
-										}
-										data={seriesMoveSlotOptions}
-									/>
-								</Grid.Col>
-								<Grid.Col span={{ base: 12, sm: 4 }}>
-									<Select
-										label="Target staff"
-										placeholder="Opcional"
-										value={seriesMoveForm.targetStaffUserId}
-										onChange={(value) =>
-											setSeriesMoveForm((prev) => ({
-												...prev,
-												targetStaffUserId: value ?? "",
-											}))
-										}
-										data={staffOptions}
-									/>
-								</Grid.Col>
-							</Grid>
-							<Group>
-								<Button
-									variant="light"
-									loading={isRunning === "series-move"}
-									onClick={() => {
-										if (!seriesMoveForm.targetSlotId) {
-											setGlobalError(
-												"Selecciona target slot para mover serie.",
-											);
-											return;
-										}
-										void runSeriesAction(
-											"series-move",
-											async () =>
-												await orpcClient.admin.reservationSeries.move({
-													id: selectedSeries.id,
-													targetSlotId: seriesMoveForm.targetSlotId,
-													targetStaffUserId:
-														asNullableText(seriesMoveForm.targetStaffUserId) ??
-														undefined,
-												}),
-											"Serie movida.",
-										);
-									}}
+							<Divider my="sm" />
+
+							{/* Update from date */}
+							<Stack gap="md">
+								<Title
+									order={6}
+									className="text-xs font-semibold text-zinc-700 uppercase tracking-wider"
 								>
-									Mover serie
-								</Button>
-								<Group align="flex-end">
+									Actualizar desde fecha
+								</Title>
+								<Grid gap="md">
+									<Grid.Col span={{ base: 12, sm: 4 }}>
+										<TextInput
+											label="Effective from"
+											size="sm"
+											type="date"
+											value={seriesUpdateFromDateForm.effectiveFrom}
+											onChange={(event) =>
+												setSeriesUpdateFromDateForm((prev) => ({
+													...prev,
+													effectiveFrom: event.currentTarget.value,
+												}))
+											}
+										/>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 4 }}>
+										<Select
+											label="Staff desde fecha"
+											size="sm"
+											placeholder="Opcional"
+											value={seriesUpdateFromDateForm.staffUserId}
+											onChange={(value) =>
+												setSeriesUpdateFromDateForm((prev) => ({
+													...prev,
+													staffUserId: value ?? "",
+												}))
+											}
+											data={staffOptions}
+										/>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 4 }}>
+										<TextInput
+											label="Notas desde fecha"
+											size="sm"
+											value={seriesUpdateFromDateForm.notes}
+											onChange={(event) =>
+												setSeriesUpdateFromDateForm((prev) => ({
+													...prev,
+													notes: event.currentTarget.value,
+												}))
+											}
+										/>
+									</Grid.Col>
+								</Grid>
+								<Group gap="sm">
+									<Button
+										variant="light"
+										size="sm"
+										loading={isRunning === "series-update-from-date"}
+										onClick={() => {
+											if (!seriesUpdateFromDateForm.effectiveFrom) {
+												setGlobalError(
+													"Definí la fecha efectiva para updateFromDate.",
+												);
+												return;
+											}
+											void runSeriesAction(
+												"series-update-from-date",
+												async () =>
+													await orpcClient.admin.reservationSeries.updateFromDate(
+														{
+															id: selectedSeries.id,
+															effectiveFrom:
+																seriesUpdateFromDateForm.effectiveFrom,
+															staffUserId:
+																asNullableText(
+																	seriesUpdateFromDateForm.staffUserId,
+																) ?? undefined,
+															notes: asNullableText(
+																seriesUpdateFromDateForm.notes,
+															),
+														},
+													),
+												"Serie actualizada desde fecha.",
+											);
+										}}
+									>
+										Update from date
+									</Button>
+								</Group>
+							</Stack>
+
+							<Divider my="sm" />
+
+							{/* Move and Release */}
+							<Stack gap="md">
+								<Title
+									order={6}
+									className="text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+								>
+									Mover y liberar
+								</Title>
+								<Grid gap="md">
+									<Grid.Col span={{ base: 12, sm: 4 }}>
+										<TextInput
+											label="Fecha target slot"
+											size="sm"
+											type="date"
+											value={seriesMoveForm.slotDate}
+											onChange={(event) =>
+												setSeriesMoveForm((prev) => ({
+													...prev,
+													slotDate: event.currentTarget.value,
+													targetSlotId: "",
+												}))
+											}
+										/>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 4 }}>
+										<Select
+											label="Target slot"
+											size="sm"
+											value={seriesMoveForm.targetSlotId}
+											onChange={(value) =>
+												setSeriesMoveForm((prev) => ({
+													...prev,
+													targetSlotId: value ?? "",
+												}))
+											}
+											data={seriesMoveSlotOptions}
+										/>
+									</Grid.Col>
+									<Grid.Col span={{ base: 12, sm: 4 }}>
+										<Select
+											label="Target staff"
+											size="sm"
+											placeholder="Opcional"
+											value={seriesMoveForm.targetStaffUserId}
+											onChange={(value) =>
+												setSeriesMoveForm((prev) => ({
+													...prev,
+													targetStaffUserId: value ?? "",
+												}))
+											}
+											data={staffOptions}
+										/>
+									</Grid.Col>
+								</Grid>
+								<Group gap="sm" wrap="wrap">
+									<Button
+										variant="light"
+										size="sm"
+										loading={isRunning === "series-move"}
+										onClick={() => {
+											if (!seriesMoveForm.targetSlotId) {
+												setGlobalError(
+													"Seleccioná target slot para mover serie.",
+												);
+												return;
+											}
+											void runSeriesAction(
+												"series-move",
+												async () =>
+													await orpcClient.admin.reservationSeries.move({
+														id: selectedSeries.id,
+														targetSlotId: seriesMoveForm.targetSlotId,
+														targetStaffUserId:
+															asNullableText(
+																seriesMoveForm.targetStaffUserId,
+															) ?? undefined,
+													}),
+												"Serie movida.",
+											);
+										}}
+									>
+										Mover serie
+									</Button>
 									<Select
-										label="Reason release"
+										label="Razón release"
+										size="sm"
 										value={seriesReleaseReason}
 										onChange={(value) =>
 											setSeriesReleaseReason(value ?? "cancelled")
 										}
 										data={[
-											{ value: "cancelled", label: "cancelled" },
-											{ value: "expired", label: "expired" },
-											{ value: "attended", label: "attended" },
+											{ value: "cancelled", label: "Cancelada" },
+											{ value: "expired", label: "Expirada" },
+											{ value: "attended", label: "Atendida" },
 										]}
 									/>
 									<Button
 										color="red"
+										variant="light"
+										size="sm"
 										loading={isRunning === "series-release"}
 										onClick={() =>
 											void runSeriesAction(
@@ -1265,232 +1786,284 @@ export function AdminReportesPage() {
 										Release serie
 									</Button>
 								</Group>
-							</Group>
+							</Stack>
+						</ActionPanel>
 
-							<Title order={5}>Instancias activas de la serie</Title>
-							{seriesInstancesQuery.isLoading ? (
-								<Group justify="center" py="md">
-									<Loader size="sm" />
-								</Group>
-							) : null}
+						{/* Instances */}
+						<Box mt="md">
+							<ActionPanel title="Instancias activas de la serie">
+								{seriesInstancesQuery.isLoading ? (
+									<Group justify="center" py="md">
+										<Loader size="sm" />
+									</Group>
+								) : null}
 
-							<Table.ScrollContainer minWidth={960}>
-								<Table striped withTableBorder withColumnBorders>
-									<Table.Thead>
-										<Table.Tr>
-											<Table.Th>Seleccionar</Table.Th>
-											<Table.Th>ID</Table.Th>
-											<Table.Th>Fecha</Table.Th>
-											<Table.Th>Hora</Table.Th>
-											<Table.Th>Estado</Table.Th>
-											<Table.Th>Staff</Table.Th>
-										</Table.Tr>
-									</Table.Thead>
-									<Table.Tbody>
-										{instances.map((instance) => (
-											<Table.Tr key={instance.id}>
-												<Table.Td>
-													<Button
-														variant={
+								{instances.length === 0 ? (
+									<Text c="dimmed" size="sm" className="text-center" py="md">
+										No hay instancias activas para esta serie.
+									</Text>
+								) : (
+									<Table.ScrollContainer minWidth={960}>
+										<Table striped withTableBorder withColumnBorders fz="sm">
+											<Table.Thead>
+												<Table.Tr>
+													<Table.Th className={adminUi.tableHeader}>
+														Seleccionar
+													</Table.Th>
+													<Table.Th className={adminUi.tableHeader}>
+														ID
+													</Table.Th>
+													<Table.Th className={adminUi.tableHeader}>
+														Fecha
+													</Table.Th>
+													<Table.Th className={adminUi.tableHeader}>
+														Hora
+													</Table.Th>
+													<Table.Th className={adminUi.tableHeader}>
+														Estado
+													</Table.Th>
+													<Table.Th className={adminUi.tableHeader}>
+														Staff
+													</Table.Th>
+												</Table.Tr>
+											</Table.Thead>
+											<Table.Tbody>
+												{instances.map((instance) => (
+													<Table.Tr
+														key={instance.id}
+														className={
 															instance.id === selectedInstanceId
-																? "filled"
-																: "light"
+																? "bg-red-50/40"
+																: ""
 														}
-														size="xs"
-														onClick={() => setSelectedInstanceId(instance.id)}
 													>
-														Usar
+														<Table.Td>
+															<Button
+																variant={
+																	instance.id === selectedInstanceId
+																		? "filled"
+																		: "light"
+																}
+																size="xs"
+																onClick={() =>
+																	setSelectedInstanceId(instance.id)
+																}
+															>
+																Usar
+															</Button>
+														</Table.Td>
+														<Table.Td className="font-mono text-xs">
+															{instance.id.slice(0, 8)}...
+														</Table.Td>
+														<Table.Td>
+															{instance.slot?.slotDate ?? "-"}
+														</Table.Td>
+														<Table.Td>
+															{instance.slot?.startTime ?? "--"} -{" "}
+															{instance.slot?.endTime ?? "--"}
+														</Table.Td>
+														<Table.Td>
+															<Badge
+																{...getStatusBadgeProps(instance.status)}
+																size="sm"
+															>
+																{instance.status}
+															</Badge>
+														</Table.Td>
+														<Table.Td>{instance.staffUserId ?? "-"}</Table.Td>
+													</Table.Tr>
+												))}
+											</Table.Tbody>
+										</Table>
+									</Table.ScrollContainer>
+								)}
+
+								{selectedInstance && (
+									<Box mt="md">
+										<ActionPanel title="Acciones sobre instancia">
+											<Stack gap="md">
+												<Grid gap="md">
+													<Grid.Col span={{ base: 12, sm: 6 }}>
+														<Select
+															label="Nuevo staff"
+															size="sm"
+															placeholder="Opcional"
+															value={instanceUpdateForm.staffUserId}
+															onChange={(value) =>
+																setInstanceUpdateForm((prev) => ({
+																	...prev,
+																	staffUserId: value ?? "",
+																}))
+															}
+															data={staffOptions}
+														/>
+													</Grid.Col>
+													<Grid.Col span={{ base: 12, sm: 6 }}>
+														<TextInput
+															label="Notas"
+															size="sm"
+															value={instanceUpdateForm.notes}
+															onChange={(event) =>
+																setInstanceUpdateForm((prev) => ({
+																	...prev,
+																	notes: event.currentTarget.value,
+																}))
+															}
+														/>
+													</Grid.Col>
+												</Grid>
+												<Group gap="sm">
+													<Button
+														size="sm"
+														loading={isRunning === "instance-update"}
+														onClick={() =>
+															void runInstanceAction(
+																"instance-update",
+																async () =>
+																	await orpcClient.admin.reservations.update({
+																		bookingId: selectedInstance.id,
+																		staffUserId:
+																			asNullableText(
+																				instanceUpdateForm.staffUserId,
+																			) ?? undefined,
+																		notes: asNullableText(
+																			instanceUpdateForm.notes,
+																		),
+																	}),
+																"Instancia actualizada.",
+															)
+														}
+													>
+														Actualizar instancia
 													</Button>
-												</Table.Td>
-												<Table.Td>{instance.id}</Table.Td>
-												<Table.Td>{instance.slot?.slotDate ?? "-"}</Table.Td>
-												<Table.Td>
-													{instance.slot?.startTime ?? "--"} -{" "}
-													{instance.slot?.endTime ?? "--"}
-												</Table.Td>
-												<Table.Td>{instance.status}</Table.Td>
-												<Table.Td>{instance.staffUserId ?? "-"}</Table.Td>
-											</Table.Tr>
-										))}
-									</Table.Tbody>
-								</Table>
-							</Table.ScrollContainer>
+												</Group>
 
-							{selectedInstance ? (
-								<Stack>
-									<Title order={5}>Acciones sobre instancia</Title>
-									<Grid>
-										<Grid.Col span={{ base: 12, sm: 6 }}>
-											<Select
-												label="Nuevo staff"
-												placeholder="Opcional"
-												value={instanceUpdateForm.staffUserId}
-												onChange={(value) =>
-													setInstanceUpdateForm((prev) => ({
-														...prev,
-														staffUserId: value ?? "",
-													}))
-												}
-												data={staffOptions}
-											/>
-										</Grid.Col>
-										<Grid.Col span={{ base: 12, sm: 6 }}>
-											<TextInput
-												label="Notas"
-												value={instanceUpdateForm.notes}
-												onChange={(event) =>
-													setInstanceUpdateForm((prev) => ({
-														...prev,
-														notes: event.currentTarget.value,
-													}))
-												}
-											/>
-										</Grid.Col>
-									</Grid>
-									<Group>
-										<Button
-											loading={isRunning === "instance-update"}
-											onClick={() =>
-												void runInstanceAction(
-													"instance-update",
-													async () =>
-														await orpcClient.admin.reservations.update({
-															bookingId: selectedInstance.id,
-															staffUserId:
-																asNullableText(
-																	instanceUpdateForm.staffUserId,
-																) ?? undefined,
-															notes: asNullableText(instanceUpdateForm.notes),
-														}),
-													"Instancia actualizada.",
-												)
-											}
-										>
-											Actualizar instancia
-										</Button>
-									</Group>
+												<Divider my="sm" />
 
-									<Grid>
-										<Grid.Col span={{ base: 12, sm: 4 }}>
-											<TextInput
-												label="Fecha target slot"
-												type="date"
-												value={instanceMoveForm.slotDate}
-												onChange={(event) =>
-													setInstanceMoveForm((prev) => ({
-														...prev,
-														slotDate: event.currentTarget.value,
-														targetSlotId: "",
-													}))
-												}
-											/>
-										</Grid.Col>
-										<Grid.Col span={{ base: 12, sm: 4 }}>
-											<Select
-												label="Target slot"
-												value={instanceMoveForm.targetSlotId}
-												onChange={(value) =>
-													setInstanceMoveForm((prev) => ({
-														...prev,
-														targetSlotId: value ?? "",
-													}))
-												}
-												data={instanceMoveSlotOptions}
-											/>
-										</Grid.Col>
-										<Grid.Col span={{ base: 12, sm: 4 }}>
-											<Select
-												label="Target staff"
-												placeholder="Opcional"
-												value={instanceMoveForm.targetStaffUserId}
-												onChange={(value) =>
-													setInstanceMoveForm((prev) => ({
-														...prev,
-														targetStaffUserId: value ?? "",
-													}))
-												}
-												data={staffOptions}
-											/>
-										</Grid.Col>
-									</Grid>
-									<Group>
-										<Button
-											variant="light"
-											loading={isRunning === "instance-move"}
-											onClick={() => {
-												if (!instanceMoveForm.targetSlotId) {
-													setGlobalError(
-														"Selecciona target slot para mover instancia.",
-													);
-													return;
-												}
-												void runInstanceAction(
-													"instance-move",
-													async () =>
-														await orpcClient.admin.reservations.move({
-															bookingId: selectedInstance.id,
-															targetSlotId: instanceMoveForm.targetSlotId,
-															targetStaffUserId:
-																asNullableText(
-																	instanceMoveForm.targetStaffUserId,
-																) ?? undefined,
-														}),
-													"Instancia movida.",
-												);
-											}}
-										>
-											Mover instancia
-										</Button>
+												<Grid gap="md">
+													<Grid.Col span={{ base: 12, sm: 4 }}>
+														<TextInput
+															label="Fecha target slot"
+															size="sm"
+															type="date"
+															value={instanceMoveForm.slotDate}
+															onChange={(event) =>
+																setInstanceMoveForm((prev) => ({
+																	...prev,
+																	slotDate: event.currentTarget.value,
+																	targetSlotId: "",
+																}))
+															}
+														/>
+													</Grid.Col>
+													<Grid.Col span={{ base: 12, sm: 4 }}>
+														<Select
+															label="Target slot"
+															size="sm"
+															value={instanceMoveForm.targetSlotId}
+															onChange={(value) =>
+																setInstanceMoveForm((prev) => ({
+																	...prev,
+																	targetSlotId: value ?? "",
+																}))
+															}
+															data={instanceMoveSlotOptions}
+														/>
+													</Grid.Col>
+													<Grid.Col span={{ base: 12, sm: 4 }}>
+														<Select
+															label="Target staff"
+															size="sm"
+															placeholder="Opcional"
+															value={instanceMoveForm.targetStaffUserId}
+															onChange={(value) =>
+																setInstanceMoveForm((prev) => ({
+																	...prev,
+																	targetStaffUserId: value ?? "",
+																}))
+															}
+															data={staffOptions}
+														/>
+													</Grid.Col>
+												</Grid>
+												<Group gap="sm" wrap="wrap">
+													<Button
+														variant="light"
+														size="sm"
+														loading={isRunning === "instance-move"}
+														onClick={() => {
+															if (!instanceMoveForm.targetSlotId) {
+																setGlobalError(
+																	"Seleccioná target slot para mover instancia.",
+																);
+																return;
+															}
+															void runInstanceAction(
+																"instance-move",
+																async () =>
+																	await orpcClient.admin.reservations.move({
+																		bookingId: selectedInstance.id,
+																		targetSlotId: instanceMoveForm.targetSlotId,
+																		targetStaffUserId:
+																			asNullableText(
+																				instanceMoveForm.targetStaffUserId,
+																			) ?? undefined,
+																	}),
+																"Instancia movida.",
+															);
+														}}
+													>
+														Mover instancia
+													</Button>
 
-										<Group align="flex-end">
-											<Select
-												label="Reason release"
-												value={instanceReleaseReason}
-												onChange={(value) =>
-													setInstanceReleaseReason(value ?? "cancelled")
-												}
-												data={[
-													{ value: "cancelled", label: "cancelled" },
-													{ value: "expired", label: "expired" },
-													{ value: "attended", label: "attended" },
-												]}
-											/>
-											<Button
-												color="red"
-												loading={isRunning === "instance-release"}
-												onClick={() =>
-													void runInstanceAction(
-														"instance-release",
-														async () =>
-															await orpcClient.admin.reservations.release({
-																bookingId: selectedInstance.id,
-																reason: instanceReleaseReason,
-															}),
-														"Instancia liberada.",
-													)
-												}
-											>
-												Release instancia
-											</Button>
-										</Group>
-									</Group>
-								</Stack>
-							) : (
-								<Text c="dimmed" size="sm">
-									No hay instancia seleccionada.
-								</Text>
-							)}
-						</Stack>
-					) : (
-						<Text c="dimmed" size="sm">
-							No hay serie seleccionada.
-						</Text>
-					)}
-				</Stack>
-			</Paper>
+													<Select
+														label="Razón release"
+														size="sm"
+														value={instanceReleaseReason}
+														onChange={(value) =>
+															setInstanceReleaseReason(value ?? "cancelled")
+														}
+														data={[
+															{ value: "cancelled", label: "Cancelada" },
+															{ value: "expired", label: "Expirada" },
+															{ value: "attended", label: "Atendida" },
+														]}
+													/>
+													<Button
+														color="red"
+														variant="light"
+														size="sm"
+														loading={isRunning === "instance-release"}
+														onClick={() =>
+															void runInstanceAction(
+																"instance-release",
+																async () =>
+																	await orpcClient.admin.reservations.release({
+																		bookingId: selectedInstance.id,
+																		reason: instanceReleaseReason,
+																	}),
+																"Instancia liberada.",
+															)
+														}
+													>
+														Release instancia
+													</Button>
+												</Group>
+											</Stack>
+										</ActionPanel>
+									</Box>
+								)}
+							</ActionPanel>
+						</Box>
+					</Box>
+				)}
+			</SectionCard>
 
 			{actionResult ? (
-				<Alert color="blue" variant="light">
+				<Alert color="blue" variant="light" radius="md">
+					<Title order={6} mb="xs">
+						Resultado de la operación
+					</Title>
 					<Text component="pre" fz="xs" style={{ whiteSpace: "pre-wrap" }}>
 						{stringifyJson(actionResult)}
 					</Text>
