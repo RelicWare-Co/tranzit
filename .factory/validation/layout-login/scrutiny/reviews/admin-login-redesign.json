@@ -1,0 +1,28 @@
+{
+  "featureId": "admin-login-redesign",
+  "reviewedAt": "2026-04-20T12:45:00.000Z",
+  "commitId": "f0293ad",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Two-panel login redesign is correctly implemented. Left panel (dark branding) and right panel (login form) are properly structured. All functional flows (loading, onboarding, login) are preserved. No banned patterns (gradient text, glassmorphism, side-stripes) present. Professional typography with Sora and Public Sans applied consistently.",
+    "issues": [
+      {
+        "file": "packages/web/src/routes/admin/login.tsx",
+        "line": 56,
+        "severity": "non_blocking",
+        "description": "useEffect has `onboardingStatusQuery.data?.adminExists` in its body but `onboardingStatusQuery` is not in the dependency array. This could cause stale closure issues when the query data changes. Should include `onboardingStatusQuery` in the dependency array to ensure the effect re-runs when the query resolves."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The worker used the impeccable-admin-worker skill but the transcript shows the skill content was invoked via Skill tool at the start. The skillFeedback confirms procedure was followed. No deviations noted.",
+      "evidence": "Handoff skillFeedback: {followedProcedure: true, deviations: []}"
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The admin login redesign pass is approved. The two-panel layout (left dark branding panel, right form panel) is correctly implemented across all three states (loading, onboarding, login). All original functionality (validation, onboarding flow, submit) is preserved. No banned design patterns found. One minor non-blocking React dependency array issue in useEffect at line 56."
+}

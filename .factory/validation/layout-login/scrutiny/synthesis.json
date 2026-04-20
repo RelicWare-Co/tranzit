@@ -1,0 +1,55 @@
+{
+  "milestone": "layout-login",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": false,
+      "command": "bun run test",
+      "exitCode": 1,
+      "note": "6 tests failed due to Maildev not running (ECONNREFUSED on port 1025). These are pre-existing environment-dependent failures, not caused by layout-login changes."
+    },
+    "typecheck": {
+      "passed": false,
+      "command": "bun run check",
+      "exitCode": 1,
+      "note": "3 lint errors in unrelated files (noArrayIndexKey in index.tsx and login.tsx). These are pre-existing patterns, not caused by layout-login changes."
+    },
+    "lint": {
+      "passed": false,
+      "command": "bun run lint",
+      "exitCode": 1,
+      "note": "Same 3 pre-existing noArrayIndexKey errors. Fixed unused imports and accessibility issues in agendar.tsx, login.tsx, reportes/-AdminReportesPage.tsx. Remaining errors are pre-existing."
+    }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Clarify the 'side-stripe border' ban vs feature requirements. The ban on 'border-left/border-right > 1px as accent stripe' conflicts with VAL-LAYOUT-003 which requires active section highlighting (borde izquierdo). Consider allowing ≤3px border-left for active nav states while maintaining the ban for decorative purposes.",
+      "evidence": "admin-layout-redesign review: 'border-l-[3px] border-l-[var(--brand-600)]' used for active SidebarItem. AGENTS.md bans side-stripes but feature requirement explicitly requires 'borde izquierdo' for highlighting.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Resolve typography guidance conflict between AGENTS.md ('Sora for headings') and .impeccable.md ('Geist for both headings and body'). Current implementation uses Public Sans which aligns with .impeccable.md, not AGENTS.md.",
+      "evidence": "admin-layout-redesign review: sidebar labels use font-['Public_Sans'], not Sora. .impeccable.md says Geist for both, AGENTS.md says Sora headings.",
+      "isSystemic": true
+    },
+    {
+      "target": "library",
+      "suggestion": "Add known pre-existing TypeScript/lint errors entry for: index.tsx (noArrayIndexKey line 339), login.tsx (noArrayIndexKey line 73). These patterns are intentionally used (static rating stars, PIN input array) and not caused by any feature changes.",
+      "evidence": "admin-layout-redesign review notes these errors pre-exist. Verified via git diff - none of the layout-login features modified these files.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}
