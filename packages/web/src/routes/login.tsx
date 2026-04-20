@@ -1,6 +1,7 @@
 import { useForm } from "@mantine/form";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Input } from "../components/ui";
 import { useAuth } from "../lib/AuthContext";
@@ -265,25 +266,19 @@ function LoginPage() {
 					</div>
 
 					{error && (
-						<Alert
-							variant="error"
-							title="Error"
-							className="animate-fade-in"
-							style={{ marginBottom: "var(--space-6)" }}
-						>
-							{error}
-						</Alert>
+						<div style={{ marginBottom: "var(--space-6)" }}>
+							<Alert variant="error" title="Error" className="animate-fade-in">
+								{error}
+							</Alert>
+						</div>
 					)}
 
 					{feedback && (
-						<Alert
-							variant="success"
-							title="Éxito"
-							className="animate-fade-in"
-							style={{ marginBottom: "var(--space-6)" }}
-						>
-							{feedback}
-						</Alert>
+						<div style={{ marginBottom: "var(--space-6)" }}>
+							<Alert variant="success" title="Éxito" className="animate-fade-in">
+								{feedback}
+							</Alert>
+						</div>
 					)}
 
 					{step === "email" ? (
@@ -346,7 +341,6 @@ function LoginPage() {
 									Código de verificación
 								</label>
 								<PinInput
-									id="otp-code"
 									length={6}
 									value={otpCode}
 									onChange={setOtpCode}

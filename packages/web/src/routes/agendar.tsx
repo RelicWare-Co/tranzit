@@ -1,12 +1,7 @@
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-	ChevronRight,
-	Clock,
-	FileText,
-	Loader2,
-} from "lucide-react";
+import { ChevronRight, Clock, FileText, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
 	Alert,
@@ -790,7 +785,9 @@ function AgendarPage() {
 
 						<div className={classes.documentRow}>
 							<div className={classes.documentType}>
-								<label className={classes.formLabel} htmlFor="documentType">Tipo</label>
+								<label className={classes.formLabel} htmlFor="documentType">
+									Tipo
+								</label>
 								<select
 									id="documentType"
 									className={classes.select}
@@ -1062,7 +1059,7 @@ function AgendarPage() {
 								)}
 							</div>
 
-							<CardContent padding="xl">
+							<CardContent className="p-8">
 								<h3 className={classes.confirmationTitle}>
 									Confirma tu asistencia
 								</h3>
@@ -1147,7 +1144,12 @@ function AgendarPage() {
 					type="button"
 					aria-label="Cerrar modal"
 				>
-					<div className={classes.modal} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="dialog">
+					<div
+						className={classes.modal}
+						onClick={(e) => e.stopPropagation()}
+						onKeyDown={(e) => e.stopPropagation()}
+						role="dialog"
+					>
 						<Card variant="elevated" padding="xl">
 							<div className={classes.modalHeader}>
 								<h3 className={classes.modalTitle}>Verifica tu correo</h3>

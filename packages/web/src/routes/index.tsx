@@ -150,12 +150,13 @@ function StatCard({
 							backgroundColor: styles.bg,
 						}}
 					>
-						<stat.icon
-							size={28}
-							strokeWidth={1.5}
-							style={{ color: styles.icon }}
-							className="transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6"
-						/>
+						<span style={{ color: styles.icon }}>
+							<stat.icon
+								size={28}
+								strokeWidth={1.5}
+								className="transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6"
+							/>
+						</span>
 					</div>
 
 					<div
@@ -267,11 +268,12 @@ function ServiceCard({
 					className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3"
 					style={{ backgroundColor: styles.bg }}
 				>
-					<service.icon
-						size={28}
-						strokeWidth={1.5}
-						style={{ color: styles.icon }}
-					/>
+					<span style={{ color: styles.icon }}>
+						<service.icon
+							size={28}
+							strokeWidth={1.5}
+						/>
+					</span>
 				</div>
 				<h3
 					className="font-['Sora'] text-xl font-bold mb-3"
@@ -336,7 +338,11 @@ function TestimonialCard({
 					<div className="flex mb-4">
 						{Array.from({ length: 5 }).map((_, i) => (
 							<Star
-								key={i < testimonial.rating ? `star-filled-${i}` : `star-empty-${i}`}
+								key={
+									i < testimonial.rating
+										? `star-filled-${i}`
+										: `star-empty-${i}`
+								}
 								size={16}
 								className={i < testimonial.rating ? "fill-current" : ""}
 								style={{
