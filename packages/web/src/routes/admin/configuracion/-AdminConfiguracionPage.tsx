@@ -10,6 +10,7 @@ import {
 	Modal,
 	NumberInput,
 	Paper,
+	rem,
 	Select,
 	Skeleton,
 	Stack,
@@ -114,15 +115,17 @@ function EmptyState({
 	action?: React.ReactNode;
 }) {
 	return (
-		<Box className="flex flex-col items-center justify-center py-16 px-4 text-center">
-			<Box className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-				<Icon className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
+		<Box className="flex flex-col items-center justify-center py-12 px-4 text-center">
+			<Box className="flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-100 mb-4">
+				<Icon
+					style={{ width: rem(28), height: rem(28) }}
+					className="text-zinc-400"
+					strokeWidth={1.5}
+				/>
 			</Box>
-			<Text className="text-lg font-semibold text-slate-900 mb-1">{title}</Text>
-			<Text className="text-sm text-slate-500 max-w-sm mb-4">
-				{description}
-			</Text>
-			{action}
+			<Text className="text-base font-semibold text-zinc-900 mb-1">{title}</Text>
+			<Text className="text-sm text-zinc-500 max-w-sm">{description}</Text>
+			{action && <Box className="mt-4">{action}</Box>}
 		</Box>
 	);
 }
@@ -139,18 +142,18 @@ function StatusBadge({
 	return (
 		<Badge
 			variant="light"
-			color={active ? "emerald" : "slate"}
+			color={active ? "teal" : "gray"}
 			radius="sm"
 			className="font-medium"
 		>
 			{active ? (
 				<Group gap={4}>
-					<Box className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+					<Box className="w-1.5 h-1.5 rounded-full bg-teal-500" />
 					{activeLabel}
 				</Group>
 			) : (
 				<Group gap={4}>
-					<Box className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+					<Box className="w-1.5 h-1.5 rounded-full bg-gray-400" />
 					{inactiveLabel}
 				</Group>
 			)}
@@ -172,36 +175,39 @@ function SectionCard({
 	action?: React.ReactNode;
 }) {
 	return (
-		<Paper
-			withBorder
-			className="border-slate-200/60 bg-white overflow-hidden rounded-xl"
-		>
-			<Box className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-				<Group justify="space-between" align="center">
-					<Group gap={3}>
+		<Paper withBorder radius="lg" p="md" shadow="sm">
+			<Stack gap="md">
+				<Group justify="space-between" wrap="nowrap">
+					<Group gap="md" wrap="nowrap">
 						{Icon && (
-							<Box className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm">
-								<Icon className="w-4 h-4 text-slate-600" strokeWidth={1.5} />
+							<Box className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
+								<Icon
+									style={{ width: rem(20), height: rem(20) }}
+									className="text-red-700"
+									strokeWidth={1.75}
+								/>
 							</Box>
 						)}
-						<Box>
-							<Title order={5} className="text-slate-900 font-semibold">
+						<Stack gap={0}>
+							<Title order={4} className="text-base font-semibold text-zinc-900">
 								{title}
 							</Title>
 							{subtitle && (
-								<Text className="text-xs text-slate-500">{subtitle}</Text>
+								<Text size="sm" className="text-zinc-500">
+									{subtitle}
+								</Text>
 							)}
-						</Box>
+						</Stack>
 					</Group>
-					{action}
+					{action && <Group gap="xs">{action}</Group>}
 				</Group>
-			</Box>
-			<Box className="p-6">{children}</Box>
+				{children}
+			</Stack>
 		</Paper>
 	);
 }
 
-function TemplateSkeleton() {
+function TableSkeleton() {
 	return (
 		<Table.Tr>
 			<Table.Td>
@@ -851,7 +857,7 @@ export function AdminConfiguracionPage() {
 				<Stack gap="lg">
 					<Paper
 						withBorder
-						className={`p-5 rounded-xl border-slate-200/60 ${isEditingTemplate ? "bg-amber-50/30 border-amber-200/60" : "bg-slate-50/50"}`}
+						className={`p-5 rounded-xl border-zinc-200/60 ${isEditingTemplate ? "bg-amber-50/30 border-amber-200/60" : "bg-zinc-50/50"}`}
 					>
 						{isEditingTemplate && (
 							<Group gap={6} className="mb-4">
@@ -977,39 +983,39 @@ export function AdminConfiguracionPage() {
 					</Paper>
 
 					<Box>
-						<Text className="text-sm font-semibold text-slate-900 mb-3">
+						<Text className="text-sm font-semibold text-zinc-900 mb-3">
 							Templates configurados
 						</Text>
 						<Table.ScrollContainer minWidth={780}>
 							<Table
 								withTableBorder
 								withColumnBorders
-								className="border-slate-200"
+								className="border-zinc-200"
 								styles={{
-									thead: { backgroundColor: "#f8fafc" },
+									thead: { backgroundColor: "#f9fafb" },
 								}}
 							>
 								<Table.Thead>
 									<Table.Tr>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Día
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Duración
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Buffer
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Capacidad
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Horarios
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Estado
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Acciones
 										</Table.Th>
 									</Table.Tr>
@@ -1017,9 +1023,9 @@ export function AdminConfiguracionPage() {
 								<Table.Tbody>
 									{snapshotQuery.isLoading ? (
 										<>
-											<TemplateSkeleton />
-											<TemplateSkeleton />
-											<TemplateSkeleton />
+											<TableSkeleton />
+											<TableSkeleton />
+											<TableSkeleton />
 										</>
 									) : snapshotQuery.data?.templates.length === 0 ? (
 										<Table.Tr>
@@ -1035,7 +1041,7 @@ export function AdminConfiguracionPage() {
 										snapshotQuery.data?.templates.map((template) => (
 											<Table.Tr
 												key={template.id}
-												className="hover:bg-slate-50/80 transition-colors"
+												className="hover:bg-zinc-50/80 transition-colors"
 											>
 												<Table.Td>
 													<Badge
@@ -1053,7 +1059,7 @@ export function AdminConfiguracionPage() {
 												</Table.Td>
 												<Table.Td className="text-sm">
 													{template.slotCapacityLimit ?? (
-														<span className="text-slate-400 italic">
+														<span className="text-zinc-400 italic">
 															Ilimitada
 														</span>
 													)}
@@ -1147,7 +1153,7 @@ export function AdminConfiguracionPage() {
 				<Stack gap="lg">
 					<Paper
 						withBorder
-						className={`p-5 rounded-xl border-slate-200/60 ${isEditingOverride ? "bg-amber-50/30 border-amber-200/60" : "bg-slate-50/50"}`}
+						className={`p-5 rounded-xl border-zinc-200/60 ${isEditingOverride ? "bg-amber-50/30 border-amber-200/60" : "bg-zinc-50/50"}`}
 					>
 						{isEditingOverride && (
 							<Group gap={6} className="mb-4">
@@ -1270,36 +1276,36 @@ export function AdminConfiguracionPage() {
 					</Paper>
 
 					<Box>
-						<Text className="text-sm font-semibold text-slate-900 mb-3">
+						<Text className="text-sm font-semibold text-zinc-900 mb-3">
 							Excepciones configuradas
 						</Text>
 						<Table.ScrollContainer minWidth={780}>
 							<Table
 								withTableBorder
 								withColumnBorders
-								className="border-slate-200"
+								className="border-zinc-200"
 								styles={{
-									thead: { backgroundColor: "#f8fafc" },
+									thead: { backgroundColor: "#f9fafb" },
 								}}
 							>
 								<Table.Thead>
 									<Table.Tr>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Fecha
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Estado
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Duración
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Capacidad
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Razón
 										</Table.Th>
-										<Table.Th className="text-xs font-semibold text-slate-600">
+										<Table.Th className="text-xs font-semibold text-zinc-600">
 											Acciones
 										</Table.Th>
 									</Table.Tr>
@@ -1307,8 +1313,8 @@ export function AdminConfiguracionPage() {
 								<Table.Tbody>
 									{snapshotQuery.isLoading ? (
 										<>
-											<TemplateSkeleton />
-											<TemplateSkeleton />
+											<TableSkeleton />
+											<TableSkeleton />
 										</>
 									) : snapshotQuery.data?.overrides.length === 0 ? (
 										<Table.Tr>
@@ -1324,7 +1330,7 @@ export function AdminConfiguracionPage() {
 										snapshotQuery.data?.overrides.map((override) => (
 											<Table.Tr
 												key={override.id}
-												className="hover:bg-slate-50/80 transition-colors"
+												className="hover:bg-zinc-50/80 transition-colors"
 											>
 												<Table.Td className="font-medium">
 													{new Date(override.overrideDate).toLocaleDateString(
@@ -1351,17 +1357,17 @@ export function AdminConfiguracionPage() {
 													{override.slotDurationMinutes ? (
 														`${override.slotDurationMinutes} min`
 													) : (
-														<span className="text-slate-400">Default</span>
+														<span className="text-zinc-400">Default</span>
 													)}
 												</Table.Td>
 												<Table.Td className="text-sm">
 													{override.slotCapacityLimit ?? (
-														<span className="text-slate-400">Default</span>
+														<span className="text-zinc-400">Default</span>
 													)}
 												</Table.Td>
 												<Table.Td className="text-sm max-w-xs truncate">
 													{override.reason || (
-														<span className="text-slate-400 italic">
+														<span className="text-zinc-400 italic">
 															Sin descripción
 														</span>
 													)}
@@ -1469,7 +1475,7 @@ export function AdminConfiguracionPage() {
 						<>
 							<Paper
 								withBorder
-								className={`p-5 rounded-xl border-slate-200/60 ${isEditingStaffOverride ? "bg-amber-50/30 border-amber-200/60" : "bg-slate-50/50"}`}
+								className={`p-5 rounded-xl border-zinc-200/60 ${isEditingStaffOverride ? "bg-amber-50/30 border-amber-200/60" : "bg-zinc-50/50"}`}
 							>
 								{isEditingStaffOverride && (
 									<Group gap={6} className="mb-4">
@@ -1560,36 +1566,36 @@ export function AdminConfiguracionPage() {
 							</Paper>
 
 							<Box>
-								<Text className="text-sm font-semibold text-slate-900 mb-3">
+								<Text className="text-sm font-semibold text-zinc-900 mb-3">
 									Excepciones de {selectedStaff?.user?.name || "funcionario"}
 								</Text>
 								<Table.ScrollContainer minWidth={780}>
 									<Table
 										withTableBorder
 										withColumnBorders
-										className="border-slate-200"
+										className="border-zinc-200"
 										styles={{
 											thead: { backgroundColor: "#f8fafc" },
 										}}
 									>
 										<Table.Thead>
 											<Table.Tr>
-												<Table.Th className="text-xs font-semibold text-slate-600">
+												<Table.Th className="text-xs font-semibold text-zinc-600">
 													Fecha
 												</Table.Th>
-												<Table.Th className="text-xs font-semibold text-slate-600">
+												<Table.Th className="text-xs font-semibold text-zinc-600">
 													Disponible
 												</Table.Th>
-												<Table.Th className="text-xs font-semibold text-slate-600">
+												<Table.Th className="text-xs font-semibold text-zinc-600">
 													Capacidad
 												</Table.Th>
-												<Table.Th className="text-xs font-semibold text-slate-600">
+												<Table.Th className="text-xs font-semibold text-zinc-600">
 													Horario
 												</Table.Th>
-												<Table.Th className="text-xs font-semibold text-slate-600">
+												<Table.Th className="text-xs font-semibold text-zinc-600">
 													Notas
 												</Table.Th>
-												<Table.Th className="text-xs font-semibold text-slate-600">
+												<Table.Th className="text-xs font-semibold text-zinc-600">
 													Acciones
 												</Table.Th>
 											</Table.Tr>
@@ -1597,8 +1603,8 @@ export function AdminConfiguracionPage() {
 										<Table.Tbody>
 											{staffOverridesQuery.isLoading ? (
 												<>
-													<TemplateSkeleton />
-													<TemplateSkeleton />
+													<TableSkeleton />
+													<TableSkeleton />
 												</>
 											) : staffOverridesQuery.data?.length === 0 ? (
 												<Table.Tr>
@@ -1614,7 +1620,7 @@ export function AdminConfiguracionPage() {
 												staffOverridesQuery.data?.map((override) => (
 													<Table.Tr
 														key={override.id}
-														className="hover:bg-slate-50/80 transition-colors"
+														className="hover:bg-zinc-50/80 transition-colors"
 													>
 														<Table.Td className="font-medium">
 															{new Date(
@@ -1634,7 +1640,7 @@ export function AdminConfiguracionPage() {
 														</Table.Td>
 														<Table.Td className="text-sm">
 															{override.capacityOverride ?? (
-																<span className="text-slate-400">
+																<span className="text-zinc-400">
 																	Sin límite
 																</span>
 															)}
@@ -1652,14 +1658,14 @@ export function AdminConfiguracionPage() {
 																	{override.availableEndTime}
 																</Badge>
 															) : (
-																<span className="text-slate-400 italic">
+																<span className="text-zinc-400 italic">
 																	Horario completo
 																</span>
 															)}
 														</Table.Td>
 														<Table.Td className="text-sm max-w-xs truncate">
 															{override.notes || (
-																<span className="text-slate-400 italic">
+																<span className="text-zinc-400 italic">
 																	Sin notas
 																</span>
 															)}
@@ -1704,8 +1710,8 @@ export function AdminConfiguracionPage() {
 								</Table.ScrollContainer>
 							</Box>
 
-							<Paper withBorder className="p-5 rounded-xl border-slate-200/60">
-								<Text className="text-sm font-semibold text-slate-900 mb-4">
+							<Paper withBorder className="p-5 rounded-xl border-zinc-200/60">
+								<Text className="text-sm font-semibold text-zinc-900 mb-4">
 									Consultar disponibilidad efectiva
 								</Text>
 								<Group align="flex-end">
@@ -1727,7 +1733,7 @@ export function AdminConfiguracionPage() {
 								{availabilityResult !== null && (
 									<Paper
 										withBorder
-										className="mt-4 p-4 rounded-lg border-slate-200 bg-slate-50/50"
+										className="mt-4 p-4 rounded-lg border-zinc-200 bg-zinc-50/50"
 									>
 										<Text
 											component="pre"
