@@ -1,6 +1,5 @@
-import { Box, Group } from "@mantine/core";
+import { Group } from "@mantine/core";
 import type { ReactNode } from "react";
-import { adminUi } from "./-admin-ui";
 
 export function AdminPageHeader({
 	title,
@@ -12,16 +11,22 @@ export function AdminPageHeader({
 	actions?: ReactNode;
 }) {
 	return (
-		<Group justify="space-between" align="flex-start" wrap="wrap" gap="lg">
-			<Box className="min-w-0 max-w-3xl flex-1">
-				<h1 className={adminUi.title}>{title}</h1>
-				{description ? <p className={adminUi.subtitle}>{description}</p> : null}
-			</Box>
+		<div className="flex flex-wrap items-start justify-between gap-4 lg:gap-6 pb-4">
+			<div className="min-w-0 flex-1">
+				<h1 className="font-['Sora'] text-2xl font-semibold tracking-tight text-[var(--text-primary)] md:text-3xl leading-tight">
+					{title}
+				</h1>
+				{description ? (
+					<p className="font-['Public_Sans'] mt-2 text-base leading-relaxed text-[var(--text-secondary)] max-w-prose">
+						{description}
+					</p>
+				) : null}
+			</div>
 			{actions ? (
-				<Group gap="sm" wrap="wrap" justify="flex-end">
+				<Group gap="sm" wrap="wrap" justify="flex-end" className="shrink-0">
 					{actions}
 				</Group>
 			) : null}
-		</Group>
+		</div>
 	);
 }
