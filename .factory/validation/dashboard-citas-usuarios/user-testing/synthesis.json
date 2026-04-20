@@ -1,6 +1,6 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 3,
+  "round": 4,
   "status": "failure",
   "assertionsSummary": {
     "total": 49,
@@ -53,47 +53,53 @@
   "failedAssertions": [
     {
       "id": "VAL-DASH-002",
-      "reason": "Cannot verify citizen name display - no appointments exist in system. Dashboard shows 0 Citas hoy. This is a data state issue, not a UI issue. The dashboard correctly displays the appointments list structure."
+      "reason": "Could not verify citizen name display - no appointments exist in system. Dashboard shows 0 Citas hoy and 'No hay citas programadas para hoy'. Database verification: 0 bookings, slots are from January 2025 (past dates relative to 2026-04-20). This is a data state issue, not a UI issue."
     },
     {
       "id": "VAL-USERS-005",
-      "reason": "Cannot test reassign modal - staff Carlos Pérez has 0 active bookings today, so there's nothing to reassign."
+      "reason": "Cannot test reassign modal - staff Carlos Pérez has 0 active bookings today, so there's nothing to reassign. The usuarios page loads and detail panel works correctly."
     },
     {
       "id": "VAL-TRAMITES-005",
-      "reason": "Duplicate procedure functionality is NOT implemented. No 'Duplicar' button or action exists for procedures."
+      "reason": "Duplicate procedure functionality is NOT implemented in the UI. No 'Duplicar' button or action exists for procedures. This feature requires admin-tramites-redesign (pending in tramites-reportes-auditoria-config milestone)."
     }
   ],
   "blockedAssertions": [
     {
       "id": "VAL-REPORTES-002",
-      "blockedBy": "No bookings available to select in current data state. Action buttons only appear when a booking is selected."
+      "blockedBy": "No bookings available to select in current data state. Action buttons (confirm, release, reassign) only appear when a booking is selected. Database has 0 bookings."
     },
     {
       "id": "VAL-REPORTES-004",
-      "blockedBy": "No series available to select in current data state. Action buttons only appear when a series is selected."
+      "blockedBy": "No series available to select in current data state. Action buttons only appear when a series is selected. Database has 0 reservation series."
     }
   ],
   "appliedUpdates": [],
-  "previousRound": ".factory/validation/dashboard-citas-usuarios/user-testing/synthesis.json",
+  "previousRound": null,
   "blockersFound": [
     {
       "id": "BLOCKER-DATA-001",
       "severity": "high",
-      "description": "No bookings exist in the system - cannot verify assertions that require appointments (VAL-DASH-002, VAL-USERS-005, VAL-REPORTES-002, VAL-REPORTES-004)",
-      "location": "Database state - 0 bookings"
+      "description": "No bookings exist in the system - cannot verify assertions that require appointments (VAL-DASH-002, VAL-USERS-005, VAL-REPORTES-002). Root cause: appointment_slot table has slots from January 2025 (past dates), no future slots generated.",
+      "location": "Database state - 0 bookings, slots dated 2025-01-01 and 2025-01-22"
     },
     {
       "id": "BLOCKER-FEATURE-001",
       "severity": "medium",
-      "description": "Duplicate procedure functionality (VAL-TRAMITES-005) is not implemented",
+      "description": "Duplicate procedure functionality (VAL-TRAMITES-005) is not implemented. Feature admin-tramites-redesign is pending in tramites-reportes-auditoria-config milestone.",
       "location": "packages/web/src/routes/admin/tramites"
+    },
+    {
+      "id": "BLOCKER-DATA-002",
+      "severity": "high",
+      "description": "No reservation series exist in the system - cannot verify VAL-REPORTES-004. Database has 0 series.",
+      "location": "Database state - 0 reservation series"
     }
   ],
   "evidenceCollected": [
-    "evidence/dashboard-citas-usuarios/batch-design-dashboard/ - 14 screenshots across all admin pages",
-    "evidence/dashboard-citas-usuarios/batch-tramites/ - Screenshots of procedure list, create modal, toggle, duplicate test",
-    "evidence/dashboard-citas-usuarios/batch-reportes-audit-config/ - 18 screenshots of reportes, auditoria, configuracion"
+    "Database verification: SELECT COUNT(*) FROM booking = 0",
+    "Database verification: appointment_slot dates are 2025-01-01 and 2025-01-22 (past)",
+    "Database verification: 1 staff profile exists"
   ],
-  "summary": "Round 3 user testing for dashboard-citas-usuarios: 39/49 assertions passed. 3 failed (VAL-DASH-002, VAL-USERS-005, VAL-TRAMITES-005 - all data state issues or missing feature), 5 blocked (VAL-REPORTES-002, VAL-REPORTES-004 - data state). Design quality assertions all passed. All previously passing assertions remain passing."
+  "summary": "Round 4 user testing for dashboard-citas-usuarios: 39/49 assertions passed. 3 failed (VAL-DASH-002, VAL-USERS-005, VAL-TRAMITES-005), 5 blocked (VAL-REPORTES-002, VAL-REPORTES-004). Status unchanged from round 3. Root causes: (1) No future slots in database so bookings cannot be created for testing; (2) VAL-TRAMITES-005 requires pending feature admin-tramites-redesign. All UI components render correctly; the failures are due to missing test data or unimplemented features, not code bugs."
 }
