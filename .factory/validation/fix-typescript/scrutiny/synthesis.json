@@ -1,0 +1,41 @@
+{
+  "milestone": "fix-typescript",
+  "round": 1,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": false,
+      "command": "bun run test",
+      "exitCode": 1,
+      "note": "6 test failures are pre-existing: notification email tests fail because Maildev (SMTP on port 1025) is not running. These failures are unrelated to the fix-typescript milestone."
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "bun run check",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "bun run lint",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "services.yaml",
+      "description": "Removed nested biome.json from packages/web that conflicted with root config",
+      "sourceFeature": "fix-typescript-errors-web",
+      "action": "Deleted packages/web/biome.json (duplicate config)"
+    }
+  ],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [],
+  "previousRound": null
+}
