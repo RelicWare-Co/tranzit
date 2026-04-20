@@ -1,25 +1,21 @@
 import {
-	Alert,
 	Anchor,
-	Badge,
-	Box,
 	Button,
 	Card,
 	Container,
 	PasswordInput,
 	Stack,
-	Text,
 	TextInput,
 	Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, Lock, ShieldCheck } from "lucide-react";
+import { AlertCircle, Building2, Lock, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../lib/AuthContext";
 import { orpc } from "../../lib/orpc-client";
-import { ADMIN_ACCENT, adminUi } from "./_shared/-admin-ui";
+import { Badge } from "../../components/ui";
 
 export const Route = createFileRoute("/admin/login")({
 	component: AdminLoginPage,
@@ -115,189 +111,255 @@ function AdminLoginPage() {
 
 	const inputStyles = {
 		input: {
-			backgroundColor: "#fafafa",
-			border: "1px solid #e4e4e7",
-			borderRadius: 12,
-			color: "#18181b",
-			fontWeight: 500,
+			backgroundColor: "white",
+			border: "1px solid var(--neutral-300)",
+			borderRadius: 8,
+			color: "var(--neutral-900)",
+			fontSize: "0.9375rem",
+			padding: "0.625rem 0.875rem",
 			"&:focus": {
-				borderColor: ADMIN_ACCENT,
-				boxShadow: "0 0 0 2px rgba(201, 42, 42, 0.18)",
+				borderColor: "var(--brand-500)",
+				boxShadow: "0 0 0 3px var(--brand-100)",
 			},
 		},
 		label: {
+			fontFamily: "'Sora', sans-serif",
 			fontWeight: 600,
-			color: "#3f3f46",
+			fontSize: "0.8125rem",
+			letterSpacing: "-0.01em",
+			color: "var(--neutral-700)",
 			marginBottom: 6,
-			letterSpacing: "-0.02em",
+		},
+		error: {
+			fontSize: "0.8125rem",
+			marginTop: 4,
 		},
 	};
 
+	// Loading state
 	if (shouldCheckOnboarding && onboardingStatusQuery.isPending) {
 		return (
-			<Box className={adminUi.pageBg}>
-				<Container size="xs" className="py-24 sm:py-32">
-					<Card className={`${adminUi.surface} p-10`} shadow="none">
-						<Stack gap="md" align="center">
-							<Badge variant="light" color="red" size="lg">
-								Verificando acceso
-							</Badge>
-							<Text size="sm" className="text-center text-zinc-500">
-								Cargando el estado administrativo antes de mostrar el
-								formulario.
-							</Text>
-						</Stack>
-					</Card>
-				</Container>
-			</Box>
+			<div className="flex min-h-[100dvh]">
+				{/* Left panel - branding */}
+				<div className="relative hidden w-[40%] min-w-[320px] bg-[var(--neutral-900)] p-10 lg:flex">
+					<div className="flex flex-col justify-between h-full">
+						<div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-600)]">
+									<Building2 size={20} className="text-white" strokeWidth={2} />
+								</div>
+								<div>
+									<p className="font-['Sora'] text-sm font-bold text-white tracking-tight">
+										SIMUT Tuluá
+									</p>
+									<p className="font-['Public_Sans'] text-xs text-[var(--neutral-400)]">
+										Sistema de Gestión
+									</p>
+								</div>
+							</div>
+						</div>
+						<div className="space-y-4">
+							<p className="font-['Sora'] text-2xl font-semibold text-white tracking-tight">
+								Backoffice operativo
+							</p>
+							<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
+								Plataforma administrativa para la gestión de citas y trámites del SIMUT.
+							</p>
+						</div>
+					</div>
+				</div>
+
+				{/* Right panel - loading state */}
+				<div className="flex flex-1 items-center justify-center bg-[var(--bg-primary)] px-4">
+					<Container size="xs" className="w-full max-w-md">
+						<Card className="rounded-xl border border-[var(--neutral-200)] bg-white p-10 shadow-sm">
+							<Stack gap="lg" align="center">
+								<Badge variant="warning">Verificando acceso</Badge>
+								<p className="font-['Public_Sans'] text-center text-sm text-[var(--neutral-500)]">
+									Cargando el estado administrativo...
+								</p>
+							</Stack>
+						</Card>
+					</Container>
+				</div>
+			</div>
 		);
 	}
 
+	// Onboarding state
 	if (
 		shouldCheckOnboarding &&
 		(onboardingStatusQuery.data?.adminExists === false ||
 			onboardingStatusQuery.isError)
 	) {
 		return (
-			<Box className={adminUi.pageBg}>
-				<Container size="sm" className="py-16 sm:py-24">
-					<Card className={`${adminUi.surface} p-8 sm:p-10`} shadow="none">
-						<Stack gap="xl">
-							<Stack gap="xs" align="flex-start">
-								<Box
-									className="mb-1 flex h-12 w-12 items-center justify-center rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
-									style={{ backgroundColor: ADMIN_ACCENT }}
-								>
-									<ShieldCheck
-										size={24}
-										className="text-white"
-										strokeWidth={1.75}
-									/>
-								</Box>
-								<Title
-									order={2}
-									className="text-2xl font-semibold tracking-tight text-zinc-900"
-								>
-									Configurar administrador
-								</Title>
-								<Text size="sm" className="leading-relaxed text-zinc-500">
-									No hay administradores en el sistema. Tu cuenta puede ser
-									elevada a administrador principal.
-								</Text>
-								<Badge variant="light" color="teal" size="lg">
-									Primer administrador
-								</Badge>
-							</Stack>
+			<div className="flex min-h-[100dvh]">
+				{/* Left panel - branding */}
+				<div className="relative hidden w-[40%] min-w-[320px] bg-[var(--neutral-900)] p-10 lg:flex">
+					<div className="flex flex-col justify-between h-full">
+						<div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-600)]">
+									<Building2 size={20} className="text-white" strokeWidth={2} />
+								</div>
+								<div>
+									<p className="font-['Sora'] text-sm font-bold text-white tracking-tight">
+										SIMUT Tuluá
+									</p>
+									<p className="font-['Public_Sans'] text-xs text-[var(--neutral-400)]">
+										Sistema de Gestión
+									</p>
+								</div>
+							</div>
+						</div>
+						<div className="space-y-4">
+							<p className="font-['Sora'] text-2xl font-semibold text-white tracking-tight">
+								Configurar administrador
+							</p>
+							<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
+								No hay administradores en el sistema. Tu cuenta puede ser elevada a administrador principal.
+							</p>
+						</div>
+					</div>
+				</div>
 
-							{error ? (
-								<Alert
-									icon={<AlertCircle size={16} />}
-									color="red"
-									radius="md"
-									variant="light"
-									className="border border-red-200/80"
-								>
-									{error}
-								</Alert>
-							) : null}
+				{/* Right panel - onboarding form */}
+				<div className="flex flex-1 items-center justify-center bg-[var(--bg-primary)] px-4">
+					<Container size="xs" className="w-full max-w-md">
+						<Card className="rounded-xl border border-[var(--neutral-200)] bg-white p-8 sm:p-10 shadow-sm">
+							<Stack gap="xl">
+								<Stack gap="sm" align="flex-start">
+									<div className="lg:hidden flex items-center gap-2 mb-2">
+										<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--brand-600)]">
+											<ShieldCheck size={16} className="text-white" strokeWidth={2} />
+										</div>
+										<span className="font-['Sora'] text-sm font-semibold text-[var(--neutral-900)]">
+											SIMUT Tuluá
+										</span>
+									</div>
+									<Title
+										order={2}
+										className="font-['Sora'] text-2xl font-semibold tracking-tight text-[var(--neutral-900)]"
+									>
+										Configurar administrador
+									</Title>
+									<p className="font-['Public_Sans'] text-sm leading-relaxed text-[var(--neutral-500)]">
+										No hay administradores en el sistema. Tu cuenta puede ser elevada a administrador principal.
+									</p>
+									<Badge variant="success">Primer administrador</Badge>
+								</Stack>
 
-							<Stack gap="sm">
-								<Button
-									fullWidth
-									size="md"
-									loading={onboardingMutation.isPending}
-									onClick={handleOnboard}
-									color="red"
-									radius="md"
-									className="font-semibold"
-								>
-									Activar como administrador
-								</Button>
-								<Button
-									fullWidth
-									size="md"
-									variant="subtle"
-									color="gray"
-									onClick={skipOnboarding}
-									loading={onboardingMutation.isPending}
-									radius="md"
-								>
-									Saltar por ahora
-								</Button>
+								{error ? (
+									<div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+										<div className="flex items-start gap-3">
+											<AlertCircle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
+											<p className="font-['Public_Sans'] text-sm text-red-700">{error}</p>
+										</div>
+									</div>
+								) : null}
+
+								<Stack gap="sm">
+									<Button
+										fullWidth
+										size="md"
+										loading={onboardingMutation.isPending}
+										onClick={handleOnboard}
+										color="red"
+										radius="md"
+										className="font-['Sora'] font-semibold"
+									>
+										Activar como administrador
+									</Button>
+									<Button
+										fullWidth
+										size="md"
+										variant="subtle"
+										color="gray"
+										onClick={skipOnboarding}
+										loading={onboardingMutation.isPending}
+										radius="md"
+										className="font-['Sora']"
+									>
+										Saltar por ahora
+									</Button>
+								</Stack>
 							</Stack>
-						</Stack>
-					</Card>
-				</Container>
-			</Box>
+						</Card>
+					</Container>
+				</div>
+			</div>
 		);
 	}
 
+	// Login form (default state)
 	return (
-		<Box className={`${adminUi.pageBg} flex min-h-[100dvh]`}>
-			<div className="relative hidden w-[42%] min-w-[320px] flex-col justify-between overflow-hidden bg-zinc-950 p-10 text-zinc-100 lg:flex">
-				<div
-					className="pointer-events-none absolute inset-0 opacity-[0.35]"
-					style={{
-						background:
-							"radial-gradient(ellipse 90% 70% at 20% 20%, rgba(201,42,42,0.35), transparent 55%), radial-gradient(ellipse 80% 60% at 80% 80%, rgba(63,63,70,0.5), transparent 50%)",
-					}}
-				/>
-				<div className="relative z-[1]">
-					<Text className="text-xs font-bold uppercase tracking-[0.25em] text-zinc-500">
-						SIMUT Tuluá
-					</Text>
-					<Title
-						order={2}
-						className="mt-6 max-w-sm text-3xl font-semibold tracking-tight text-white"
-					>
-						Backoffice operativo
-					</Title>
-					<Text className="mt-4 max-w-sm text-sm leading-relaxed text-zinc-400">
-						Acceso restringido para personal autorizado. Las acciones quedan
-						sujetas a auditoría del sistema.
-					</Text>
+		<div className="flex min-h-[100dvh]">
+			{/* Left panel - dark branding */}
+			<div className="relative hidden w-[40%] min-w-[320px] bg-[var(--neutral-900)] p-10 lg:flex">
+				<div className="flex flex-col justify-between h-full">
+					<div>
+						<div className="flex items-center gap-3">
+							<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-600)]">
+								<Building2 size={20} className="text-white" strokeWidth={2} />
+							</div>
+							<div>
+								<p className="font-['Sora'] text-sm font-bold text-white tracking-tight">
+									SIMUT Tuluá
+								</p>
+								<p className="font-['Public_Sans'] text-xs text-[var(--neutral-400)]">
+									Sistema de Gestión
+								</p>
+							</div>
+						</div>
+					</div>
+					<div className="space-y-4">
+						<p className="font-['Sora'] text-2xl font-semibold text-white tracking-tight">
+							Backoffice operativo
+						</p>
+						<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
+							Acceso restringido para personal autorizado. Las acciones quedan sujetas a auditoría del sistema.
+						</p>
+						<div className="pt-4 border-t border-[var(--neutral-700)]">
+							<p className="font-['Public_Sans'] text-xs text-[var(--neutral-500)]">
+								Usá credenciales internas emitidas por la entidad.
+							</p>
+						</div>
+					</div>
 				</div>
-				<Text className="relative z-[1] text-xs text-zinc-500">
-					Usá credenciales internas emitidas por la entidad.
-				</Text>
 			</div>
 
-			<div className="flex flex-1 items-center justify-center px-4 py-14 sm:px-8">
-				<Container size="xs" className="w-full max-w-md p-0">
-					<Card className={`${adminUi.surface} p-8 sm:p-10`} shadow="none">
+			{/* Right panel - login form */}
+			<div className="flex flex-1 items-center justify-center bg-[var(--bg-primary)] px-4">
+				<Container size="xs" className="w-full max-w-md">
+					<Card className="rounded-xl border border-[var(--neutral-200)] bg-white p-8 sm:p-10 shadow-sm">
 						<Stack gap="xl">
-							<Stack gap="xs" align="flex-start">
-								<Box
-									className="mb-1 flex h-12 w-12 items-center justify-center rounded-xl lg:hidden"
-									style={{
-										backgroundColor: ADMIN_ACCENT,
-										boxShadow:
-											"inset 0 1px 0 rgba(255,255,255,0.2), 0 12px 28px -16px rgba(201,42,42,0.65)",
-									}}
-								>
-									<Lock size={22} className="text-white" strokeWidth={1.75} />
-								</Box>
+							<Stack gap="sm" align="flex-start">
+								<div className="lg:hidden flex items-center gap-2 mb-2">
+									<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--brand-600)]">
+										<Lock size={16} className="text-white" strokeWidth={2} />
+									</div>
+									<span className="font-['Sora'] text-sm font-semibold text-[var(--neutral-900)]">
+										SIMUT Tuluá
+									</span>
+								</div>
 								<Title
 									order={2}
-									className="text-2xl font-semibold tracking-tight text-zinc-900"
+									className="font-['Sora'] text-2xl font-semibold tracking-tight text-[var(--neutral-900)]"
 								>
 									Acceso administrativo
 								</Title>
-								<Text size="sm" className="leading-relaxed text-zinc-500">
+								<p className="font-['Public_Sans'] text-sm leading-relaxed text-[var(--neutral-500)]">
 									Ingresá tus credenciales internas para abrir el backoffice.
-								</Text>
+								</p>
 							</Stack>
 
 							{error ? (
-								<Alert
-									icon={<AlertCircle size={16} />}
-									color="red"
-									radius="md"
-									variant="light"
-									className="border border-red-200/80"
-								>
-									{error}
-								</Alert>
+								<div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+									<div className="flex items-start gap-3">
+										<AlertCircle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
+										<p className="font-['Public_Sans'] text-sm text-red-700">{error}</p>
+									</div>
+								</div>
 							) : null}
 
 							<form onSubmit={handleSubmit}>
@@ -309,6 +371,7 @@ function AdminLoginPage() {
 										{...form.getInputProps("email")}
 										styles={inputStyles}
 										size="md"
+										autoComplete="email"
 									/>
 
 									<PasswordInput
@@ -318,6 +381,7 @@ function AdminLoginPage() {
 										{...form.getInputProps("password")}
 										styles={inputStyles}
 										size="md"
+										autoComplete="current-password"
 									/>
 
 									<Button
@@ -327,27 +391,29 @@ function AdminLoginPage() {
 										color="red"
 										loading={loading}
 										radius="md"
-										className="mt-2 font-semibold"
+										className="font-['Sora'] font-semibold"
 									>
 										Iniciar sesión
 									</Button>
 								</Stack>
 							</form>
 
-							<Text size="sm" ta="center" className="text-zinc-500">
-								<Anchor
-									component={Link}
-									to="/"
-									fw={600}
-									className="text-zinc-800 underline decoration-zinc-300 underline-offset-4"
-								>
-									Volver al portal ciudadano
-								</Anchor>
-							</Text>
+							<div className="pt-2">
+								<p className="font-['Public_Sans'] text-center text-sm text-[var(--neutral-500)]">
+									<Anchor
+										component={Link}
+										to="/"
+										fw={600}
+										className="text-[var(--neutral-800)] hover:text-[var(--brand-600)] transition-colors"
+									>
+										Volver al portal ciudadano
+									</Anchor>
+								</p>
+							</div>
 						</Stack>
 					</Card>
 				</Container>
 			</div>
-		</Box>
+		</div>
 	);
 }
