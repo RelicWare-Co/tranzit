@@ -138,11 +138,7 @@ function FilterBar({ children, onApply, onClear }: FilterBarProps) {
 	);
 }
 
-function JsonPayloadViewer({
-	payload,
-}: {
-	payload: Record<string, unknown>;
-}) {
+function JsonPayloadViewer({ payload }: { payload: Record<string, unknown> }) {
 	const [expanded, setExpanded] = useState(false);
 
 	const hasPayload = Object.keys(payload).length > 0;
@@ -488,7 +484,9 @@ export function AdminAuditoriaPage() {
 						</Alert>
 					) : null}
 
-					{auditQuery.data && auditQuery.data.entries.length === 0 && !auditQuery.isPending ? (
+					{auditQuery.data &&
+					auditQuery.data.entries.length === 0 &&
+					!auditQuery.isPending ? (
 						<Paper
 							className={`${adminUi.surface} text-center`}
 							radius="lg"
@@ -506,9 +504,12 @@ export function AdminAuditoriaPage() {
 								<Text className="text-base font-semibold text-zinc-900">
 									No se encontraron registros
 								</Text>
-								<Text size="sm" className="max-w-sm leading-relaxed text-zinc-500">
-									No hay registros de auditoría con los filtros actuales.
-									Ajustá los filtros o realizá una operación para generar actividad.
+								<Text
+									size="sm"
+									className="max-w-sm leading-relaxed text-zinc-500"
+								>
+									No hay registros de auditoría con los filtros actuales. Ajustá
+									los filtros o realizá una operación para generar actividad.
 								</Text>
 							</Stack>
 						</Paper>
@@ -529,9 +530,7 @@ export function AdminAuditoriaPage() {
 											<Table.Th className={adminUi.tableHeader}>
 												Fecha y hora
 											</Table.Th>
-											<Table.Th className={adminUi.tableHeader}>
-												Actor
-											</Table.Th>
+											<Table.Th className={adminUi.tableHeader}>Actor</Table.Th>
 											<Table.Th className={adminUi.tableHeader}>
 												Entidad
 											</Table.Th>
@@ -615,7 +614,10 @@ export function AdminAuditoriaPage() {
 														<Collapse expanded={expandedRowId === entry.id}>
 															<Paper withBorder p="md" bg="gray.0" radius="md">
 																<Stack gap="md">
-																	<Title order={6} className="text-xs font-semibold text-zinc-700 uppercase tracking-wider">
+																	<Title
+																		order={6}
+																		className="text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+																	>
 																		Payload
 																	</Title>
 																	<JsonPayloadViewer payload={entry.payload} />
@@ -623,20 +625,34 @@ export function AdminAuditoriaPage() {
 																	{(entry.ipAddress || entry.userAgent) && (
 																		<>
 																			<Divider />
-																			<Title order={6} className="text-xs font-semibold text-zinc-700 uppercase tracking-wider">
+																			<Title
+																				order={6}
+																				className="text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+																			>
 																				Metadatos
 																			</Title>
 																			<Stack gap="xs">
 																				{entry.ipAddress && (
 																					<Text size="xs" c="dimmed">
-																						<Text component="span" fw={500}>IP: </Text>
+																						<Text component="span" fw={500}>
+																							IP:{" "}
+																						</Text>
 																						{entry.ipAddress}
 																					</Text>
 																				)}
 																				{entry.userAgent && (
 																					<Text size="xs" c="dimmed">
-																						<Text component="span" fw={500}>User-Agent: </Text>
-																						<Text component="span" style={{ wordBreak: "break-all", fontFamily: "monospace", fontSize: rem(11) }}>
+																						<Text component="span" fw={500}>
+																							User-Agent:{" "}
+																						</Text>
+																						<Text
+																							component="span"
+																							style={{
+																								wordBreak: "break-all",
+																								fontFamily: "monospace",
+																								fontSize: rem(11),
+																							}}
+																						>
 																							{entry.userAgent}
 																						</Text>
 																					</Text>

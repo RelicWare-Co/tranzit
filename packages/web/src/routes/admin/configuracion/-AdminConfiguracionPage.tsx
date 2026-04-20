@@ -123,7 +123,9 @@ function EmptyState({
 					strokeWidth={1.5}
 				/>
 			</Box>
-			<Text className="text-base font-semibold text-zinc-900 mb-1">{title}</Text>
+			<Text className="text-base font-semibold text-zinc-900 mb-1">
+				{title}
+			</Text>
 			<Text className="text-sm text-zinc-500 max-w-sm">{description}</Text>
 			{action && <Box className="mt-4">{action}</Box>}
 		</Box>
@@ -189,7 +191,10 @@ function SectionCard({
 							</Box>
 						)}
 						<Stack gap={0}>
-							<Title order={4} className="text-base font-semibold text-zinc-900">
+							<Title
+								order={4}
+								className="text-base font-semibold text-zinc-900"
+							>
 								{title}
 							</Title>
 							{subtitle && (

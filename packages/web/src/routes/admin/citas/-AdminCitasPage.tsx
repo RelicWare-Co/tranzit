@@ -76,17 +76,21 @@ export function AdminCitasPage() {
 						return [];
 					}
 
-					const procedureName = booking.request?.procedure?.name || booking.request?.procedure?.slug;
-					const staffName = booking.staff?.name || booking.staff?.email || "Sin asignar";
+					const procedureName =
+						booking.request?.procedure?.name ||
+						booking.request?.procedure?.slug;
+					const staffName =
+						booking.staff?.name || booking.staff?.email || "Sin asignar";
 
 					return [
 						{
 							id: booking.id,
-							title: booking.kind === "administrative"
-								? `[Admin] ${staffName}`
-								: procedureName
-									? `${procedureName} — ${staffName}`
-									: staffName,
+							title:
+								booking.kind === "administrative"
+									? `[Admin] ${staffName}`
+									: procedureName
+										? `${procedureName} — ${staffName}`
+										: staffName,
 							start: toDateTimeString(
 								booking.slot.slotDate,
 								booking.slot.startTime,

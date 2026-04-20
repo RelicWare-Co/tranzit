@@ -269,10 +269,7 @@ function ServiceCard({
 					style={{ backgroundColor: styles.bg }}
 				>
 					<span style={{ color: styles.icon }}>
-						<service.icon
-							size={28}
-							strokeWidth={1.5}
-						/>
+						<service.icon size={28} strokeWidth={1.5} />
 					</span>
 				</div>
 				<h3

@@ -57,7 +57,9 @@ export function ProcedureDetailPanel({
 							<FileText size={20} className="text-red-700" strokeWidth={1.5} />
 						</Box>
 						<Stack gap={2}>
-							<Title order={2} className="text-xl">{procedure.name}</Title>
+							<Title order={2} className="text-xl">
+								{procedure.name}
+							</Title>
 							<Text size="sm" className="font-mono text-zinc-500">
 								{procedure.slug}
 							</Text>
@@ -129,7 +131,11 @@ export function ProcedureDetailPanel({
 				<Tabs.Panel value="general" p="lg">
 					<Stack gap="md">
 						<Box>
-							<Text size="xs" fw={700} className="uppercase tracking-wider text-zinc-500">
+							<Text
+								size="xs"
+								fw={700}
+								className="uppercase tracking-wider text-zinc-500"
+							>
 								Descripción
 							</Text>
 							<Text mt="xs" c="dimmed">
@@ -138,10 +144,7 @@ export function ProcedureDetailPanel({
 						</Box>
 						<Divider />
 						<Group gap="sm">
-							<Badge
-								variant="light"
-								color="gray"
-							>
+							<Badge variant="light" color="gray">
 								v{procedure.configVersion}
 							</Badge>
 							<Badge
@@ -150,10 +153,7 @@ export function ProcedureDetailPanel({
 							>
 								Vehículo: {procedure.requiresVehicle ? "Sí" : "No"}
 							</Badge>
-							<Badge
-								variant="light"
-								color={docCount > 0 ? "dark" : "gray"}
-							>
+							<Badge variant="light" color={docCount > 0 ? "dark" : "gray"}>
 								{docCount} {docCount === 1 ? "requisito" : "requisitos"}
 							</Badge>
 						</Group>
@@ -162,7 +162,11 @@ export function ProcedureDetailPanel({
 
 				<Tabs.Panel value="form" p="lg">
 					<Stack gap="md">
-						<Text size="xs" fw={700} className="uppercase tracking-wider text-zinc-500">
+						<Text
+							size="xs"
+							fw={700}
+							className="uppercase tracking-wider text-zinc-500"
+						>
 							Esquema del formulario
 						</Text>
 						<JsonInput
@@ -188,7 +192,11 @@ export function ProcedureDetailPanel({
 							</Badge>
 						</Group>
 						<Divider />
-						<Text size="xs" fw={700} className="uppercase tracking-wider text-zinc-500">
+						<Text
+							size="xs"
+							fw={700}
+							className="uppercase tracking-wider text-zinc-500"
+						>
 							Esquema de documentos
 						</Text>
 						<JsonInput
@@ -220,7 +228,8 @@ export function ProcedureDetailEmptyState() {
 					Seleccioná un trámite
 				</Text>
 				<Text size="sm" className="max-w-sm leading-relaxed text-zinc-500">
-					Elegí un trámite de la lista para ver su configuración, formularios y requisitos.
+					Elegí un trámite de la lista para ver su configuración, formularios y
+					requisitos.
 				</Text>
 			</Stack>
 		</Card>

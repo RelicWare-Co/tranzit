@@ -1,4 +1,13 @@
-import { Avatar, Badge, Box, Button, Group, Loader, Stack, Text } from "@mantine/core";
+import {
+	Avatar,
+	Badge,
+	Box,
+	Button,
+	Group,
+	Loader,
+	Stack,
+	Text,
+} from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BarChart3, Calendar, ClipboardList, Users } from "lucide-react";
@@ -41,11 +50,16 @@ async function fetchDashboardData() {
 	// Count KPIs from real data
 	const citasHoy = todayBookings.length;
 	const usuarios = staffList.length;
-	const pendientes = allBookings.filter((b) => b.status === "held" || b.status === "pending").length;
+	const pendientes = allBookings.filter(
+		(b) => b.status === "held" || b.status === "pending",
+	).length;
 
 	// Calculate on-time percentage (confirmed vs total for today)
-	const confirmedToday = todayBookings.filter((b) => b.status === "confirmed").length;
-	const enPlazo = citasHoy > 0 ? Math.round((confirmedToday / citasHoy) * 100) : 100;
+	const confirmedToday = todayBookings.filter(
+		(b) => b.status === "confirmed",
+	).length;
+	const enPlazo =
+		citasHoy > 0 ? Math.round((confirmedToday / citasHoy) * 100) : 100;
 
 	return {
 		kpis: {
@@ -278,7 +292,9 @@ function RecentAppointments() {
 							"Sin nombre";
 						const serviceName =
 							booking.request?.procedureType?.name ??
-							(booking.kind === "administrative" ? "Reserva administrativa" : "Trámite");
+							(booking.kind === "administrative"
+								? "Reserva administrativa"
+								: "Trámite");
 						const time = booking.slot?.startTime
 							? `Hoy, ${booking.slot.startTime}`
 							: "Sin hora";
@@ -319,7 +335,10 @@ function RecentAppointments() {
 									</Stack>
 								</Group>
 								<Group gap="sm">
-									<Text size="xs" className={`${adminUi.monoStat} text-zinc-500`}>
+									<Text
+										size="xs"
+										className={`${adminUi.monoStat} text-zinc-500`}
+									>
 										{time}
 									</Text>
 									<Badge

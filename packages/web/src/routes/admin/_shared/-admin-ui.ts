@@ -72,8 +72,7 @@ export const adminUi = {
 
 	// Dividers
 	divider: "border-[var(--border-subtle)]",
-	headerShell:
-		"border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]",
+	headerShell: "border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]",
 } as const;
 
 /** Mantine Modal styles usando el nuevo sistema */

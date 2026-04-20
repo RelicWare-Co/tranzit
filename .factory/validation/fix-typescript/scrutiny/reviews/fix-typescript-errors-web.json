@@ -1,0 +1,15 @@
+{
+  "featureId": "fix-typescript-errors-web",
+  "reviewedAt": "2026-04-20T21:00:00.000Z",
+  "commitId": "36c6804",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "All 4 TypeScript errors were correctly fixed in the web package. The worker successfully resolved all type conflicts across Input.tsx, login.tsx, index.tsx, and agendar.tsx with appropriate solutions that maintain type safety.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "The fix-typescript-errors-web feature successfully resolved all 9 TypeScript compilation errors across 4 files. The worker applied correct fixes: 1) Input.tsx uses Omit to exclude conflicting 'size' prop from HTML attributes, 2) login.tsx added missing Mail/ArrowLeft imports, wrapped Alert components in divs to remove unsupported style prop, and removed id from custom PinInput, 3) index.tsx wrapped icon components in styled spans to resolve style prop type mismatch, 4) agendar.tsx replaced CardContent padding prop with className='p-8'. TypeScript compilation passes with 0 errors and linting is clean. The backend-domain-worker skill was invoked but the task was frontend TypeScript work; the worker correctly pivoted to direct implementation. No convention, skill, services, or knowledge gaps identified."
+}

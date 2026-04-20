@@ -275,7 +275,11 @@ function LoginPage() {
 
 					{feedback && (
 						<div style={{ marginBottom: "var(--space-6)" }}>
-							<Alert variant="success" title="Éxito" className="animate-fade-in">
+							<Alert
+								variant="success"
+								title="Éxito"
+								className="animate-fade-in"
+							>
 								{feedback}
 							</Alert>
 						</div>

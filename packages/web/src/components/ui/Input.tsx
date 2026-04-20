@@ -6,7 +6,8 @@
 import { AlertCircle } from "lucide-react";
 import { forwardRef, type InputHTMLAttributes } from "react";
 
-export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
+export interface InputProps
+	extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
 	label?: string;
 	hint?: string;
 	error?: string;

@@ -1,0 +1,61 @@
+{
+  "featureId": "admin-dashboard-redesign",
+  "reviewedAt": "2026-04-20T13:45:00.000Z",
+  "commitId": "3698c02",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The implementation successfully replaces hardcoded KPIs with real backend data and connects the appointments list to the API. However, there is a critical mismatch between the data the API returns and the data the component expects to render: `admin.bookings.list` does NOT populate the `request` relation (which contains citizen info and procedure type), so the Recent Appointments list will display the staff member's email instead of the citizen's name, and the service name will always fall back to generic labels.",
+    "issues": [
+      {
+        "file": "packages/web/src/routes/admin/index.tsx",
+        "line": 210,
+        "severity": "blocking",
+        "description": "`booking.request` is always `undefined` at runtime. `admin.bookings.list` only populates `slot` and `staff` relations — not `request`. The fallback chain `booking.request?.citizen?.name ?? booking.request?.email ?? booking.staff?.name ?? booking.staff?.email` will always resolve to `booking.staff?.email` (the assigned staff's email, not the citizen's). The feature requires 'nombre' (citizen name), not staff name."
+      },
+      {
+        "file": "packages/web/src/routes/admin/index.tsx",
+        "line": 213,
+        "severity": "blocking",
+        "description": "`booking.request?.procedureType?.name` is always `undefined`. Since `request` is not populated by `admin.bookings.list`, the service name will always fall through to the `booking.kind === 'administrative'` check, displaying only 'Trámite' or 'Reserva administrativa' without the actual procedure type name. The feature requires showing the real service/procedure name."
+      },
+      {
+        "file": "packages/web/src/routes/admin/index.tsx",
+        "line": 136,
+        "severity": "non_blocking",
+        "description": "The `BookingWithRelations` type (lines 140-193) defines `request`, `request.citizen`, and `request.procedureType` fields that the API never returns. While TypeScript allows this (the API response is cast to this type), it is misleading and will cause silent runtime bugs. The type should reflect what the API actually returns, or the API call should be updated to use Drizzle's `with()` relations to include request data."
+      },
+      {
+        "file": "packages/web/src/routes/admin/index.tsx",
+        "line": 35,
+        "severity": "non_blocking",
+        "description": "The 'Usuarios' KPI (`usuarios = staffList.length`) counts all staff profiles including inactive ones, since `admin.staff.list({})` with no filter returns all profiles. If 'Usuarios' is meant to represent active staff or registered citizens, this may not match the intended semantics. The handoff says it counts 'staff profiles', so this appears intentional but ambiguous."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "No convention issue found. The worker's approach of fetching real data and replacing hardcoded values follows the expected pattern documented in AGENTS.md.",
+      "evidence": "AGENTS.md states 'no construyas logica importante encima de mocks' and the worker correctly connected to real APIs."
+    },
+    {
+      "area": "skills",
+      "observation": "The `impeccable-admin-worker` skill procedure was followed. The worker read the skill file, mission.md, validation-contract.md, features.json, and .impeccable.md before implementing. No deviations noted.",
+      "evidence": "Transcript skeleton shows skill invocation followed by file reads of mission context files."
+    },
+    {
+      "area": "services",
+      "observation": "The worker started `dev:server` and `dev` services using `bun run dev:server` and `bun run dev` commands, both of which are listed in `.factory/services.yaml`. No undocumented services were used.",
+      "evidence": "Verified in handoff verification.commandsRun."
+    },
+    {
+      "area": "knowledge",
+      "observation": "The worker discovered that `admin.bookings.list` does not return `request` relations, but proceeded with an incorrect assumption that it does (the `BookingWithRelations` type includes `request` which is never populated). This gap in understanding the actual API shape caused the citizen name and service name to be wrong at runtime. The API shape (what relations are included) is not documented in any shared library file. A developer would need to read the `bookings-read.service.ts` source to discover this.",
+      "evidence": "`bookings-read.service.ts` lines 88-97 show the return value only includes `slot` and `staff`, not `request`. No library file documents which relations each RPC endpoint populates."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "The admin dashboard redesign correctly replaces hardcoded KPIs with real backend data (4 KPIs in grid, icons, labels, real values). The 'Ir a citas' button and semantic badge colors work as expected. However, the Recent Appointments list has a blocking bug: `admin.bookings.list` does not return the `request` relation, so `booking.request?.citizen?.name` falls through to the staff's email, displaying the wrong name. Similarly, the service name always falls back to generic labels. The fix requires either (a) updating the API to include `request` data via Drizzle `with()` relations, or (b) using a different API endpoint that returns full booking relations, or (c) changing the dashboard to display only the data the API actually provides (staff name instead of citizen name)."
+}
