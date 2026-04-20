@@ -1,6 +1,6 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 8,
+  "round": 9,
   "status": "fail",
   "validatorsRun": {
     "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
@@ -12,7 +12,7 @@
     "passed": 4,
     "failed": 1,
     "failedFeatures": ["admin-dashboard-redesign"],
-    "note": "Re-run (round 8). admin-citas-redesign and admin-usuarios-redesign reviewed this round and passed. admin-dashboard-redesign still has blocking issue. Fix feature 'admin-dashboard-datasource-fix' remains pending."
+    "note": "Re-run (round 9). Validators pass. admin-citas-redesign and admin-usuarios-redesign reviewed in round 8 and passed. admin-dashboard-redesign still has blocking issue. Fix feature 'admin-dashboard-datasource-fix' remains pending with no worker assigned."
   },
   "blockingIssues": [
     {
