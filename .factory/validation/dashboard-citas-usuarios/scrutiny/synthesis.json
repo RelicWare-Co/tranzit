@@ -1,6 +1,6 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
@@ -8,16 +8,19 @@
     "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 }
   },
   "reviewsSummary": {
-    "total": 3,
-    "passed": 2,
-    "failed": 1,
-    "failedFeatures": ["admin-dashboard-redesign"]
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "failedFeatures": [],
+    "note": "No new features to review in this round. Fix feature 'admin-dashboard-datasource-fix' is still pending."
   },
   "blockingIssues": [
     {
       "featureId": "admin-dashboard-redesign",
       "severity": "blocking",
-      "description": "admin.bookings.list does not populate the `request` relation. The Recent Appointments list tries to access booking.request?.citizen?.name but request is undefined, so it falls back to staff.email. Similarly, booking.request?.procedureType?.name is always undefined, so procedure names fall back to generic labels ('Trámite' or 'Reserva administrativa'). Fix: either update the API to include request data via Drizzle with() relations, or use a different endpoint that returns full booking relations, or change the dashboard to display only data the API actually provides."
+      "description": "admin.bookings.list does not populate the `request` relation. The Recent Appointments list tries to access booking.request?.citizen?.name but request is undefined, so it falls back to staff.email. Similarly, booking.request?.procedureType?.name is always undefined, so procedure names fall back to generic labels ('Trámite' or 'Reserva administrativa'). Fix feature 'admin-dashboard-datasource-fix' is pending and has not been implemented yet.",
+      "fixFeature": "admin-dashboard-datasource-fix",
+      "fixStatus": "pending"
     }
   ],
   "appliedUpdates": [],
@@ -42,5 +45,5 @@
     }
   ],
   "rejectedObservations": [],
-  "previousRound": null
+  "previousRound": ".factory/validation/dashboard-citas-usuarios/scrutiny/synthesis-round1-snapshot.json"
 }
