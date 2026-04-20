@@ -229,14 +229,14 @@ export function UsuariosPage() {
 	if (isLoading) {
 		return (
 			<Stack gap="xl">
-				<Skeleton height={40} width="min(100%, 380px)" radius="md" mb="xs" />
-				<Skeleton height={220} radius="xl" />
+				<Skeleton height={36} width="min(100%, 320px)" radius="md" mb="xs" />
+				<Skeleton height={200} radius="lg" />
 			</Stack>
 		);
 	}
 
 	return (
-		<Stack gap="xl">
+		<Stack gap="lg">
 			<AdminPageHeader
 				title="Gestión de encargados"
 				description="Administrá auxiliares, disponibilidad y reasignación de citas con límites de capacidad por día."
@@ -254,24 +254,34 @@ export function UsuariosPage() {
 			/>
 
 			{error && (
-				<Alert color="red" icon={<AlertCircle size={16} />}>
+				<Alert
+					color="red"
+					variant="light"
+					radius="md"
+					icon={<AlertCircle size={16} />}
+				>
 					{error}
 				</Alert>
 			)}
 			{notice && (
-				<Alert color="teal" icon={<CheckCircle2 size={16} />}>
+				<Alert
+					color="teal"
+					variant="light"
+					radius="md"
+					icon={<CheckCircle2 size={16} />}
+				>
 					{notice}
 				</Alert>
 			)}
 
 			{assignableStaff.length > 0 ? (
-				<Card className={adminUi.callout} radius="xl" p="lg" shadow="none">
+				<Card className={adminUi.callout} radius="lg" p="md" shadow="none">
 					<Group gap="md" align="flex-start">
-						<Box className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-zinc-200/90">
-							<Users size={20} className="text-red-700" strokeWidth={1.75} />
+						<Box className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-zinc-200">
+							<Users size={18} className="text-red-700" strokeWidth={1.75} />
 						</Box>
-						<Stack gap={4}>
-							<Text className="text-lg font-semibold text-zinc-900">
+						<Stack gap={2}>
+							<Text className="text-base font-semibold text-zinc-900">
 								Capacidad distribuida
 							</Text>
 							<Text size="sm" className="leading-relaxed text-zinc-600">
@@ -292,22 +302,22 @@ export function UsuariosPage() {
 			{staffList.length === 0 ? (
 				<Card
 					className={`${adminUi.surface} text-center`}
-					radius="xl"
+					radius="lg"
 					p={48}
 					shadow="none"
 				>
 					<Stack align="center" gap="lg">
-						<Box className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/90">
-							<Users size={26} className="text-zinc-500" strokeWidth={1.5} />
+						<Box className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
+							<Users size={22} className="text-zinc-400" strokeWidth={1.5} />
 						</Box>
-						<Text className="text-lg font-semibold text-zinc-900">
+						<Text className="text-base font-semibold text-zinc-900">
 							No hay encargados registrados
 						</Text>
 						<Button
 							color="red"
 							onClick={openAdd}
 							radius="md"
-							leftSection={<Plus size={18} strokeWidth={1.75} />}
+							leftSection={<Plus size={16} strokeWidth={1.75} />}
 							className="font-semibold"
 						>
 							Crear primer encargado
@@ -315,9 +325,9 @@ export function UsuariosPage() {
 					</Stack>
 				</Card>
 			) : (
-				<Grid gap="xl">
+				<Grid gap="lg">
 					<Grid.Col span={{ base: 12, md: 5 }}>
-						<Stack gap="md">
+						<Stack gap="sm">
 							{staffList.map((profile) => (
 								<StaffCard
 									key={profile.userId}

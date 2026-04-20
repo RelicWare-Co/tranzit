@@ -142,14 +142,13 @@ export function AddStaffModal({
 			subtitle="Completa los datos para crear un nuevo funcionario en el sistema"
 			size="md"
 		>
-			<Stack gap="lg">
+			<Stack gap="md">
 				{submitError && (
 					<Alert
 						color="red"
 						variant="light"
-						radius="lg"
-						icon={<AlertCircle size={18} />}
-						className="border border-red-200/50"
+						radius="md"
+						icon={<AlertCircle size={16} />}
 					>
 						{submitError}
 					</Alert>
@@ -158,9 +157,9 @@ export function AddStaffModal({
 				<FormSection
 					title="Información personal"
 					description="Datos básicos de identificación del funcionario"
-					icon={<Users size={20} className="text-zinc-500" strokeWidth={1.5} />}
+					icon={<Users size={18} className="text-zinc-500" strokeWidth={1.5} />}
 				>
-					<Stack gap="md">
+					<Stack gap="sm">
 						<FormField
 							label="Nombre completo"
 							error={errors.name}
@@ -169,7 +168,7 @@ export function AddStaffModal({
 						>
 							<TextInput
 								placeholder="Ingresa el nombre completo"
-								radius="lg"
+								radius="md"
 								size="md"
 								disabled={isSubmitting}
 								value={values.name}
@@ -202,7 +201,7 @@ export function AddStaffModal({
 							<TextInput
 								placeholder="ejemplo@simut.gov.co"
 								type="email"
-								radius="lg"
+								radius="md"
 								size="md"
 								disabled={isSubmitting}
 								value={values.email}
@@ -232,7 +231,7 @@ export function AddStaffModal({
 					title="Configuración operativa"
 					description="Define la capacidad de atención diaria del funcionario"
 					icon={
-						<UserPlus size={20} className="text-zinc-500" strokeWidth={1.5} />
+						<UserPlus size={18} className="text-zinc-500" strokeWidth={1.5} />
 					}
 				>
 					<FormField
@@ -245,7 +244,7 @@ export function AddStaffModal({
 							placeholder="25"
 							min={1}
 							max={100}
-							radius="lg"
+							radius="md"
 							size="md"
 							disabled={isSubmitting}
 							value={values.capacity}
@@ -283,7 +282,7 @@ export function AddStaffModal({
 						isLoading={isSubmitting}
 						onClick={handleSubmit}
 						disabled={!isValid}
-						leftSection={<UserPlus size={18} strokeWidth={1.5} />}
+						leftSection={<UserPlus size={16} strokeWidth={1.5} />}
 					>
 						Crear encargado
 					</FormActionButton>

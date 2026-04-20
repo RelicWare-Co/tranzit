@@ -11,13 +11,20 @@ export function CapacityIndicator({
 }) {
 	const percentage = max > 0 ? Math.min((current / max) * 100, 100) : 0;
 
+	const getColor = () => {
+		if (!isActive) return "gray";
+		if (percentage >= 90) return "red";
+		if (percentage >= 70) return "yellow";
+		return "teal";
+	};
+
 	if (!isActive) {
 		return (
 			<Box>
-				<Text size="xs" c="gray.5" fw={600} mb={4}>
+				<Text size="xs" c="gray.5" fw={500} mb={4}>
 					Inactivo
 				</Text>
-				<Progress value={0} color="gray.3" size={8} radius="xl" />
+				<Progress value={0} color="gray.3" size={6} radius="xl" />
 			</Box>
 		);
 	}
@@ -26,20 +33,19 @@ export function CapacityIndicator({
 		<Box>
 			<Group justify="space-between" mb={4}>
 				<Text size="xs" c="gray.7" fw={600}>
-					{current} / {max} citas
+					<span className="font-mono tabular-nums">{current}</span> /{" "}
+					<span className="font-mono tabular-nums">{max}</span> citas
 				</Text>
-				<Text size="xs" c={percentage >= 90 ? "red.6" : "teal.6"} fw={700}>
+				<Text
+					size="xs"
+					c={`${getColor()}.6`}
+					fw={700}
+					className="font-mono tabular-nums"
+				>
 					{Math.round(percentage)}%
 				</Text>
 			</Group>
-			<Progress
-				value={percentage}
-				color={
-					percentage >= 90 ? "red.6" : percentage >= 70 ? "yellow.6" : "teal.6"
-				}
-				size={8}
-				radius="xl"
-			/>
+			<Progress value={percentage} color={getColor()} size={6} radius="xl" />
 		</Box>
 	);
 }

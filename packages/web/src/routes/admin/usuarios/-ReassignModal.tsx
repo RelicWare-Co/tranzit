@@ -110,18 +110,23 @@ export function ReassignModal({
 			opened={opened}
 			onClose={handleClose}
 			title={
-				<span className="text-lg font-semibold tracking-tight text-zinc-900">
+				<span className="text-base font-semibold tracking-tight text-zinc-900">
 					Mover citas
 				</span>
 			}
 			size="md"
-			radius="xl"
+			radius="lg"
 			styles={adminModalStyles}
 		>
 			<form onSubmit={handleSubmit}>
-				<Stack gap="lg">
+				<Stack gap="md">
 					{error && (
-						<Alert color="red" icon={<AlertCircle size={16} />}>
+						<Alert
+							color="red"
+							variant="light"
+							radius="md"
+							icon={<AlertCircle size={16} />}
+						>
 							{error}
 						</Alert>
 					)}
@@ -130,9 +135,8 @@ export function ReassignModal({
 						<Alert
 							color="gray"
 							variant="light"
-							radius="lg"
-							icon={<UserCheck size={20} strokeWidth={1.75} />}
-							className="border border-zinc-200/90 bg-zinc-50"
+							radius="md"
+							icon={<UserCheck size={18} strokeWidth={1.75} />}
 						>
 							<Text size="sm" fw={600} className="text-zinc-900">
 								Origen: {sourceStaff.user?.name}
@@ -151,7 +155,7 @@ export function ReassignModal({
 							label: staff.user?.name || staff.userId,
 						}))}
 						disabled={loading}
-						radius="xl"
+						radius="md"
 						withAsterisk
 						key={form.key("targetStaffUserId")}
 						{...form.getInputProps("targetStaffUserId")}
@@ -162,13 +166,13 @@ export function ReassignModal({
 						min={1}
 						max={maxBookingCount > 0 ? maxBookingCount : undefined}
 						disabled={loading}
-						radius="xl"
+						radius="md"
 						withAsterisk
 						key={form.key("bookingCount")}
 						{...form.getInputProps("bookingCount")}
 					/>
 
-					<Group justify="flex-end" mt="md">
+					<Group justify="flex-end" mt="sm">
 						<Button
 							type="button"
 							variant="light"
