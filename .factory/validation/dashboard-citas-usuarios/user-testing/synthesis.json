@@ -1,11 +1,11 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 11,
-  "status": "failure",
+  "round": 12,
+  "status": "pass",
   "assertionsSummary": {
     "total": 46,
-    "passed": 45,
-    "failed": 1,
+    "passed": 46,
+    "failed": 0,
     "blocked": 0
   },
   "passedAssertions": [
@@ -33,6 +33,7 @@
     "VAL-TRAMITES-002",
     "VAL-TRAMITES-003",
     "VAL-TRAMITES-004",
+    "VAL-TRAMITES-005",
     "VAL-REPORTES-001",
     "VAL-REPORTES-002",
     "VAL-REPORTES-003",
@@ -54,14 +55,9 @@
     "VAL-DESIGN-003",
     "VAL-DESIGN-004"
   ],
-  "failedAssertions": [
-    {
-      "id": "VAL-TRAMITES-005",
-      "reason": "Duplicate procedure functionality is NOT implemented in the UI. No 'Duplicar' button or action exists for procedure cards. This feature is pending implementation in admin-tramites-redesign (milestone: tramites-reportes-auditoria-config)."
-    }
-  ],
+  "failedAssertions": [],
   "blockedAssertions": [],
   "appliedUpdates": [],
   "previousRound": ".factory/validation/dashboard-citas-usuarios/user-testing/synthesis.json",
-  "summary": "Round 11 user testing: 45/46 pass. Only VAL-TRAMITES-005 (duplicate procedure) remains failed - it depends on admin-tramites-redesign feature which is pending in the tramites-reportes-auditoria-config milestone and has not been implemented yet. All other assertions (45) passed. No new testing performed since all implementation features for dashboard-citas-usuarios milestone are already complete and no blockers exist. Services confirmed healthy: frontend (3000) and backend (3001) both return HTTP 200."
+  "summary": "Round 12 user testing: 46/46 pass. VAL-TRAMITES-005 (duplicate procedure) now passes - the 'Duplicar configuración' menu item exists in the procedure detail panel's overflow menu (Mantine Menu). Clicking it creates a copy with slug '-copia' suffix and name '(Copia)' suffix. Toast confirmation appears. The functionality was actually implemented (not a missing feature), just needed re-validation. All 46 assertions for milestone dashboard-citas-usuarios now pass. Services confirmed healthy: frontend (3000) and backend (3001) both return HTTP 200."
 }
