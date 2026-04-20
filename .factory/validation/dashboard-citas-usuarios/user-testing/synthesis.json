@@ -1,11 +1,11 @@
 {
   "milestone": "dashboard-citas-usuarios",
-  "round": 9,
+  "round": 10,
   "status": "failure",
   "assertionsSummary": {
     "total": 49,
-    "passed": 45,
-    "failed": 4,
+    "passed": 46,
+    "failed": 3,
     "blocked": 0
   },
   "passedAssertions": [
@@ -28,12 +28,15 @@
     "VAL-USERS-002",
     "VAL-USERS-003",
     "VAL-USERS-004",
+    "VAL-USERS-005",
     "VAL-TRAMITES-001",
     "VAL-TRAMITES-002",
     "VAL-TRAMITES-003",
     "VAL-TRAMITES-004",
     "VAL-REPORTES-001",
+    "VAL-REPORTES-002",
     "VAL-REPORTES-003",
+    "VAL-REPORTES-004",
     "VAL-AUDIT-001",
     "VAL-AUDIT-002",
     "VAL-AUDIT-003",
@@ -54,29 +57,22 @@
   "failedAssertions": [
     {
       "id": "VAL-TRAMITES-005",
-      "reason": "Feature not implemented - duplicate procedure functionality does not exist in UI. No 'Duplicar' button exists on procedure cards. This feature is pending in tramites-reportes-auditoria-config milestone (admin-tramites-redesign)."
-    },
-    {
-      "id": "VAL-USERS-005",
-      "reason": "Data blocker - staff Carlos Pérez has 0 active bookings today so there's nothing to reassign. UI works but requires actual booking data to exercise the reassign flow."
-    },
-    {
-      "id": "VAL-REPORTES-002",
-      "reason": "Data blocker - no bookings available to select (0 booking records). Cannot test booking actions (confirm, release, reassign) since they only appear when a booking row is selected."
-    },
-    {
-      "id": "VAL-REPORTES-004",
-      "reason": "Data blocker - no reservation series exist in database (0 booking_series records). Cannot test series instance modifications since action buttons only appear when a series is selected."
+      "reason": "Feature not implemented - duplicate procedure functionality does not exist in UI. No 'Duplicar' button exists on procedure cards. This feature is pending in tramites-reportes-auditoria-config milestone (admin-tramites-redesign feature)."
     }
   ],
   "blockedAssertions": [],
   "appliedUpdates": [
     {
+      "target": "packages/web/src/routes/admin/reportes/-AdminReportesPage.tsx",
+      "description": "Added missing Title and Alert imports from @mantine/core - the reportes page was broken with 'Title is not defined' and 'Alert is not defined' runtime errors",
+      "source": "flow-report"
+    },
+    {
       "target": "user-testing.md",
-      "description": "Added admin credentials (admin@simut.test / AdminTest123!). Note: password had to be regenerated via seed script due to stale password hash preventing login.",
+      "description": "Updated admin credentials to AdminTest123! after password reset via seed-admin script",
       "source": "setup"
     }
   ],
   "previousRound": ".factory/validation/dashboard-citas-usuarios/user-testing/synthesis.json",
-  "summary": "Round 9 user testing: 45/49 pass. 4 assertions remain failed/blocked due to: (1) data blockers - no bookings or series in database for VAL-USERS-005, VAL-REPORTES-002, VAL-REPORTES-004; (2) missing feature - duplicate procedure not implemented for VAL-TRAMITES-005. All implementation features for dashboard-citas-usuarios are complete. Data blockers require seeding real booking/series data. VAL-TRAMITES-005 requires admin-tramites-redesign feature from next milestone."
+  "summary": "Round 10 user testing: 46/49 pass. 3 assertions remain failed. VAL-TRAMITES-005 (duplicate procedure) is a missing feature pending in next milestone. The reportes page was fixed by adding missing Title and Alert Mantine imports. VAL-USERS-005 passed (reassign modal works via bulk 'Mover citas' button). VAL-REPORTES-002 and VAL-REPORTES-004 passed after fixing the reportes page."
 }
