@@ -172,14 +172,14 @@ export function TramitesPage() {
 	if (isLoading) {
 		return (
 			<Stack gap="xl">
-				<Skeleton height={40} width="min(100%, 420px)" radius="md" />
-				<Skeleton height={220} radius="xl" />
+				<Skeleton height={36} width="min(100%, 320px)" radius="md" mb="xs" />
+				<Skeleton height={200} radius="lg" />
 			</Stack>
 		);
 	}
 
 	return (
-		<Stack gap="xl">
+		<Stack gap="lg">
 			<AdminPageHeader
 				title="Gestión de trámites"
 				description="Definí qué procedimientos están disponibles para agendamiento ciudadano y mantené la configuración alineada con operaciones."
@@ -197,60 +197,99 @@ export function TramitesPage() {
 			/>
 
 			{error && (
-				<Alert color="red" icon={<AlertCircle size={16} />}>
+				<Alert
+					color="red"
+					variant="light"
+					radius="md"
+					icon={<AlertCircle size={16} />}
+				>
 					{error}
 				</Alert>
 			)}
 			{notice && (
-				<Alert color="teal" icon={<CheckCircle2 size={16} />}>
+				<Alert
+					color="teal"
+					variant="light"
+					radius="md"
+					icon={<CheckCircle2 size={16} />}
+				>
 					{notice}
 				</Alert>
 			)}
 
-			<Card className={adminUi.callout} radius="xl" p="lg" shadow="none">
-				<Group gap="md" align="flex-start">
-					<Box className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-zinc-200/90">
-						<List size={20} className="text-red-700" strokeWidth={1.75} />
-					</Box>
-					<Stack gap={4}>
-						<Text className="font-semibold text-zinc-900">
-							{activeCount} de {procedures.length} trámites activos
-						</Text>
-						<Text size="sm" className="leading-relaxed text-zinc-600">
-							Solo los trámites activos se muestran en el flujo ciudadano.
-						</Text>
-					</Stack>
-				</Group>
-			</Card>
+			{procedures.length > 0 ? (
+				<Card className={adminUi.callout} radius="lg" p="md" shadow="none">
+					<Group gap="md" align="flex-start">
+						<Box className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-zinc-200">
+							<List size={18} className="text-red-700" strokeWidth={1.75} />
+						</Box>
+						<Stack gap={2}>
+							<Text className="text-base font-semibold text-zinc-900">
+								{activeCount} de {procedures.length} trámites activos
+							</Text>
+							<Text size="sm" className="leading-relaxed text-zinc-600">
+								Solo los trámites activos se muestran en el flujo ciudadano.
+							</Text>
+						</Stack>
+					</Group>
+				</Card>
+			) : null}
 
-			<Grid gap="xl">
-				<Grid.Col span={{ base: 12, md: 5 }}>
-					<Stack gap="md">
-						{procedures.map((procedure) => (
-							<ProcedureSummaryCard
-								key={procedure.id}
-								procedure={procedure}
-								selected={procedure.id === selectedProcedureId}
-								onSelect={() => setSelectedProcedureId(procedure.id)}
+			{procedures.length === 0 ? (
+				<Card
+					className={`${adminUi.surface} text-center`}
+					radius="lg"
+					p={48}
+					shadow="none"
+				>
+					<Stack align="center" gap="lg">
+						<Box className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
+							<List size={22} className="text-zinc-400" strokeWidth={1.5} />
+						</Box>
+						<Text className="text-base font-semibold text-zinc-900">
+							No hay trámites registrados
+						</Text>
+						<Button
+							color="red"
+							onClick={openAdd}
+							radius="md"
+							leftSection={<Plus size={16} strokeWidth={1.75} />}
+							className="font-semibold"
+						>
+							Crear primer trámite
+						</Button>
+					</Stack>
+				</Card>
+			) : (
+				<Grid gap="lg">
+					<Grid.Col span={{ base: 12, md: 5 }}>
+						<Stack gap="sm">
+							{procedures.map((procedure) => (
+								<ProcedureSummaryCard
+									key={procedure.id}
+									procedure={procedure}
+									selected={procedure.id === selectedProcedureId}
+									onSelect={() => setSelectedProcedureId(procedure.id)}
+								/>
+							))}
+						</Stack>
+					</Grid.Col>
+
+					<Grid.Col span={{ base: 12, md: 7 }}>
+						{selectedProcedure ? (
+							<ProcedureDetailPanel
+								procedure={selectedProcedure}
+								isMutating={isMutatingId === selectedProcedure.id}
+								onToggleActive={handleToggleActive}
+								onDuplicate={handleDuplicate}
+								onRemove={handleRemove}
 							/>
-						))}
-					</Stack>
-				</Grid.Col>
-
-				<Grid.Col span={{ base: 12, md: 7 }}>
-					{selectedProcedure ? (
-						<ProcedureDetailPanel
-							procedure={selectedProcedure}
-							isMutating={isMutatingId === selectedProcedure.id}
-							onToggleActive={handleToggleActive}
-							onDuplicate={handleDuplicate}
-							onRemove={handleRemove}
-						/>
-					) : (
-						<ProcedureDetailEmptyState />
-					)}
-				</Grid.Col>
-			</Grid>
+						) : (
+							<ProcedureDetailEmptyState />
+						)}
+					</Grid.Col>
+				</Grid>
+			)}
 
 			<AddProcedureModal
 				opened={addModalOpened}

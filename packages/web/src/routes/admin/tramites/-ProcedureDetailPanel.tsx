@@ -39,21 +39,26 @@ export function ProcedureDetailPanel({
 	onDuplicate: (procedure: ProcedureType) => void;
 	onRemove: (procedure: ProcedureType) => void;
 }) {
+	const docCount =
+		(procedure.documentSchema?.requirements as unknown[])?.length ?? 0;
+
 	return (
 		<Card
 			className={adminUi.surface}
-			radius="xl"
+			radius="lg"
 			p={0}
 			bg="white"
 			shadow="none"
 		>
-			<Box p="xl" className="border-b border-zinc-200/90">
+			<Box p="lg" className="border-b border-zinc-200/90">
 				<Group justify="space-between" align="flex-start" wrap="nowrap">
 					<Group gap="md">
-						<FileText size={28} className="text-red-700" strokeWidth={1.5} />
-						<Stack gap={4}>
-							<Title order={2}>{procedure.name}</Title>
-							<Text size="sm" c="dimmed">
+						<Box className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
+							<FileText size={20} className="text-red-700" strokeWidth={1.5} />
+						</Box>
+						<Stack gap={2}>
+							<Title order={2} className="text-xl">{procedure.name}</Title>
+							<Text size="sm" className="font-mono text-zinc-500">
 								{procedure.slug}
 							</Text>
 						</Stack>
@@ -61,7 +66,7 @@ export function ProcedureDetailPanel({
 
 					<Menu position="bottom-end">
 						<Menu.Target>
-							<ActionIcon variant="light" color="gray" radius="xl" size="lg">
+							<ActionIcon variant="light" color="gray" radius="lg" size="lg">
 								<MoreHorizontal size={18} />
 							</ActionIcon>
 						</Menu.Target>
@@ -90,7 +95,7 @@ export function ProcedureDetailPanel({
 					</Menu>
 				</Group>
 
-				<Group mt="lg" gap="md">
+				<Group mt="md" gap="md">
 					<Switch
 						label="Trámite activo"
 						checked={procedure.isActive}
@@ -98,6 +103,7 @@ export function ProcedureDetailPanel({
 						onChange={(event) => {
 							onToggleActive(procedure, event.currentTarget.checked);
 						}}
+						size="sm"
 					/>
 					{isMutating && (
 						<Text size="xs" c="dimmed">
@@ -107,52 +113,68 @@ export function ProcedureDetailPanel({
 				</Group>
 			</Box>
 
-			<Tabs defaultValue="general" variant="outline" radius="xl">
-				<Tabs.List p="md" pb={0}>
-					<Tabs.Tab value="general" leftSection={<List size={16} />}>
+			<Tabs defaultValue="general" variant="outline" radius="lg">
+				<Tabs.List p="sm" pb={0}>
+					<Tabs.Tab value="general" leftSection={<List size={14} />}>
 						General
 					</Tabs.Tab>
-					<Tabs.Tab value="form" leftSection={<ClipboardList size={16} />}>
+					<Tabs.Tab value="form" leftSection={<ClipboardList size={14} />}>
 						Formulario
 					</Tabs.Tab>
-					<Tabs.Tab value="documents" leftSection={<FileCheck size={16} />}>
+					<Tabs.Tab value="documents" leftSection={<FileCheck size={14} />}>
 						Documentos
 					</Tabs.Tab>
 				</Tabs.List>
 
-				<Tabs.Panel value="general" p="xl">
+				<Tabs.Panel value="general" p="lg">
 					<Stack gap="md">
-						<Text fw={700}>Descripción</Text>
-						<Text c="dimmed">{procedure.description || "Sin descripción"}</Text>
+						<Box>
+							<Text size="xs" fw={700} className="uppercase tracking-wider text-zinc-500">
+								Descripción
+							</Text>
+							<Text mt="xs" c="dimmed">
+								{procedure.description || "Sin descripción"}
+							</Text>
+						</Box>
 						<Divider />
-						<Badge
-							variant="light"
-							color="gray"
-							style={{ width: "fit-content" }}
-						>
-							Versión v{procedure.configVersion}
-						</Badge>
-						<Badge
-							variant="light"
-							color={procedure.requiresVehicle ? "orange" : "gray"}
-							style={{ width: "fit-content" }}
-						>
-							Requiere vehículo: {procedure.requiresVehicle ? "Sí" : "No"}
-						</Badge>
+						<Group gap="sm">
+							<Badge
+								variant="light"
+								color="gray"
+							>
+								v{procedure.configVersion}
+							</Badge>
+							<Badge
+								variant="light"
+								color={procedure.requiresVehicle ? "orange" : "gray"}
+							>
+								Vehículo: {procedure.requiresVehicle ? "Sí" : "No"}
+							</Badge>
+							<Badge
+								variant="light"
+								color={docCount > 0 ? "dark" : "gray"}
+							>
+								{docCount} {docCount === 1 ? "requisito" : "requisitos"}
+							</Badge>
+						</Group>
 					</Stack>
 				</Tabs.Panel>
 
-				<Tabs.Panel value="form" p="xl">
-					<JsonInput
-						label="Form schema"
-						value={JSON.stringify(procedure.formSchema ?? {}, null, 2)}
-						readOnly
-						minRows={8}
-						radius="xl"
-					/>
+				<Tabs.Panel value="form" p="lg">
+					<Stack gap="md">
+						<Text size="xs" fw={700} className="uppercase tracking-wider text-zinc-500">
+							Esquema del formulario
+						</Text>
+						<JsonInput
+							value={JSON.stringify(procedure.formSchema ?? {}, null, 2)}
+							readOnly
+							minRows={10}
+							radius="md"
+						/>
+					</Stack>
 				</Tabs.Panel>
 
-				<Tabs.Panel value="documents" p="xl">
+				<Tabs.Panel value="documents" p="lg">
 					<Stack gap="md">
 						<Group>
 							<Badge
@@ -162,15 +184,18 @@ export function ProcedureDetailPanel({
 								Físicos: {procedure.allowsPhysicalDocuments ? "Sí" : "No"}
 							</Badge>
 							<Badge variant="light" color="gray">
-								Digitales: No (bloqueado por política)
+								Digitales: No
 							</Badge>
 						</Group>
+						<Divider />
+						<Text size="xs" fw={700} className="uppercase tracking-wider text-zinc-500">
+							Esquema de documentos
+						</Text>
 						<JsonInput
-							label="Document schema"
 							value={JSON.stringify(procedure.documentSchema ?? {}, null, 2)}
 							readOnly
-							minRows={8}
-							radius="xl"
+							minRows={10}
+							radius="md"
 						/>
 					</Stack>
 				</Tabs.Panel>
@@ -183,16 +208,19 @@ export function ProcedureDetailEmptyState() {
 	return (
 		<Card
 			className={`${adminUi.surface} text-center`}
-			radius="xl"
-			p={48}
+			radius="lg"
+			p={60}
 			shadow="none"
 		>
 			<Stack align="center" gap="md">
-				<Box className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 ring-1 ring-zinc-200/90">
-					<AlertCircle size={26} className="text-zinc-500" strokeWidth={1.5} />
+				<Box className="flex h-14 w-14 items-center justify-center rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
+					<AlertCircle size={24} className="text-zinc-400" strokeWidth={1.5} />
 				</Box>
-				<Text className="max-w-sm leading-relaxed text-zinc-500">
-					Seleccioná un trámite para revisar formularios y requisitos.
+				<Text className="text-base font-semibold text-zinc-900">
+					Seleccioná un trámite
+				</Text>
+				<Text size="sm" className="max-w-sm leading-relaxed text-zinc-500">
+					Elegí un trámite de la lista para ver su configuración, formularios y requisitos.
 				</Text>
 			</Stack>
 		</Card>

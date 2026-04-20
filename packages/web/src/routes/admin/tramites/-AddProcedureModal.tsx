@@ -198,9 +198,8 @@ export function AddProcedureModal({
 					<Alert
 						color="red"
 						variant="light"
-						radius="lg"
-						icon={<AlertCircle size={18} />}
-						className="border border-red-200/50"
+						radius="md"
+						icon={<AlertCircle size={16} />}
 					>
 						{submitError}
 					</Alert>
@@ -210,7 +209,7 @@ export function AddProcedureModal({
 					title="Información básica"
 					description="Datos identificativos del trámite"
 					icon={
-						<FolderPlus size={20} className="text-zinc-500" strokeWidth={1.5} />
+						<FolderPlus size={18} className="text-zinc-500" strokeWidth={1.5} />
 					}
 				>
 					<Stack gap="md">
@@ -222,7 +221,7 @@ export function AddProcedureModal({
 						>
 							<TextInput
 								placeholder="Ingresa el nombre del trámite"
-								radius="lg"
+								radius="md"
 								size="md"
 								disabled={isSubmitting}
 								value={values.name}
@@ -255,14 +254,14 @@ export function AddProcedureModal({
 							<div className="relative">
 								<TextInput
 									placeholder="renovacion-licencia"
-									radius="lg"
+									radius="md"
 									size="md"
 									disabled={isSubmitting}
 									value={values.slug}
 									onChange={handleSlugChange}
 									onBlur={() => setTouched((t) => ({ ...t, slug: true }))}
 									error={errors.slug}
-									leftSection={<Link2 size={16} className="text-zinc-400" />}
+									leftSection={<Link2 size={14} className="text-zinc-400" />}
 									className={cx(
 										"transition-all duration-200",
 										values.slug && !errors.slug && "border-emerald-500/50",
@@ -302,7 +301,7 @@ export function AddProcedureModal({
 						>
 							<Textarea
 								placeholder="Describe el propósito y requisitos del trámite..."
-								radius="lg"
+								radius="md"
 								size="md"
 								minRows={3}
 								maxRows={5}
@@ -348,11 +347,11 @@ export function AddProcedureModal({
 					title="Configuración de documentos"
 					description="La plataforma solo permite gestión física de requisitos para ciudadanos"
 					icon={
-						<FileText size={20} className="text-zinc-500" strokeWidth={1.5} />
+						<FileText size={18} className="text-zinc-500" strokeWidth={1.5} />
 					}
 				>
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50/30">
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+						<div className="flex items-start gap-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/30">
 							<div className="flex-1">
 								<div className="font-medium text-sm text-zinc-900">
 									Requisitos físicos habilitados
@@ -364,7 +363,7 @@ export function AddProcedureModal({
 							</div>
 						</div>
 
-						<div className="flex items-start gap-3 p-4 rounded-xl border border-zinc-200 bg-zinc-50/50">
+						<div className="flex items-start gap-3 p-3 rounded-lg border border-zinc-200 bg-zinc-50/50">
 							<div className="flex-1">
 								<div className="font-medium text-sm text-zinc-900">
 									Carga digital deshabilitada
@@ -382,12 +381,12 @@ export function AddProcedureModal({
 					title="Configuración adicional"
 					description="Opciones específicas del trámite"
 					icon={
-						<Settings2 size={20} className="text-zinc-500" strokeWidth={1.5} />
+						<Settings2 size={18} className="text-zinc-500" strokeWidth={1.5} />
 					}
 				>
 					<div
 						className={cx(
-							"flex items-start gap-3 p-4 rounded-xl border transition-all duration-200",
+							"flex items-start gap-3 p-3 rounded-lg border transition-all duration-200",
 							values.requiresVehicle
 								? "border-orange-200 bg-orange-50/30"
 								: "border-zinc-200 bg-zinc-50/50",
@@ -398,7 +397,7 @@ export function AddProcedureModal({
 							onChange={(e) =>
 								form.setFieldValue("requiresVehicle", e.currentTarget.checked)
 							}
-							size="md"
+							size="sm"
 							className="mt-0.5"
 						/>
 						<div className="flex-1">
@@ -425,7 +424,7 @@ export function AddProcedureModal({
 						isLoading={isSubmitting}
 						onClick={handleSubmit}
 						disabled={!isValid}
-						leftSection={<FileText size={18} strokeWidth={1.5} />}
+						leftSection={<FileText size={16} strokeWidth={1.5} />}
 					>
 						Crear trámite
 					</FormActionButton>
