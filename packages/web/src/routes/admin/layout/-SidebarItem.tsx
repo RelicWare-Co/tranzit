@@ -8,7 +8,7 @@ const ease = "cubic-bezier(0.4, 0, 0.2, 1)";
  * Item de navegación para sidebar con icono + label.
  * - Desktop: muestra icono + label completo
  * - Mobile (<768px): muestra solo icono (tooltip en futuro)
- * - Activo: borde izquierdo de 3px + fondo sutil + icono brand
+ * - Activo: fondo sutil brand + texto brand + icono brand
  */
 export function SidebarItem({
 	icon: Icon,
@@ -30,10 +30,10 @@ export function SidebarItem({
 			component={Link}
 			to={to}
 			className={[
-				"group relative flex w-full items-center gap-2.5 rounded-lg py-2.5 pl-2.5 pr-2 text-left text-sm font-medium leading-tight no-underline transition-all duration-150",
+				"group relative flex w-full items-center gap-2.5 rounded-lg py-2.5 pl-3 pr-2 text-left text-sm font-medium leading-tight no-underline transition-all duration-150",
 				isActive
-					? "bg-[var(--brand-100)] text-[var(--brand-700)] border-l-[3px] border-l-[var(--brand-600)] pl-[calc(0.625rem-3px)]"
-					: "border-l-[3px] border-l-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]",
+					? "bg-[var(--brand-100)] text-[var(--brand-700)]"
+					: "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]",
 			].join(" ")}
 			style={{
 				transitionTimingFunction: ease,

@@ -96,8 +96,6 @@ export function AdminNavbar() {
 									height: 18,
 									letterSpacing: "0.06em",
 									border: "1px solid rgba(201, 42, 42, 0.15)",
-									background:
-										"linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,241,242,0.8))",
 								},
 							}}
 						>

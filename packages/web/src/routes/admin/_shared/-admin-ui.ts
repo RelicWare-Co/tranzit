@@ -44,7 +44,7 @@ export const adminUi = {
 	surfaceElevated:
 		"rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] shadow-[0_8px_32px_-8px_rgba(0,0,0,0.12)]",
 	surfaceGlass:
-		"rounded-2xl border border-white/30 bg-white/90 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.1)] backdrop-blur-xl",
+		"rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] shadow-[0_8px_32px_-8px_rgba(0,0,0,0.1)]",
 	surfaceInset:
 		"rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)]",
 	surfaceMuted:
@@ -66,14 +66,14 @@ export const adminUi = {
 
 	// Interactive
 	navItemActive:
-		"bg-[var(--accent-subtle)] font-semibold text-[var(--accent-default)] border-l-[3px] border-l-[var(--accent-default)]",
+		"bg-[var(--accent-subtle)] font-semibold text-[var(--accent-default)]",
 	navItemInactive:
-		"border-l-[3px] border-l-transparent font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]",
+		"font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]",
 
 	// Dividers
 	divider: "border-[var(--border-subtle)]",
 	headerShell:
-		"border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]/90 backdrop-blur-xl",
+		"border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]",
 } as const;
 
 /** Mantine Modal styles usando el nuevo sistema */
