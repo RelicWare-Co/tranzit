@@ -30,7 +30,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
 	return fallback;
 }
 
-
 function LoginPage() {
 	const navigate = useNavigate();
 	const {
@@ -265,18 +264,18 @@ function LoginPage() {
 								>
 									Código de verificación
 								</label>
-						<PinInput
-							length={6}
-							value={otpCode}
-							onChange={setOtpCode}
-							disabled={verifyOtpMutation.isPending}
-							type="number"
-							inputMode="numeric"
-							oneTimeCode
-							gap="md"
-							size="lg"
-							style={{ justifyContent: 'center' }}
-						/>
+								<PinInput
+									length={6}
+									value={otpCode}
+									onChange={setOtpCode}
+									disabled={verifyOtpMutation.isPending}
+									type="number"
+									inputMode="numeric"
+									oneTimeCode
+									gap="md"
+									size="lg"
+									style={{ justifyContent: "center" }}
+								/>
 							</div>
 
 							<div style={{ display: "flex", gap: "var(--space-3)" }}>

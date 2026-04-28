@@ -1169,9 +1169,15 @@ export function AdminConfiguracionPage() {
 									locale="es"
 									valueFormat="DD/MM/YYYY"
 									clearable
-									value={overrideForm.values.overrideDate ? new Date(overrideForm.values.overrideDate) : null}
+									value={
+										overrideForm.values.overrideDate
+											? new Date(overrideForm.values.overrideDate)
+											: null
+									}
 									onChange={(value) => {
-										const formatted = value ? value.toString().split("T")[0] : "";
+										const formatted = value
+											? value.toString().split("T")[0]
+											: "";
 										overrideForm.setFieldValue("overrideDate", formatted);
 									}}
 								/>
@@ -1508,7 +1514,10 @@ export function AdminConfiguracionPage() {
 											clearable
 											value={staffOverrideForm.values.overrideDate || null}
 											onChange={(value) => {
-												staffOverrideForm.setFieldValue("overrideDate", value || "");
+												staffOverrideForm.setFieldValue(
+													"overrideDate",
+													value || "",
+												);
 											}}
 										/>
 									</Grid.Col>
@@ -1720,7 +1729,7 @@ export function AdminConfiguracionPage() {
 															</Group>
 														</Table.Td>
 													</Table.Tr>
-											))
+												))
 											)}
 										</Table.Tbody>
 									</Table>

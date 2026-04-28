@@ -409,27 +409,27 @@ export function AdminCitasPage() {
 	} as const;
 
 	return (
-			<Box className="admin-citas-calendar-scope flex min-h-0 flex-1 flex-col">
-				<Box className="px-4 pt-5 sm:px-6">
-					<AdminPageHeader
-						title="Gestión de Citas"
-						description="Visualiza y administra las citas en el calendario. Usa los filtros de vista para navegar por día, semana, mes o año."
-						actions={
-							<Button
-								leftSection={<CalendarDays size={18} strokeWidth={1.5} />}
-								variant="light"
-								color="red"
-								size="md"
-								className="font-semibold"
-								onClick={() => setDate(new Date())}
-							>
-								Hoy
-							</Button>
-						}
-					/>
-				</Box>
+		<Box className="admin-citas-calendar-scope flex min-h-0 flex-1 flex-col">
+			<Box className="px-4 pt-5 sm:px-6">
+				<AdminPageHeader
+					title="Gestión de Citas"
+					description="Visualiza y administra las citas en el calendario. Usa los filtros de vista para navegar por día, semana, mes o año."
+					actions={
+						<Button
+							leftSection={<CalendarDays size={18} strokeWidth={1.5} />}
+							variant="light"
+							color="red"
+							size="md"
+							className="font-semibold"
+							onClick={() => setDate(new Date())}
+						>
+							Hoy
+						</Button>
+					}
+				/>
+			</Box>
 
-				<Card
+			<Card
 				p={0}
 				withBorder={false}
 				className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-white shadow-sm"
