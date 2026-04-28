@@ -17,7 +17,7 @@ import {
 	PremiumModal,
 } from "#/features/admin/components";
 import { cx } from "#/shared/lib/cx";
-import type { BookingKind } from "./-types";
+import type { BookingKind } from "./types";
 
 interface NewBookingModalProps {
 	opened: boolean;

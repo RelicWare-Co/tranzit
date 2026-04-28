@@ -16,7 +16,7 @@ import {
 	PremiumModal,
 } from "#/features/admin/components";
 import { cx } from "#/shared/lib/cx";
-import type { ProcedureCreateInput } from "./-types";
+import type { ProcedureCreateInput } from "./types";
 
 // Validaciones en tiempo real
 const validators = {

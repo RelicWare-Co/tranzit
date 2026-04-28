@@ -8,7 +8,7 @@ import {
 	ShieldCheck,
 	Users,
 } from "lucide-react";
-import { SidebarItem } from "./-SidebarItem";
+import { SidebarItem } from "./SidebarItem";
 
 const sectionClass =
 	"mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-tertiary)]";

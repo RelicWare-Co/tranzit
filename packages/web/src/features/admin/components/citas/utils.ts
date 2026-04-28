@@ -1,6 +1,6 @@
 import type { ScheduleViewLevel } from "@mantine/schedule";
-import { formatDateLocal } from "#/features/admin/components/-dates";
-import type { BookingWithRelations } from "./-types";
+import { formatDateLocal } from "#/features/admin/components/dates";
+import type { BookingWithRelations } from "./types";
 
 export function withSeconds(time: string): string {
 	return time.length === 5 ? `${time}:00` : time;

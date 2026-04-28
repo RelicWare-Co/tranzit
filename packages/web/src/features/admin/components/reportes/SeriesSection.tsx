@@ -19,10 +19,10 @@ import { useForm } from "@mantine/form";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, FileText, Plus } from "lucide-react";
 import { useMemo } from "react";
-import { adminUi } from "#/features/admin/components/-admin-ui";
-import { getErrorMessage } from "#/features/admin/components/-errors";
+import { adminUi } from "#/features/admin/components/admin-ui";
+import { getErrorMessage } from "#/features/admin/components/errors";
 import { orpcClient } from "#/shared/lib/orpc-client";
-import type { ReservationInstance, ReservationSeriesFilters } from "./-types";
+import type { ReservationInstance, ReservationSeriesFilters } from "./types";
 
 interface SeriesSectionProps {
 	seriesQuery: {

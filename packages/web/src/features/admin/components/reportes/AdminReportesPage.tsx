@@ -1,11 +1,11 @@
 import { Button, Card, Group, Loader, Stack, Text } from "@mantine/core";
 import { RefreshCw, Users } from "lucide-react";
-import { AdminPageHeader } from "#/features/admin/components/-AdminPageHeader";
-import { adminUi } from "#/features/admin/components/-admin-ui";
-import { BookingsSection } from "./-BookingsSection";
-import { SeriesSection } from "./-SeriesSection";
-import { StatsOverview } from "./-StatsOverview";
-import { useReportesData } from "./-useReportesData";
+import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
+import { adminUi } from "#/features/admin/components/admin-ui";
+import { BookingsSection } from "./BookingsSection";
+import { SeriesSection } from "./SeriesSection";
+import { StatsOverview } from "./StatsOverview";
+import { useReportesData } from "./useReportesData";
 
 export function AdminReportesPage() {
 	const {

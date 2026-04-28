@@ -16,20 +16,20 @@ import {
 import { AlertCircle, CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "#/shared/lib/orpc-client";
-import { AdminPageHeader } from "#/features/admin/components/-AdminPageHeader";
-import { formatDateLocal } from "#/features/admin/components/-dates";
-import { getErrorMessage } from "#/features/admin/components/-errors";
+import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
+import { formatDateLocal } from "#/features/admin/components/dates";
+import { getErrorMessage } from "#/features/admin/components/errors";
 import "./admin-schedule.css";
-import { BookingStatsGrid } from "./-BookingStatsGrid";
-import { NewBookingModal } from "./-NewBookingModal";
+import { BookingStatsGrid } from "./BookingStatsGrid";
+import { NewBookingModal } from "./NewBookingModal";
 import type {
 	BookingKind,
 	BookingWithRelations,
 	ProcedureType,
 	SlotWithCapacity,
 	StaffProfile,
-} from "./-types";
-import { getDateRange, getEventColor, toDateTimeString } from "./-utils";
+} from "./types";
+import { getDateRange, getEventColor, toDateTimeString } from "./utils";
 
 export function AdminCitasPage() {
 	const [view, setView] = useState<ScheduleViewLevel>("week");

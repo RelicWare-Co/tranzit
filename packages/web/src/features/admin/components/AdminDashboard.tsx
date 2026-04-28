@@ -13,9 +13,9 @@ import { Link } from "@tanstack/react-router";
 import { BarChart3, Calendar, ClipboardList, Users } from "lucide-react";
 import { useAuth } from "#/features/auth/components/AuthContext";
 import { orpcClient } from "#/shared/lib/orpc-client";
-import { AdminPageHeader } from "#/features/admin/components/-AdminPageHeader";
-import { adminUi } from "#/features/admin/components/-admin-ui";
-import { formatDateLocal } from "#/features/admin/components/-dates";
+import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
+import { adminUi } from "#/features/admin/components/admin-ui";
+import { formatDateLocal } from "#/features/admin/components/dates";
 
 
 type KpiData = {

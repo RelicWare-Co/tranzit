@@ -1,7 +1,7 @@
 import { notifications } from "@mantine/notifications";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getErrorMessage } from "#/features/admin/components/-errors";
+import { getErrorMessage } from "#/features/admin/components/errors";
 import { orpcClient } from "#/shared/lib/orpc-client";
 import {
 	type BookingFilters,
@@ -9,7 +9,7 @@ import {
 	defaultSeriesFilters,
 	isReservationInstance,
 	type ReservationSeriesFilters,
-} from "./-types";
+} from "./types";
 
 const SESSION_QUERY_KEY = ["admin", "reportes", "session"] as const;
 const STAFF_QUERY_KEY = ["admin", "reportes", "staff"] as const;

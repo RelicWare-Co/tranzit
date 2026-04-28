@@ -1,6 +1,6 @@
 import { Card, Group, Stack, Text } from "@mantine/core";
 import { Calendar, CheckCircle2, Clock, FileText } from "lucide-react";
-import { adminUi } from "#/features/admin/components/-admin-ui";
+import { adminUi } from "#/features/admin/components/admin-ui";
 
 interface StatsOverviewProps {
 	confirmedBookings: number;

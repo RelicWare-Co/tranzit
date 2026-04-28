@@ -1,7 +1,7 @@
 import { Avatar, Badge, Card, Group, Stack, Text } from "@mantine/core";
 import { CheckCircle2, UserX } from "lucide-react";
-import { CapacityIndicator } from "./-CapacityIndicator";
-import type { StaffProfile } from "./-types";
+import { CapacityIndicator } from "./CapacityIndicator";
+import type { StaffProfile } from "./types";
 
 export function StaffCard({
 	profile,

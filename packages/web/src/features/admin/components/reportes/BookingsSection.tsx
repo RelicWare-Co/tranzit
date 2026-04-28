@@ -25,10 +25,10 @@ import {
 	Search,
 	XCircle,
 } from "lucide-react";
-import { adminUi } from "#/features/admin/components/-admin-ui";
-import { getErrorMessage } from "#/features/admin/components/-errors";
+import { adminUi } from "#/features/admin/components/admin-ui";
+import { getErrorMessage } from "#/features/admin/components/errors";
 import { orpcClient } from "#/shared/lib/orpc-client";
-import { type BookingFilters, defaultBookingFilters } from "./-types";
+import { type BookingFilters, defaultBookingFilters } from "./types";
 
 interface BookingsSectionProps {
 	filtersDraft: BookingFilters;

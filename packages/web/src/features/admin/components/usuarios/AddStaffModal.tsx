@@ -10,7 +10,7 @@ import {
 	PremiumModal,
 } from "#/features/admin/components";
 import { cx } from "#/shared/lib/cx";
-import type { CreateStaffPayload } from "./-types";
+import type { CreateStaffPayload } from "./types";
 
 // Validaciones en tiempo real
 const validators = {

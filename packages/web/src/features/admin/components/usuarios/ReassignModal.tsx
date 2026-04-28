@@ -16,9 +16,9 @@ import {
 	type ReassignBookingsFormValues,
 	reassignBookingsSchema,
 } from "#/shared/lib/schemas/reassign";
-import { adminModalStyles } from "#/features/admin/components/-admin-ui";
-import { getErrorMessage } from "#/features/admin/components/-errors";
-import type { AdminBooking, StaffProfile } from "./-types";
+import { adminModalStyles } from "#/features/admin/components/admin-ui";
+import { getErrorMessage } from "#/features/admin/components/errors";
+import type { AdminBooking, StaffProfile } from "./types";
 
 const initialValues: ReassignBookingsFormValues = {
 	targetStaffUserId: "",

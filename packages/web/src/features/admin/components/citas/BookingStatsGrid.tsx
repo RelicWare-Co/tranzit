@@ -1,6 +1,6 @@
 import { Stack, Text } from "@mantine/core";
 import { CalendarDays, CheckCircle, Clock, XCircle } from "lucide-react";
-import { adminUi } from "#/features/admin/components/-admin-ui";
+import { adminUi } from "#/features/admin/components/admin-ui";
 
 type Stats = {
 	citasHoy: number;

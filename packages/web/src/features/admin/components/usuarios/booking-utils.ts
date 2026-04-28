@@ -1,4 +1,4 @@
-import type { AdminBooking, BookingByStaff } from "./-types";
+import type { AdminBooking, BookingByStaff } from "./types";
 
 export function mapBookingsByStaff(bookings: AdminBooking[]): BookingByStaff {
 	return bookings.reduce<BookingByStaff>((acc, booking) => {

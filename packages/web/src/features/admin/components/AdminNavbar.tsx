@@ -1,8 +1,8 @@
 import { Badge, Box, Group, Text, Title } from "@mantine/core";
 import { Link, useLocation } from "@tanstack/react-router";
 import { CalendarDays, House } from "lucide-react";
-import { ADMIN_ACCENT } from "#/features/admin/components/-admin-ui";
-import { AdminUserMenu } from "./-AdminUserMenu";
+import { ADMIN_ACCENT } from "#/features/admin/components/admin-ui";
+import { AdminUserMenu } from "./AdminUserMenu";
 
 const portalShell =
 	"inline-flex h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md border-0 px-2 text-sm font-medium shadow-none no-underline outline-none transition-all duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] md:px-2.5";

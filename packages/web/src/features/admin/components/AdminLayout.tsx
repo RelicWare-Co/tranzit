@@ -2,9 +2,9 @@ import { Box, Container, Stack, Text } from "@mantine/core";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useAuth } from "#/features/auth/components/AuthContext";
-import { adminUi } from "#/features/admin/components/-admin-ui";
-import { AdminNavbar } from "./-AdminNavbar";
-import { AdminSidebar } from "./-AdminSidebar";
+import { adminUi } from "#/features/admin/components/admin-ui";
+import { AdminNavbar } from "./AdminNavbar";
+import { AdminSidebar } from "./AdminSidebar";
 
 export function AdminLayout() {
 	const { isAuthenticated, isLoading, hasRole } = useAuth();

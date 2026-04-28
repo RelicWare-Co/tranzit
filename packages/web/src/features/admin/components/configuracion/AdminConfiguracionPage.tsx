@@ -42,8 +42,8 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { orpcClient } from "#/shared/lib/orpc-client";
-import { AdminPageHeader } from "#/features/admin/components/-AdminPageHeader";
-import { getErrorMessage } from "#/features/admin/components/-errors";
+import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
+import { getErrorMessage } from "#/features/admin/components/errors";
 
 const CONFIG_SNAPSHOT_QUERY_KEY = [
 	"admin",

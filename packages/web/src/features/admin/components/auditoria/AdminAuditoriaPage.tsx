@@ -31,9 +31,9 @@ import {
 } from "lucide-react";
 import { Fragment, useCallback, useState } from "react";
 import { orpcClient } from "#/shared/lib/orpc-client";
-import { AdminPageHeader } from "#/features/admin/components/-AdminPageHeader";
-import { adminUi } from "#/features/admin/components/-admin-ui";
-import { getErrorMessage } from "#/features/admin/components/-errors";
+import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
+import { adminUi } from "#/features/admin/components/admin-ui";
+import { getErrorMessage } from "#/features/admin/components/errors";
 
 type AuditFilters = {
 	entityType: string;
