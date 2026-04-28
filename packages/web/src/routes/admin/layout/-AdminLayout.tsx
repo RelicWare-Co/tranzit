@@ -112,7 +112,7 @@ export function AdminLayout() {
 					{isCitasRoute ? (
 						<Outlet />
 					) : (
-						<Box mx="auto" maw={1140}>
+						<Box mx="auto" w="100%" maw={1600} px={{ base: "xs", md: "md", lg: "lg" }} pt="xl">
 							<Outlet />
 						</Box>
 					)}

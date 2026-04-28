@@ -170,7 +170,7 @@ function Header() {
 		>
 			<Box
 				className={`mx-auto transition-all duration-300 ${
-					isScrolled ? "max-w-none" : "max-w-[1200px]"
+					isScrolled ? "max-w-[1600px]" : "max-w-[1600px]"
 				}`}
 			>
 				<header

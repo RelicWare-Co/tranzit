@@ -50,7 +50,7 @@ export function AdminNavbar() {
 			component="header"
 			role="banner"
 			className={[
-				"fixed inset-x-0 top-0 z-[100] flex h-[44px] items-center border-b border-[var(--border-subtle)]",
+				"fixed inset-x-0 top-0 z-[50] flex h-[44px] items-center border-b border-[var(--border-subtle)]",
 				"bg-[var(--bg-elevated)]",
 			].join(" ")}
 		>

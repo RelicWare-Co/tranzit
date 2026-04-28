@@ -20,6 +20,7 @@ import {
 	Title,
 	Tooltip,
 } from "@mantine/core";
+import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -811,7 +812,7 @@ export function AdminConfiguracionPage() {
 	);
 
 	return (
-		<Stack gap="xl" className="max-w-7xl mx-auto pb-12">
+		<Stack gap="xl" className="max-w-[1600px] mx-auto pb-12">
 			<AdminPageHeader
 				title="Configuración operativa"
 				description="Gestiona templates de agenda, excepciones de calendario y disponibilidad de funcionarios"
@@ -912,38 +913,30 @@ export function AdminConfiguracionPage() {
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-								<TextInput
+								<TimeInput
 									label="Inicio mañana"
-									placeholder="07:00"
 									{...templateForm.getInputProps("morningStart")}
-									description="Formato HH:MM"
 									error={templateForm.errors.morningStart}
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-								<TextInput
+								<TimeInput
 									label="Fin mañana"
-									placeholder="12:00"
 									{...templateForm.getInputProps("morningEnd")}
-									description="Formato HH:MM"
 									error={templateForm.errors.morningEnd}
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-								<TextInput
+								<TimeInput
 									label="Inicio tarde"
-									placeholder="13:00"
 									{...templateForm.getInputProps("afternoonStart")}
-									description="Formato HH:MM"
 									error={templateForm.errors.afternoonStart}
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-								<TextInput
+								<TimeInput
 									label="Fin tarde"
-									placeholder="17:00"
 									{...templateForm.getInputProps("afternoonEnd")}
-									description="Formato HH:MM"
 									error={templateForm.errors.afternoonEnd}
 								/>
 							</Grid.Col>
@@ -1170,10 +1163,17 @@ export function AdminConfiguracionPage() {
 						)}
 						<Grid>
 							<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-								<TextInput
+								<DatePickerInput
 									label="Fecha"
-									type="date"
-									{...overrideForm.getInputProps("overrideDate")}
+									placeholder="Selecciona una fecha"
+									locale="es"
+									valueFormat="DD/MM/YYYY"
+									clearable
+									value={overrideForm.values.overrideDate ? new Date(overrideForm.values.overrideDate) : null}
+									onChange={(value) => {
+										const formatted = value ? value.toString().split("T")[0] : "";
+										overrideForm.setFieldValue("overrideDate", formatted);
+									}}
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
@@ -1193,33 +1193,29 @@ export function AdminConfiguracionPage() {
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-								<TextInput
+								<TimeInput
 									label="Inicio mañana"
-									placeholder="07:00"
 									{...overrideForm.getInputProps("morningStart")}
 									error={overrideForm.errors.morningStart}
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-								<TextInput
+								<TimeInput
 									label="Fin mañana"
-									placeholder="12:00"
 									{...overrideForm.getInputProps("morningEnd")}
 									error={overrideForm.errors.morningEnd}
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-								<TextInput
+								<TimeInput
 									label="Inicio tarde"
-									placeholder="13:00"
 									{...overrideForm.getInputProps("afternoonStart")}
 									error={overrideForm.errors.afternoonStart}
 								/>
 							</Grid.Col>
 							<Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-								<TextInput
+								<TimeInput
 									label="Fin tarde"
-									placeholder="17:00"
 									{...overrideForm.getInputProps("afternoonEnd")}
 									error={overrideForm.errors.afternoonEnd}
 								/>
@@ -1427,17 +1423,29 @@ export function AdminConfiguracionPage() {
 				<Stack gap="md">
 					<Grid>
 						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<TextInput
+							<DatePickerInput
 								label="Fecha inicial"
-								type="date"
-								{...slotGenerationForm.getInputProps("dateFrom")}
+								placeholder="Selecciona fecha inicial"
+								locale="es"
+								valueFormat="YYYY-MM-DD"
+								clearable
+								value={slotGenerationForm.values.dateFrom || null}
+								onChange={(value) => {
+									slotGenerationForm.setFieldValue("dateFrom", value || "");
+								}}
 							/>
 						</Grid.Col>
 						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<TextInput
+							<DatePickerInput
 								label="Fecha final"
-								type="date"
-								{...slotGenerationForm.getInputProps("dateTo")}
+								placeholder="Selecciona fecha final"
+								locale="es"
+								valueFormat="YYYY-MM-DD"
+								clearable
+								value={slotGenerationForm.values.dateTo || null}
+								onChange={(value) => {
+									slotGenerationForm.setFieldValue("dateTo", value || "");
+								}}
 							/>
 						</Grid.Col>
 						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
@@ -1492,10 +1500,16 @@ export function AdminConfiguracionPage() {
 								)}
 								<Grid>
 									<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-										<TextInput
+										<DatePickerInput
 											label="Fecha de excepción"
-											type="date"
-											{...staffOverrideForm.getInputProps("overrideDate")}
+											placeholder="Selecciona una fecha"
+											locale="es"
+											valueFormat="YYYY-MM-DD"
+											clearable
+											value={staffOverrideForm.values.overrideDate || null}
+											onChange={(value) => {
+												staffOverrideForm.setFieldValue("overrideDate", value || "");
+											}}
 										/>
 									</Grid.Col>
 									<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
@@ -1519,17 +1533,15 @@ export function AdminConfiguracionPage() {
 										/>
 									</Grid.Col>
 									<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-										<TextInput
+										<TimeInput
 											label="Hora inicio disponible"
-											placeholder="08:00"
 											{...staffOverrideForm.getInputProps("availableStartTime")}
 											error={staffOverrideForm.errors.availableStartTime}
 										/>
 									</Grid.Col>
 									<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-										<TextInput
+										<TimeInput
 											label="Hora fin disponible"
-											placeholder="17:00"
 											{...staffOverrideForm.getInputProps("availableEndTime")}
 											error={staffOverrideForm.errors.availableEndTime}
 										/>
@@ -1708,7 +1720,7 @@ export function AdminConfiguracionPage() {
 															</Group>
 														</Table.Td>
 													</Table.Tr>
-												))
+											))
 											)}
 										</Table.Tbody>
 									</Table>
@@ -1720,11 +1732,14 @@ export function AdminConfiguracionPage() {
 									Consultar disponibilidad efectiva
 								</Text>
 								<Group align="flex-end">
-									<TextInput
+									<DatePickerInput
 										label="Fecha a consultar"
-										type="date"
-										value={availabilityDate}
-										onChange={(e) => setAvailabilityDate(e.currentTarget.value)}
+										placeholder="Selecciona fecha"
+										locale="es"
+										valueFormat="YYYY-MM-DD"
+										clearable
+										value={availabilityDate || null}
+										onChange={(value) => setAvailabilityDate(value || "")}
 									/>
 									<Button
 										onClick={() => void checkEffectiveAvailability()}
