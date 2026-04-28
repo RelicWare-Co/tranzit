@@ -2,8 +2,8 @@ import { Button, Card, Group, Loader, Stack, Text } from "@mantine/core";
 import { RefreshCw, Users } from "lucide-react";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { adminUi } from "#/features/admin/components/admin-ui";
-import { BookingsSection } from "./BookingsSection";
-import { SeriesSection } from "./SeriesSection";
+import { BookingsSection } from "./bookings";
+import { SeriesSection } from "./series";
 import { StatsOverview } from "./StatsOverview";
 import { useReportesData } from "./useReportesData";
 

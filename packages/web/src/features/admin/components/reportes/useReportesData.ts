@@ -243,6 +243,132 @@ export function useReportesData() {
 		);
 	};
 
+	const updateSeries = async (params: {
+		seriesId: string;
+		staffUserId: string;
+		notes: string | null;
+		force?: boolean;
+	}) => {
+		return runAction(
+			"series-update",
+			async () =>
+				await orpcClient.admin.reservationSeries.update({
+					id: params.seriesId,
+					staffUserId: params.staffUserId || undefined,
+					notes: params.notes,
+					force: params.force,
+				}),
+			"Serie actualizada.",
+			"No se pudo actualizar la serie.",
+		);
+	};
+
+	const updateSeriesFromDate = async (params: {
+		seriesId: string;
+		effectiveFrom: string;
+		staffUserId: string;
+		notes: string | null;
+	}) => {
+		return runAction(
+			"series-update-from-date",
+			async () =>
+				await orpcClient.admin.reservationSeries.updateFromDate({
+					id: params.seriesId,
+					effectiveFrom: params.effectiveFrom,
+					staffUserId: params.staffUserId || undefined,
+					notes: params.notes,
+				}),
+			"Serie actualizada desde fecha.",
+			"No se pudo actualizar desde fecha.",
+		);
+	};
+
+	const moveSeries = async (params: {
+		seriesId: string;
+		targetSlotId: string;
+		targetStaffUserId: string;
+	}) => {
+		return runAction(
+			"series-move",
+			async () =>
+				await orpcClient.admin.reservationSeries.move({
+					id: params.seriesId,
+					targetSlotId: params.targetSlotId,
+					targetStaffUserId: params.targetStaffUserId || undefined,
+				}),
+			"Serie movida.",
+			"No se pudo mover la serie.",
+		);
+	};
+
+	const releaseSeries = async (params: {
+		seriesId: string;
+		reason: string;
+	}) => {
+		return runAction(
+			"series-release",
+			async () =>
+				await orpcClient.admin.reservationSeries.release({
+					id: params.seriesId,
+					reason: params.reason,
+				}),
+			"Serie liberada.",
+			"No se pudo liberar la serie.",
+		);
+	};
+
+	const updateInstance = async (params: {
+		instanceId: string;
+		staffUserId: string;
+		notes: string | null;
+	}) => {
+		return runAction(
+			"instance-update",
+			async () =>
+				await orpcClient.admin.reservations.update({
+					bookingId: params.instanceId,
+					staffUserId: params.staffUserId || undefined,
+					notes: params.notes,
+				}),
+			"Instancia actualizada.",
+			"No se pudo actualizar la instancia.",
+		);
+	};
+
+	const moveInstance = async (params: {
+		instanceId: string;
+		targetSlotId: string;
+		targetStaffUserId: string;
+	}) => {
+		return runAction(
+			"instance-move",
+			async () =>
+				await orpcClient.admin.reservations.move({
+					bookingId: params.instanceId,
+					targetSlotId: params.targetSlotId,
+					targetStaffUserId: params.targetStaffUserId || undefined,
+				}),
+			"Instancia movida.",
+			"No se pudo mover la instancia.",
+		);
+	};
+
+	const releaseInstance = async (params: {
+		instanceId: string;
+		reason: string;
+	}) => {
+		return runAction(
+			"instance-release",
+			async () =>
+				await orpcClient.admin.reservations.release({
+					bookingId: params.instanceId,
+					reason: params.reason,
+				}),
+			"Instancia liberada.",
+			"No se pudo liberar la instancia.",
+		);
+	};
+
 	const totalBookings = bookingsQuery.data?.length ?? 0;
 	const confirmedBookings =
 		bookingsQuery.data?.filter((b) => b.status === "confirmed").length ?? 0;
@@ -296,6 +422,13 @@ export function useReportesData() {
 		// Actions
 		runAction,
 		createSeries,
+		updateSeries,
+		updateSeriesFromDate,
+		moveSeries,
+		releaseSeries,
+		updateInstance,
+		moveInstance,
+		releaseInstance,
 		asNullableText,
 	};
 }
