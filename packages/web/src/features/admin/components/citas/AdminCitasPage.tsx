@@ -17,18 +17,12 @@ import { AlertCircle, CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "#/shared/lib/orpc-client";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
-import { formatDateLocal } from "#/features/admin/components/dates";
 import { getErrorMessage } from "#/features/admin/components/errors";
+import { formatDateLocal } from "#/features/admin/components/dates";
 import "./admin-schedule.css";
 import { BookingStatsGrid } from "./BookingStatsGrid";
 import { NewBookingModal } from "./NewBookingModal";
-import type {
-	BookingKind,
-	BookingWithRelations,
-	ProcedureType,
-	SlotWithCapacity,
-	StaffProfile,
-} from "./types";
+import type { BookingWithRelations } from "./types";
 import { getDateRange, getEventColor, toDateTimeString } from "./utils";
 
 export function AdminCitasPage() {
@@ -38,43 +32,25 @@ export function AdminCitasPage() {
 	const [bookings, setBookings] = useState<BookingWithRelations[]>([]);
 	const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 	const [bookingsError, setBookingsError] = useState<string | null>(null);
-
 	const [modalOpen, setModalOpen] = useState(false);
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [success, setSuccess] = useState(false);
-
-	const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-	const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-	const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
-	const [selectedProcedure, setSelectedProcedure] = useState<string | null>(
-		null,
-	);
-	const [bookingKind, setBookingKind] = useState<BookingKind>("administrative");
-
-	const [staffList, setStaffList] = useState<StaffProfile[]>([]);
-	const [slots, setSlots] = useState<SlotWithCapacity[]>([]);
-	const [procedures, setProcedures] = useState<ProcedureType[]>([]);
 
 	const loadBookings = useCallback(async () => {
 		setIsLoadingEvents(true);
 		setBookingsError(null);
 		try {
 			const { dateFrom, dateTo } = getDateRange(date, view);
-			const data = (await orpcClient.admin.bookings.list({
+			const data = await orpcClient.admin.bookings.list({
 				dateFrom,
 				dateTo,
 				isActive: true,
-			})) as BookingWithRelations[];
+			});
 
-			setBookings(data);
+			setBookings(data as BookingWithRelations[]);
 
-			const scheduleEvents: ScheduleEventData[] = data
+			const scheduleEvents: ScheduleEventData[] = (data as BookingWithRelations[])
 				.filter((booking) => booking.isActive)
 				.flatMap((booking) => {
-					if (!booking.slot) {
-						return [];
-					}
+					if (!booking.slot) return [];
 
 					const procedureName =
 						booking.request?.procedure?.name ||
@@ -120,134 +96,9 @@ export function AdminCitasPage() {
 		}
 	}, [date, view]);
 
-	const loadStaff = useCallback(async () => {
-		const data = (await orpcClient.admin.staff.list({
-			isActive: true,
-		})) as StaffProfile[];
-		setStaffList(data);
-	}, []);
-
-	const loadSlots = useCallback(async (dateValue: Date) => {
-		const dateStr = formatDateLocal(dateValue);
-		const response = (await orpcClient.admin.schedule.slots.list({
-			date: dateStr,
-		})) as { slots: SlotWithCapacity[] };
-		setSlots(response.slots ?? []);
-	}, []);
-
-	const loadProcedures = useCallback(async () => {
-		const data = (await orpcClient.admin.procedures.list({
-			isActive: true,
-		})) as ProcedureType[];
-		setProcedures(data);
-	}, []);
-
 	useEffect(() => {
 		void loadBookings();
 	}, [loadBookings]);
-
-	useEffect(() => {
-		if (!modalOpen) return;
-
-		const today = new Date();
-		setSelectedDate(today);
-		setSelectedSlot(null);
-		setSelectedStaff(null);
-		setSelectedProcedure(null);
-		setBookingKind("administrative");
-		setError(null);
-		setSuccess(false);
-
-		void loadStaff().catch((loadError) => {
-			setError(
-				getErrorMessage(
-					loadError,
-					"No se pudo cargar el listado de funcionarios.",
-				),
-			);
-		});
-		void loadProcedures().catch((loadError) => {
-			setError(
-				getErrorMessage(loadError, "No se pudo cargar el listado de tramites."),
-			);
-		});
-		void loadSlots(today).catch((loadError) => {
-			setError(
-				getErrorMessage(
-					loadError,
-					"No se pudieron cargar los horarios disponibles.",
-				),
-			);
-		});
-	}, [modalOpen, loadStaff, loadProcedures, loadSlots]);
-
-	useEffect(() => {
-		if (!modalOpen || !selectedDate) return;
-		setSelectedSlot(null);
-		void loadSlots(selectedDate).catch((loadError) => {
-			setError(
-				getErrorMessage(
-					loadError,
-					"No se pudieron cargar los horarios disponibles.",
-				),
-			);
-		});
-	}, [modalOpen, selectedDate, loadSlots]);
-
-	const resetForm = () => {
-		setSelectedDate(null);
-		setSelectedSlot(null);
-		setSelectedStaff(null);
-		setSelectedProcedure(null);
-		setBookingKind("administrative");
-		setError(null);
-		setSuccess(false);
-	};
-
-	const handleCreateBooking = async () => {
-		if (!selectedSlot || !selectedStaff) {
-			setError("Por favor completa fecha, horario y funcionario.");
-			return;
-		}
-
-		setLoading(true);
-		setError(null);
-		setSuccess(false);
-
-		try {
-			await orpcClient.admin.bookings.create({
-				slotId: selectedSlot,
-				staffUserId: selectedStaff,
-				kind: bookingKind,
-			});
-
-			setSuccess(true);
-			await loadBookings();
-
-			if (selectedDate) {
-				await loadSlots(selectedDate);
-			}
-
-			setTimeout(() => {
-				setModalOpen(false);
-				resetForm();
-			}, 1200);
-		} catch (createError) {
-			setError(
-				getErrorMessage(
-					createError,
-					"No se pudo crear la cita. Valida disponibilidad y permisos.",
-				),
-			);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const handleModalClose = () => {
-		setModalOpen(false);
-		resetForm();
-	};
 
 	const handleEventDrop = ({
 		eventId,
@@ -267,52 +118,6 @@ export function AdminCitasPage() {
 		);
 	};
 
-	const availableSlots = useMemo(
-		() =>
-			slots.filter(
-				(slot) =>
-					slot.status === "open" &&
-					(slot.remainingCapacity === null || slot.remainingCapacity > 0),
-			),
-		[slots],
-	);
-
-	const slotOptions = useMemo(
-		() =>
-			availableSlots.map((slot) => {
-				const capacityLabel =
-					slot.remainingCapacity === null
-						? "sin límite"
-						: `${slot.remainingCapacity} cupos`;
-
-				return {
-					value: slot.id,
-					label: `${slot.startTime.slice(0, 5)} - ${slot.endTime.slice(0, 5)} (${capacityLabel})`,
-				};
-			}),
-		[availableSlots],
-	);
-
-	const staffOptions = useMemo(
-		() =>
-			staffList
-				.filter((staff) => staff.isActive && staff.isAssignable && staff.user)
-				.map((staff) => ({
-					value: staff.userId,
-					label: staff.user?.name || staff.user?.email || staff.userId,
-				})),
-		[staffList],
-	);
-
-	const procedureOptions = useMemo(
-		() =>
-			procedures.map((procedure) => ({
-				value: procedure.id,
-				label: procedure.name || procedure.slug,
-			})),
-		[procedures],
-	);
-
 	const todayStr = formatDateLocal(new Date());
 	const stats = useMemo(() => {
 		const citasHoy = bookings.filter(
@@ -329,12 +134,7 @@ export function AdminCitasPage() {
 			(booking) => booking.status === "cancelled",
 		).length;
 
-		return {
-			citasHoy,
-			confirmadas,
-			pendientes,
-			canceladas,
-		};
+		return { citasHoy, confirmadas, pendientes, canceladas };
 	}, [bookings, todayStr]);
 
 	const scheduleChrome = {
@@ -588,24 +388,10 @@ export function AdminCitasPage() {
 
 			<NewBookingModal
 				opened={modalOpen}
-				onClose={handleModalClose}
-				loading={loading}
-				error={error}
-				success={success}
-				bookingKind={bookingKind}
-				onBookingKindChange={setBookingKind}
-				selectedProcedure={selectedProcedure}
-				onProcedureChange={setSelectedProcedure}
-				procedureOptions={procedureOptions}
-				selectedDate={selectedDate}
-				onDateChange={setSelectedDate}
-				selectedSlot={selectedSlot}
-				onSlotChange={setSelectedSlot}
-				slotOptions={slotOptions}
-				selectedStaff={selectedStaff}
-				onStaffChange={setSelectedStaff}
-				staffOptions={staffOptions}
-				onSubmit={handleCreateBooking}
+				onClose={() => setModalOpen(false)}
+				onSuccess={() => {
+					void loadBookings();
+				}}
 			/>
 		</Box>
 	);

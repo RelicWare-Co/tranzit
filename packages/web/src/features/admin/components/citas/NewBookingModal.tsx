@@ -1,113 +1,223 @@
-import { Alert, Box, LoadingOverlay, Select, Stack } from "@mantine/core";
-import { DatePickerInput } from "@mantine/dates";
-import {
-	AlertCircle,
-	CalendarDays,
-	CheckCircle2,
-	Clock,
-	FileText,
-	MapPin,
-	User,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { Alert, Box, LoadingOverlay, Stack } from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { useQuery } from "@tanstack/react-query";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	FormActionButton,
 	FormActions,
-	FormField,
 	PremiumModal,
 } from "#/features/admin/components";
-import { cx } from "#/shared/lib/cx";
+import { getErrorMessage } from "#/features/admin/components/errors";
+import { formatDateLocal } from "#/features/admin/components/dates";
+import { orpcClient } from "#/shared/lib/orpc-client";
 import type { BookingKind } from "./types";
+import { BookingTypeStep } from "./steps/BookingTypeStep";
+import { ProcedureStep } from "./steps/ProcedureStep";
+import { DateTimeStep } from "./steps/DateTimeStep";
+import { StaffStep } from "./steps/StaffStep";
 
 interface NewBookingModalProps {
 	opened: boolean;
 	onClose: () => void;
-	loading: boolean;
-	error: string | null;
-	success: boolean;
-	bookingKind: BookingKind;
-	onBookingKindChange: (value: BookingKind) => void;
-	selectedProcedure: string | null;
-	onProcedureChange: (value: string | null) => void;
-	procedureOptions: { value: string; label: string }[];
-	selectedDate: Date | null;
-	onDateChange: (value: Date | null) => void;
-	selectedSlot: string | null;
-	onSlotChange: (value: string | null) => void;
-	slotOptions: { value: string; label: string }[];
-	selectedStaff: string | null;
-	onStaffChange: (value: string | null) => void;
-	staffOptions: { value: string; label: string }[];
-	onSubmit: () => void;
+	onSuccess: () => void;
 }
 
 export function NewBookingModal({
 	opened,
 	onClose,
-	loading,
-	error,
-	success,
-	bookingKind,
-	onBookingKindChange,
-	selectedProcedure,
-	onProcedureChange,
-	procedureOptions,
-	selectedDate,
-	onDateChange,
-	selectedSlot,
-	onSlotChange,
-	slotOptions,
-	selectedStaff,
-	onStaffChange,
-	staffOptions,
-	onSubmit,
+	onSuccess,
 }: NewBookingModalProps) {
 	const [activeStep, setActiveStep] = useState<
 		"type" | "procedure" | "datetime" | "staff"
 	>("type");
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [success, setSuccess] = useState(false);
 
-	// Calcular pasos completados
-	const steps = useMemo(() => {
-		return {
+	const form = useForm({
+		mode: "uncontrolled",
+		initialValues: {
+			bookingKind: "administrative" as BookingKind,
+			procedureId: "",
+			date: null as Date | null,
+			slotId: "",
+			staffUserId: "",
+		},
+		validate: {
+			procedureId: (value, values) =>
+				values.bookingKind === "citizen" && !value
+					? "Seleccioná un trámite"
+					: null,
+			date: (value) => (!value ? "Seleccioná una fecha" : null),
+			slotId: (value) => (!value ? "Seleccioná un horario" : null),
+			staffUserId: (value) =>
+				!value ? "Seleccioná un funcionario" : null,
+		},
+	});
+
+	// Reset form when modal opens
+	useEffect(() => {
+		if (!opened) return;
+		form.reset();
+		setActiveStep("type");
+		setError(null);
+		setSuccess(false);
+		setLoading(false);
+	}, [opened]);
+
+	// Reset slot when date changes
+	useEffect(() => {
+		if (!opened) return;
+		form.setFieldValue("slotId", "");
+	}, [form.values.date]);
+
+	// Queries
+	const staffQuery = useQuery({
+		queryKey: ["admin", "citas", "staff-list"],
+		enabled: opened,
+		queryFn: async () =>
+			await orpcClient.admin.staff.list({ isActive: true }),
+	});
+
+	const proceduresQuery = useQuery({
+		queryKey: ["admin", "citas", "procedures-list"],
+		enabled: opened,
+		queryFn: async () =>
+			await orpcClient.admin.procedures.list({ isActive: true }),
+	});
+
+	const dateStr = form.values.date ? formatDateLocal(form.values.date) : "";
+
+	const slotsQuery = useQuery({
+		queryKey: ["admin", "citas", "slots", dateStr],
+		enabled: opened && !!dateStr,
+		queryFn: async () =>
+			await orpcClient.admin.schedule.slots.list({ date: dateStr }),
+	});
+
+	const staffOptions = useMemo(
+		() =>
+			(staffQuery.data ?? [])
+				.filter(
+					(staff) =>
+						staff.isActive &&
+						staff.isAssignable &&
+						staff.user,
+				)
+				.map((staff) => ({
+					value: staff.userId,
+					label: staff.user?.name || staff.user?.email || staff.userId,
+				})),
+		[staffQuery.data],
+	);
+
+	const procedureOptions = useMemo(
+		() =>
+			(proceduresQuery.data ?? []).map((procedure) => ({
+				value: procedure.id,
+				label: procedure.name || procedure.slug,
+			})),
+		[proceduresQuery.data],
+	);
+
+	const availableSlots = useMemo(
+		() =>
+			(slotsQuery.data?.slots ?? []).filter(
+				(slot) =>
+					slot.status === "open" &&
+					(slot.remainingCapacity === null ||
+						slot.remainingCapacity > 0),
+			),
+		[slotsQuery.data?.slots],
+	);
+
+	const slotOptions = useMemo(
+		() =>
+			availableSlots.map((slot) => {
+				const capacityLabel =
+					slot.remainingCapacity === null
+						? "sin límite"
+						: `${slot.remainingCapacity} cupos`;
+				return {
+					value: slot.id,
+					label: `${slot.startTime.slice(0, 5)} - ${slot.endTime.slice(0, 5)} (${capacityLabel})`,
+				};
+			}),
+		[availableSlots],
+	);
+
+	// Step state derived from form values
+	const values = form.getValues();
+	const steps = useMemo(
+		() => ({
 			type: { completed: true, current: activeStep === "type" },
 			procedure: {
-				completed: !!selectedProcedure,
+				completed: !!values.procedureId,
 				current: activeStep === "procedure",
 			},
 			datetime: {
-				completed: !!selectedDate && !!selectedSlot,
+				completed: !!values.date && !!values.slotId,
 				current: activeStep === "datetime",
 			},
-			staff: { completed: !!selectedStaff, current: activeStep === "staff" },
-		};
-	}, [
-		activeStep,
-		selectedProcedure,
-		selectedDate,
-		selectedSlot,
-		selectedStaff,
-	]);
+			staff: {
+				completed: !!values.staffUserId,
+				current: activeStep === "staff",
+			},
+		}),
+		[activeStep, values],
+	);
 
-	// Determinar paso actual basado en selecciones
-	const goToStep = (step: "type" | "procedure" | "datetime" | "staff") => {
-		setActiveStep(step);
-	};
-
-	// Progreso del formulario
 	const progress = useMemo(() => {
-		let completed = 1; // type siempre está seleccionado
-		if (selectedProcedure) completed++;
-		if (selectedDate && selectedSlot) completed++;
-		if (selectedStaff) completed++;
+		let completed = 1;
+		if (values.procedureId) completed++;
+		if (values.date && values.slotId) completed++;
+		if (values.staffUserId) completed++;
 		return (completed / 4) * 100;
-	}, [selectedProcedure, selectedDate, selectedSlot, selectedStaff]);
+	}, [values]);
 
 	const canSubmit =
-		selectedProcedure &&
-		selectedDate &&
-		selectedSlot &&
-		selectedStaff &&
+		values.procedureId &&
+		values.date &&
+		values.slotId &&
+		values.staffUserId &&
 		!loading;
+
+	const handleSubmit = async () => {
+		const validation = await form.validate();
+		if (validation.hasErrors) {
+			setError("Por favor completa todos los campos requeridos.");
+			return;
+		}
+
+		setLoading(true);
+		setError(null);
+		setSuccess(false);
+
+		try {
+			await orpcClient.admin.bookings.create({
+				slotId: values.slotId,
+				staffUserId: values.staffUserId,
+				kind: values.bookingKind,
+			});
+
+			setSuccess(true);
+			onSuccess();
+
+			setTimeout(() => {
+				onClose();
+			}, 1200);
+		} catch (createError) {
+			setError(
+				getErrorMessage(
+					createError,
+					"No se pudo crear la cita. Valida disponibilidad y permisos.",
+				),
+			);
+		} finally {
+			setLoading(false);
+		}
+	};
 
 	return (
 		<PremiumModal
@@ -124,7 +234,7 @@ export function NewBookingModal({
 					loaderProps={{ type: "dots", size: "md", color: "dark" }}
 				/>
 
-				{/* Barra de progreso */}
+				{/* Progress bar */}
 				<div className="mb-6">
 					<div className="flex justify-between text-xs font-medium text-zinc-500 mb-2">
 						<span>Progreso</span>
@@ -163,377 +273,39 @@ export function NewBookingModal({
 						</Alert>
 					)}
 
-					{/* Paso 1: Tipo de cita */}
-					<div
-						className={cx(
-							"rounded-xl border p-4 transition-all duration-200",
-							steps.type.current
-								? "border-zinc-300 bg-white shadow-sm"
-								: "border-zinc-200 bg-zinc-50/50",
-							steps.type.completed &&
-								!steps.type.current &&
-								"border-emerald-200",
-						)}
-					>
-						<div className="flex items-center gap-3 mb-3">
-							<div
-								className={cx(
-									"flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold transition-colors",
-									steps.type.completed
-										? "bg-emerald-100 text-emerald-700"
-										: "bg-zinc-100 text-zinc-600",
-								)}
-							>
-								{steps.type.completed ? <CheckCircle2 size={16} /> : "1"}
-							</div>
-							<div>
-								<div className="font-medium text-sm text-zinc-900">
-									Tipo de cita
-								</div>
-								<div className="text-xs text-zinc-500">
-									Selecciona el tipo de agendamiento
-								</div>
-							</div>
-						</div>
+					<BookingTypeStep
+						form={form}
+						isCurrent={steps.type.current}
+						isCompleted={steps.type.completed}
+						goToStep={setActiveStep}
+					/>
 
-						{steps.type.current && (
-							<div className="grid grid-cols-2 gap-3 mt-3">
-								<button
-									type="button"
-									onClick={() => onBookingKindChange("administrative")}
-									className={cx(
-										"flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
-										bookingKind === "administrative"
-											? "border-zinc-900 bg-zinc-50"
-											: "border-zinc-200 hover:border-zinc-300",
-									)}
-								>
-									<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100">
-										<FileText size={20} className="text-zinc-600" />
-									</div>
-									<span className="font-medium text-sm">Administrativa</span>
-									<span className="text-xs text-zinc-500">Reserva interna</span>
-								</button>
+					<ProcedureStep
+						form={form}
+						procedureOptions={procedureOptions}
+						isCurrent={steps.procedure.current}
+						isCompleted={steps.procedure.completed}
+						isPreviousCompleted={steps.type.completed}
+						goToStep={setActiveStep}
+					/>
 
-								<button
-									type="button"
-									onClick={() => onBookingKindChange("citizen")}
-									className={cx(
-										"flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200",
-										bookingKind === "citizen"
-											? "border-zinc-900 bg-zinc-50"
-											: "border-zinc-200 hover:border-zinc-300",
-									)}
-								>
-									<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100">
-										<User size={20} className="text-zinc-600" />
-									</div>
-									<span className="font-medium text-sm">Ciudadano</span>
-									<span className="text-xs text-zinc-500">
-										Atención al público
-									</span>
-								</button>
-							</div>
-						)}
+					<DateTimeStep
+						form={form}
+						slotOptions={slotOptions}
+						isCurrent={steps.datetime.current}
+						isCompleted={steps.datetime.completed}
+						isPreviousCompleted={steps.procedure.completed}
+						goToStep={setActiveStep}
+					/>
 
-						{!steps.type.current && (
-							<div className="mt-2 flex items-center gap-2">
-								<span className="text-sm text-zinc-600">
-									{bookingKind === "administrative"
-										? "Administrativa"
-										: "Ciudadano"}
-								</span>
-								<button
-									type="button"
-									onClick={() => goToStep("type")}
-									className="text-xs text-zinc-500 hover:text-zinc-700 underline"
-								>
-									Cambiar
-								</button>
-							</div>
-						)}
-					</div>
-
-					{/* Paso 2: Trámite */}
-					<button
-						type="button"
-						disabled={!steps.type.completed}
-						onClick={() => goToStep("procedure")}
-						className={cx(
-							"w-full text-left rounded-xl border p-4 transition-all duration-200",
-							steps.procedure.current
-								? "border-zinc-300 bg-white shadow-sm"
-								: "border-zinc-200 bg-zinc-50/50 hover:border-zinc-300",
-							steps.procedure.completed &&
-								!steps.procedure.current &&
-								"border-emerald-200",
-							!steps.type.completed && "opacity-50 cursor-not-allowed",
-						)}
-					>
-						<div className="flex items-center gap-3 mb-3">
-							<div
-								className={cx(
-									"flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold transition-colors",
-									steps.procedure.completed
-										? "bg-emerald-100 text-emerald-700"
-										: "bg-zinc-100 text-zinc-600",
-								)}
-							>
-								{steps.procedure.completed ? <CheckCircle2 size={16} /> : "2"}
-							</div>
-							<div>
-								<div className="font-medium text-sm text-zinc-900">Trámite</div>
-								<div className="text-xs text-zinc-500">
-									Selecciona el tipo de trámite
-								</div>
-							</div>
-						</div>
-
-						{steps.procedure.current && steps.type.completed && (
-							<FormField
-								label="Tipo de trámite"
-								helper="Selecciona el trámite que se va a realizar"
-								required
-							>
-								<Select
-									placeholder="Buscar trámite..."
-									value={selectedProcedure}
-									onChange={(val) => {
-										onProcedureChange(val);
-										if (val) goToStep("datetime");
-									}}
-									data={procedureOptions}
-									searchable
-									nothingFoundMessage="No se encontraron trámites"
-									radius="lg"
-									size="md"
-									leftSection={<FileText size={16} className="text-zinc-400" />}
-									className={cx(
-										"transition-all duration-200",
-										selectedProcedure && "border-emerald-500/50",
-									)}
-								/>
-							</FormField>
-						)}
-
-						{!steps.procedure.current && steps.procedure.completed && (
-							<div className="mt-2 flex items-center gap-2">
-								<span className="text-sm text-zinc-600">
-									{procedureOptions.find((p) => p.value === selectedProcedure)
-										?.label || "Trámite seleccionado"}
-								</span>
-								<button
-									type="button"
-									onClick={() => goToStep("procedure")}
-									className="text-xs text-zinc-500 hover:text-zinc-700 underline"
-								>
-									Cambiar
-								</button>
-							</div>
-						)}
-					</button>
-
-					{/* Paso 3: Fecha y hora */}
-					<button
-						type="button"
-						disabled={!steps.procedure.completed}
-						onClick={() => goToStep("datetime")}
-						className={cx(
-							"w-full text-left rounded-xl border p-4 transition-all duration-200",
-							steps.datetime.current
-								? "border-zinc-300 bg-white shadow-sm"
-								: "border-zinc-200 bg-zinc-50/50 hover:border-zinc-300",
-							steps.datetime.completed &&
-								!steps.datetime.current &&
-								"border-emerald-200",
-							!steps.procedure.completed && "opacity-50 cursor-not-allowed",
-						)}
-					>
-						<div className="flex items-center gap-3 mb-3">
-							<div
-								className={cx(
-									"flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold transition-colors",
-									steps.datetime.completed
-										? "bg-emerald-100 text-emerald-700"
-										: "bg-zinc-100 text-zinc-600",
-								)}
-							>
-								{steps.datetime.completed ? <CheckCircle2 size={16} /> : "3"}
-							</div>
-							<div>
-								<div className="font-medium text-sm text-zinc-900">
-									Fecha y hora
-								</div>
-								<div className="text-xs text-zinc-500">
-									Selecciona el día y horario disponible
-								</div>
-							</div>
-						</div>
-
-						{steps.datetime.current && steps.procedure.completed && (
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-								<FormField
-									label="Fecha"
-									helper="Selecciona una fecha disponible"
-									required
-								>
-									<DatePickerInput
-										placeholder="Seleccionar fecha"
-										value={selectedDate}
-										onChange={(val) => {
-											const dateValue = typeof val === "string" ? null : val;
-											onDateChange(dateValue);
-											onSlotChange(null); // Reset slot when date changes
-										}}
-										minDate={new Date()}
-										radius="lg"
-										size="md"
-										leftSection={
-											<CalendarDays size={16} className="text-zinc-400" />
-										}
-										className={cx(
-											"transition-all duration-200",
-											selectedDate && "border-emerald-500/50",
-										)}
-									/>
-								</FormField>
-
-								<FormField
-									label="Horario"
-									helper={
-										!selectedDate
-											? "Primero selecciona una fecha"
-											: slotOptions.length === 0
-												? "No hay horarios disponibles para esta fecha"
-												: "Selecciona un horario"
-									}
-									required
-								>
-									<Select
-										placeholder={
-											!selectedDate
-												? "Selecciona fecha primero"
-												: "Seleccionar horario"
-										}
-										value={selectedSlot}
-										onChange={(val) => {
-											onSlotChange(val);
-											if (val) goToStep("staff");
-										}}
-										data={slotOptions}
-										disabled={!selectedDate || slotOptions.length === 0}
-										nothingFoundMessage="No hay horarios disponibles"
-										radius="lg"
-										size="md"
-										leftSection={<Clock size={16} className="text-zinc-400" />}
-										className={cx(
-											"transition-all duration-200",
-											selectedSlot && "border-emerald-500/50",
-										)}
-									/>
-								</FormField>
-							</div>
-						)}
-
-						{!steps.datetime.current && steps.datetime.completed && (
-							<div className="mt-2 flex items-center gap-2">
-								<span className="text-sm text-zinc-600">
-									{selectedDate?.toLocaleDateString("es-CO", {
-										weekday: "long",
-										year: "numeric",
-										month: "long",
-										day: "numeric",
-									})}
-									{" - "}
-									{slotOptions.find((s) => s.value === selectedSlot)?.label}
-								</span>
-								<button
-									type="button"
-									onClick={() => goToStep("datetime")}
-									className="text-xs text-zinc-500 hover:text-zinc-700 underline"
-								>
-									Cambiar
-								</button>
-							</div>
-						)}
-					</button>
-
-					{/* Paso 4: Funcionario */}
-					<button
-						type="button"
-						disabled={!steps.datetime.completed}
-						onClick={() => goToStep("staff")}
-						className={cx(
-							"w-full text-left rounded-xl border p-4 transition-all duration-200",
-							steps.staff.current
-								? "border-zinc-300 bg-white shadow-sm"
-								: "border-zinc-200 bg-zinc-50/50 hover:border-zinc-300",
-							steps.staff.completed &&
-								!steps.staff.current &&
-								"border-emerald-200",
-							!steps.datetime.completed && "opacity-50 cursor-not-allowed",
-						)}
-					>
-						<div className="flex items-center gap-3 mb-3">
-							<div
-								className={cx(
-									"flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold transition-colors",
-									steps.staff.completed
-										? "bg-emerald-100 text-emerald-700"
-										: "bg-zinc-100 text-zinc-600",
-								)}
-							>
-								{steps.staff.completed ? <CheckCircle2 size={16} /> : "4"}
-							</div>
-							<div>
-								<div className="font-medium text-sm text-zinc-900">
-									Funcionario
-								</div>
-								<div className="text-xs text-zinc-500">
-									Asigna un encargado para la cita
-								</div>
-							</div>
-						</div>
-
-						{steps.staff.current && steps.datetime.completed && (
-							<FormField
-								label="Encargado"
-								helper="Selecciona el funcionario que atenderá la cita"
-								required
-							>
-								<Select
-									placeholder="Buscar funcionario..."
-									value={selectedStaff}
-									onChange={onStaffChange}
-									data={staffOptions}
-									searchable
-									nothingFoundMessage="No se encontraron funcionarios"
-									radius="lg"
-									size="md"
-									leftSection={<MapPin size={16} className="text-zinc-400" />}
-									className={cx(
-										"transition-all duration-200",
-										selectedStaff && "border-emerald-500/50",
-									)}
-								/>
-							</FormField>
-						)}
-
-						{!steps.staff.current && steps.staff.completed && (
-							<div className="mt-2 flex items-center gap-2">
-								<span className="text-sm text-zinc-600">
-									{staffOptions.find((s) => s.value === selectedStaff)?.label}
-								</span>
-								<button
-									type="button"
-									onClick={() => goToStep("staff")}
-									className="text-xs text-zinc-500 hover:text-zinc-700 underline"
-								>
-									Cambiar
-								</button>
-							</div>
-						)}
-					</button>
+					<StaffStep
+						form={form}
+						staffOptions={staffOptions}
+						isCurrent={steps.staff.current}
+						isCompleted={steps.staff.completed}
+						isPreviousCompleted={steps.datetime.completed}
+						goToStep={setActiveStep}
+					/>
 
 					<FormActions align="right">
 						<FormActionButton
@@ -546,7 +318,7 @@ export function NewBookingModal({
 						<FormActionButton
 							variant="primary"
 							isLoading={loading}
-							onClick={onSubmit}
+							onClick={() => void handleSubmit()}
 							disabled={!canSubmit}
 							leftSection={<CheckCircle2 size={18} strokeWidth={1.5} />}
 						>
