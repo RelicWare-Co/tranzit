@@ -29,7 +29,7 @@ import {
 	Search,
 	XCircle,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { orpcClient } from "#/shared/lib/orpc-client";
 import { AdminPageHeader } from "#/features/admin/components/-AdminPageHeader";
 import { adminUi } from "#/features/admin/components/-admin-ui";
@@ -543,10 +543,9 @@ export function AdminAuditoriaPage() {
 										</Table.Tr>
 									</Table.Thead>
 									<Table.Tbody>
-										{auditQuery.data.entries.map((entry) => (
-											<>
-												<Table.Tr
-													key={entry.id}
+												{auditQuery.data.entries.map((entry) => (
+													<Fragment key={entry.id}>
+														<Table.Tr
 													style={{
 														background:
 															expandedRowId === entry.id
@@ -664,9 +663,9 @@ export function AdminAuditoriaPage() {
 															</Paper>
 														</Collapse>
 													</Table.Td>
-												</Table.Tr>
-											</>
-										))}
+													</Table.Tr>
+													</Fragment>
+											))}
 									</Table.Tbody>
 								</Table>
 							</Table.ScrollContainer>
