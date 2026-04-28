@@ -1,3 +1,4 @@
+import { PinInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -29,86 +30,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
 	return fallback;
 }
 
-// Simple PinInput component using native inputs
-function PinInput({
-	length,
-	value,
-	onChange,
-	disabled,
-}: {
-	length: number;
-	value: string;
-	onChange: (value: string) => void;
-	disabled?: boolean;
-}) {
-	const handleChange = (index: number, digit: string) => {
-		const newValue = value.split("");
-		newValue[index] = digit;
-		const newString = newValue.join("").slice(0, length);
-		onChange(newString);
-
-		// Auto-focus next input
-		if (digit && index < length - 1) {
-			const nextInput = document.getElementById(`pin-${index + 1}`);
-			nextInput?.focus();
-		}
-	};
-
-	const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-		if (e.key === "Backspace" && !value[index] && index > 0) {
-			const prevInput = document.getElementById(`pin-${index - 1}`);
-			prevInput?.focus();
-		}
-	};
-
-	return (
-		<div
-			style={{
-				display: "flex",
-				gap: "var(--space-3)",
-				justifyContent: "center",
-			}}
-		>
-			{Array.from({ length }).map((_, i) => (
-				<input
-					key={`pin-${value[i] ?? i}`}
-					id={`pin-${i}`}
-					type="text"
-					inputMode="numeric"
-					maxLength={1}
-					value={value[i] || ""}
-					disabled={disabled}
-					onChange={(e) => handleChange(i, e.target.value.replace(/\D/g, ""))}
-					onKeyDown={(e) => handleKeyDown(i, e)}
-					style={{
-						width: "3rem",
-						height: "3.5rem",
-						textAlign: "center",
-						fontSize: "var(--text-xl)",
-						fontFamily: "var(--font-display)",
-						fontWeight: 600,
-						border: `2px solid ${value[i] ? "var(--accent-default)" : "var(--border-default)"}`,
-						borderRadius: "var(--radius-lg)",
-						backgroundColor: "var(--bg-elevated)",
-						color: "var(--text-primary)",
-						transition: "all var(--duration-fast) var(--ease-out-quart)",
-					}}
-					onFocus={(e) => {
-						e.target.style.borderColor = "var(--accent-default)";
-						e.target.style.boxShadow =
-							"0 0 0 3px oklch(from var(--accent-default) l c h / 0.12)";
-					}}
-					onBlur={(e) => {
-						e.target.style.borderColor = value[i]
-							? "var(--accent-default)"
-							: "var(--border-default)";
-						e.target.style.boxShadow = "none";
-					}}
-				/>
-			))}
-		</div>
-	);
-}
 
 function LoginPage() {
 	const navigate = useNavigate();
@@ -344,12 +265,18 @@ function LoginPage() {
 								>
 									Código de verificación
 								</label>
-								<PinInput
-									length={6}
-									value={otpCode}
-									onChange={setOtpCode}
-									disabled={verifyOtpMutation.isPending}
-								/>
+						<PinInput
+							length={6}
+							value={otpCode}
+							onChange={setOtpCode}
+							disabled={verifyOtpMutation.isPending}
+							type="number"
+							inputMode="numeric"
+							oneTimeCode
+							gap="md"
+							size="lg"
+							style={{ justifyContent: 'center' }}
+						/>
 							</div>
 
 							<div style={{ display: "flex", gap: "var(--space-3)" }}>
