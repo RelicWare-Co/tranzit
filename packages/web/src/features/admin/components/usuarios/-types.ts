@@ -1,4 +1,4 @@
-type OrpcClient = typeof import("../../../lib/orpc-client").orpcClient;
+type OrpcClient = typeof import("#/shared/lib/orpc-client").orpcClient;
 
 export type StaffProfile = Awaited<
 	ReturnType<OrpcClient["admin"]["staff"]["list"]>
