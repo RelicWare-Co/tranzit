@@ -21,7 +21,7 @@ import {
 	getAuditEvent,
 } from "./features/audit/audit-query.service";
 import { db, schema } from "./lib/db";
-import { createTranzitRpcRouter } from "./orpc/router";
+import { createTranzitRpcRouter } from "./shared/orpc/router";
 
 // ---------------------------------------------------------------------------
 // Test Helpers

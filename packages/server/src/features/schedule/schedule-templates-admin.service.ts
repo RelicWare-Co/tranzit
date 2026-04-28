@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
-import { throwRpcError } from "../../orpc/shared";
+import { throwRpcError } from "../../shared/orpc";
 import { buildScheduleSummary, createAuditEvent } from "../audit/audit.service";
 import {
 	isValidTimeFormat as isValidScheduleTimeFormat,

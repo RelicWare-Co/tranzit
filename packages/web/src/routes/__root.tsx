@@ -21,9 +21,9 @@ import {
 	useRouterState,
 } from "@tanstack/react-router";
 import { ChevronDown, LogOut, User } from "lucide-react";
-import { useAuth } from "../lib/AuthContext";
+import { useAuth } from "#/features/auth/components/AuthContext";
 
-import "../styles.css";
+import "#/shared/styles/styles.css";
 
 export const Route = createRootRoute({
 	component: RootComponent,

@@ -11,11 +11,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { BarChart3, Calendar, ClipboardList, Users } from "lucide-react";
-import { useAuth } from "../../lib/AuthContext";
-import { orpcClient } from "../../lib/orpc-client";
-import { AdminPageHeader } from "./_shared/-AdminPageHeader";
-import { adminUi } from "./_shared/-admin-ui";
-import { formatDateLocal } from "./_shared/-dates";
+import { useAuth } from "#/features/auth/components/AuthContext";
+import { orpcClient } from "#/shared/lib/orpc-client";
+import { AdminPageHeader } from "#/features/admin/components/-AdminPageHeader";
+import { adminUi } from "#/features/admin/components/-admin-ui";
+import { formatDateLocal } from "#/features/admin/components/-dates";
 
 export const Route = createFileRoute("/admin/")({
 	component: AdminDashboard,

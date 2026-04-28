@@ -10,9 +10,9 @@ import {
 	Card,
 	CardContent,
 	Input,
-} from "../components/ui";
-import { useAuth } from "../lib/AuthContext";
-import { orpcClient } from "../lib/orpc-client";
+} from "#/shared/components/ui";
+import { useAuth } from "#/features/auth/components/AuthContext";
+import { orpcClient } from "#/shared/lib/orpc-client";
 import classes from "./agendar.module.css";
 
 export const Route = createFileRoute("/agendar")({

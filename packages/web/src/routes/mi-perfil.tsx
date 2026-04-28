@@ -18,8 +18,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, CalendarClock, Mail, Phone, User } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { useAuth } from "../lib/AuthContext";
-import { orpcClient } from "../lib/orpc-client";
+import { useAuth } from "#/features/auth/components/AuthContext";
+import { orpcClient } from "#/shared/lib/orpc-client";
 
 export const Route = createFileRoute("/mi-perfil")({
 	component: ProfilePage,

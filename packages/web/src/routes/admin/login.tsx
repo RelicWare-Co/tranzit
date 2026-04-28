@@ -13,9 +13,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, Building2, Lock, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Badge } from "../../components/ui";
-import { useAuth } from "../../lib/AuthContext";
-import { orpc } from "../../lib/orpc-client";
+import { Badge } from "#/shared/components/ui";
+import { useAuth } from "#/features/auth/components/AuthContext";
+import { orpc } from "#/shared/lib/orpc-client";
 
 export const Route = createFileRoute("/admin/login")({
 	component: AdminLoginPage,

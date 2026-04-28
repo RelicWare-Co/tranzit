@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
-import { parseBooleanLike, throwRpcError } from "../../orpc/shared";
+import { parseBooleanLike, throwRpcError } from "../../shared/orpc";
 
 export async function listReservationSeries(input?: {
 	isActive?: boolean | string;

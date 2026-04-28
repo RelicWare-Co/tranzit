@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { logger } from "../../lib/logger";
-import { throwRpcError } from "../../orpc/shared";
+import { throwRpcError } from "../../shared/orpc";
 
 /**
  * Valid status values for service requests.

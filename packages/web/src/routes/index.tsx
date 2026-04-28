@@ -15,8 +15,8 @@ import {
 	Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button, Card } from "../components/ui";
-import { useAuth } from "../lib/AuthContext";
+import { Badge, Button, Card } from "#/shared/components/ui";
+import { useAuth } from "#/features/auth/components/AuthContext";
 
 export const Route = createFileRoute("/")({
 	component: LandingPage,

@@ -12,7 +12,7 @@ import {
 	throwCapacityConflict,
 	throwIdempotencyAwareError,
 	throwRpcError,
-} from "../../orpc/shared";
+} from "../../shared/orpc";
 import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import type { CapacityConflict } from "../bookings/capacity.types";
 import {

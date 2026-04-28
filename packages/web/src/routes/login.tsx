@@ -4,8 +4,8 @@ import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Input } from "../components/ui";
-import { useAuth } from "../lib/AuthContext";
+import { Alert, Button, Card, Input } from "#/shared/components/ui";
+import { useAuth } from "#/features/auth/components/AuthContext";
 
 export const Route = createFileRoute("/login")({
 	component: LoginPage,

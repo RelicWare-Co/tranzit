@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
-import { throwRpcError } from "../../orpc/shared";
+import { throwRpcError } from "../../shared/orpc";
 
 export async function getReservationInstance(bookingId: string) {
 	const booking = await db.query.booking.findFirst({
