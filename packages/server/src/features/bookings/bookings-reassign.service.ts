@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
-import { throwRpcError } from "../../orpc/shared";
+import { throwRpcError } from "../../shared/orpc";
 import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import {
 	executeBulkReassignments,

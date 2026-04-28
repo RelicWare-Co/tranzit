@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
 import { logger } from "../../lib/logger";
-import { throwRpcError } from "../../orpc/shared";
+import { throwRpcError } from "../../shared/orpc";
 import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import { sendHoldExpirationEmail } from "../notifications/notification.service";
 import type { TemplateContext } from "../notifications/notification-templates";

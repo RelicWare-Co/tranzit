@@ -1,33 +1,24 @@
-# Mission services manifest
-# Single source of truth for all commands and services
-
 commands:
-  test: bun run test
-  lint: bun run lint
-  check: bun run check
-  format: bun run format
-  typecheck: bunx tsc --noEmit
-  typecheck-server: cd server && bunx tsc --noEmit
+  install: bun install
   build: bun run build
+  dev: bun run dev
+  dev:server: bun run dev:server
+  lint: bun run lint
+  format: bun run format
+  check: bun run check
+  test: bun run test
 
 services:
-  frontend:
-    start: bun run dev
-    stop: lsof -ti :3000 | xargs -r kill
+  web:
+    start: cd packages/web && bun run dev
+    stop: lsof -ti :3000 | xargs kill 2>/dev/null || true
     healthcheck: curl -sf http://localhost:3000
     port: 3000
     depends_on: []
 
-  backend:
-    start: cd server && bun run dev
-    stop: lsof -ti :3001 | xargs -r kill
+  api:
+    start: bun run dev:server
+    stop: lsof -ti :3001 | xargs kill 2>/dev/null || true
     healthcheck: curl -sf http://localhost:3001
     port: 3001
-    depends_on: []
-
-  maildev:
-    start: bun run maildev
-    stop: lsof -ti :1025 | xargs -r kill; lsof -ti :1080 | xargs -r kill
-    healthcheck: curl -sf http://localhost:1080
-    port: 1080
     depends_on: []

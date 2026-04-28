@@ -1,3 +1,13 @@
+<!-- intent-skills:start -->
+## Skill Loading
+
+Before substantial work:
+- Skill check: run `bunx @tanstack/intent@latest list`, or use skills already listed in context.
+- Skill guidance: if one local skill clearly matches the task, run `bunx @tanstack/intent@latest load <package>#<skill>` and follow the returned `SKILL.md`.
+- Monorepos: when working across packages, run the skill check from the workspace root and prefer the local skill for the package being changed.
+- Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
+<!-- intent-skills:end -->
+
 # AGENTS.md
 
 ## Proposito
@@ -118,8 +128,8 @@ tranzit/
 
 Frontend (`packages/web/`):
 - `vite.config.ts`: proxy local para `/api/auth` y `/api/rpc`
-- `src/main.tsx`: monta Mantine, AuthProvider y RouterProvider
-- `src/lib/auth-client.ts`: cliente Better Auth del frontend
+- `src/app/main.tsx`: monta Mantine, AuthProvider y RouterProvider
+- `src/shared/lib/auth-client.ts`: cliente Better Auth del frontend
 - `src/lib/AuthContext.tsx`: wrapper de sesion y login/logout para React
 - `src/routes/`: rutas actuales (file-based routing)
 - `src/routeTree.gen.ts`: archivo generado por TanStack Router
@@ -144,6 +154,113 @@ Locales no trackeados:
 - `packages/server/sqlite.db`
 - `packages/server/*.db-shm`
 - `packages/server/*.db-wal`
+
+## Convenciones de estructura de archivos
+
+**NO** crees archivos donde se te ocurra. Sigue estas reglas fuertes:
+
+### Frontend (`packages/web/src/`)
+
+```
+src/
+├── app/                    # Entry point y setup global
+│   ├── main.tsx           # Punto de entrada
+│   └── ...                # Router, providers globales
+├── routes/                # TANSTACK ROUTER FILE-BASED
+│   ├── __root.tsx         # Layout raiz
+│   ├── index.tsx          # Landing
+│   ├── login.tsx          # Login ciudadano
+│   ├── agendar.tsx        # Wizard de citas
+│   ├── mi-perfil.tsx      # Perfil ciudadano
+│   └── admin/             # Rutas administrativas
+│       ├── route.tsx      # Layout admin
+│       ├── index.tsx      # Dashboard
+│       ├── login.tsx      # Login admin
+│       ├── citas.tsx      # Route file (1 line, importa page)
+│       ├── tramites.tsx   # Route file
+│       └── ...            # Otras rutas admin
+├── features/              # DOMINIO / FEATURES
+│   ├── auth/
+│   │   └── components/
+│   │       └── AuthContext.tsx
+│   ├── admin/
+│   │   └── components/    # Componentes admin compartidos
+│   │       ├── -AdminLayout.tsx
+│   │       ├── -AdminPageHeader.tsx
+│   │       ├── citas/     # Pages y componentes de citas
+│   │       ├── tramites/  # Pages y componentes de tramites
+│   │       └── ...        # Un directorio por submodulo admin
+│   ├── citizen/
+│   │   └── components/    # Componentes del portal ciudadano
+│   ├── bookings/
+│   └── schedule/
+└── shared/                # CODIGO COMPARTIDO
+    ├── components/ui/     # UI primitives (Button, Card, Input, etc)
+    ├── lib/              # Clientes, utilidades, schemas
+    │   ├── auth-client.ts
+    │   ├── orpc-client.ts
+    │   ├── query-client.ts
+    │   └── schemas/       # Zod schemas compartidos
+    ├── styles/            # CSS global, tokens, globals
+    └── types/             # Tipos globales del frontend
+```
+
+**Reglas para frontend:**
+- **Rutas** (`routes/`): SOLO archivos de ruta de TanStack Router. Cada ruta debe ser un barrel de 1-3 lineas que importa el componente page desde `features/`.
+- **Features** (`features/`): Un directorio por dominio de negocio. Los componentes pages van en subdirectorios (ej: `features/admin/components/citas/`).
+- **Shared** (`shared/`): UI primitives, clientes HTTP, utilidades puras, tipos globales. Nunca importa desde `features/` ni `routes/`.
+- **Imports**: Usa aliases absolutos (`#/shared/...`, `#/features/...`). Evita imports relativos (`../../`).
+
+### Backend (`packages/server/src/`)
+
+```
+src/
+├── app/
+│   ├── index.ts           # Entry point
+│   └── app.ts             # Composicion Hono
+├── features/              # DOMINIO / FEATURES
+│   ├── auth/
+│   │   ├── router.ts      # Router oRPC
+│   │   ├── config.ts      # Better Auth config
+│   │   └── mailer.ts      # Servicio de correo
+│   ├── bookings/
+│   │   ├── router.ts      # Router oRPC
+│   │   ├── *.service.ts   # Servicios de dominio
+│   │   └── types.ts       # Tipos del dominio
+│   ├── schedule/
+│   ├── staff/
+│   ├── reservations/
+│   ├── citizen/
+│   ├── audit/
+│   └── notifications/
+├── db/
+│   ├── schema.ts          # Drizzle schema
+│   └── SCHEMA.md          # Documentacion del modelo
+├── middleware/            # Middleware cross-cutting
+│   ├── auth.ts
+│   ├── cors.ts
+│   └── session.ts
+├── shared/                # CODIGO COMPARTIDO
+│   ├── orpc/             # Router oRPC global, context, guards
+│   ├── types/            # Tipos compartidos
+│   └── schemas/          # Schemas Zod compartidos
+└── lib/                   # INFRAESTRUCTURA
+    ├── db.ts             # Cliente libsql + Drizzle
+    ├── env.ts            # Variables de entorno
+    └── logger.ts         # Logger
+```
+
+**Reglas para backend:**
+- **Features** (`features/`): Un directorio por dominio. Cada feature contiene su router oRPC, servicios, y tipos. NO crees carpetas genericas como `services/` o `controllers/`.
+- **Shared** (`shared/`): Codigo compartido entre features (guards oRPC, utilidades, tipos globales). Nunca importa desde `features/`.
+- **Lib** (`lib/`): Infraestructura pura (DB, env, logger). No contiene logica de negocio.
+- **Middleware** (`middleware/`): Middleware de Hono cross-cutting.
+
+**Regla de oro**: Si no sabes donde poner un archivo, preguntate:
+1. ¿Es una ruta de TanStack Router? → `routes/`
+2. ¿Es logica de un dominio especifico? → `features/<dominio>/`
+3. ¿Es compartido entre multiples dominios? → `shared/`
+4. ¿Es infraestructura/infra? → `lib/`
 
 ## Comandos utiles
 

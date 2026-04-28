@@ -1,0 +1,45 @@
+{
+  "featureId": "admin-citas-redesign",
+  "reviewedAt": "2026-04-20T08:15:00.000Z",
+  "commitId": "f2ee9c3",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation fully covers all expected behaviors. AdminCitasPage now has AdminPageHeader, stats grid with lucide-react icons, improved calendar styling with CSS tokens, and a step-based NewBookingModal. The worker followed good practices by reading existing design system files (globals.css, design-tokens.css, -admin-ui.ts) before making changes.",
+    "issues": [
+      {
+        "file": "packages/web/src/routes/admin/citas/-BookingStatsGrid.tsx",
+        "line": 65,
+        "severity": "non_blocking",
+        "description": "The 'pendientes' stat filters for status 'held' or 'hold'. If booking statuses use different naming (e.g., 'pending', 'unconfirmed'), this may not capture all pending bookings. However, this matches the backend API contract and is consistent with the prior implementation."
+      },
+      {
+        "file": "packages/web/src/routes/admin/citas/admin-schedule.css",
+        "line": 59,
+        "severity": "non_blocking",
+        "description": "Uses oklch() for violet event color directly instead of a CSS variable token. This creates a slight inconsistency with other colors which use var(--error-50), var(--warning-50) etc. If design tokens get updated, violet would not reflect those changes. However, the hardcoded oklch values ensure visual consistency."
+      },
+      {
+        "file": "packages/web/src/routes/admin/citas/-AdminCitasPage.tsx",
+        "line": 85,
+        "severity": "non_blocking",
+        "description": "The event title construction uses fallback chain: procedureName || booking.request?.procedure?.slug || 'Sin asignar'. For administrative bookings, the title correctly shows '[Admin] staffName'. For citizen bookings, it shows 'procedureName — staffName'. This is appropriate but note that if booking.request is null for administrative bookings, the fallback to 'Sin asignar' would never be reached due to the kind === 'administrative' check coming first."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The feature specifies skillName 'impeccable-admin-worker' but the skill file does not exist at '.factory/skills/impeccable-admin-worker/SKILL.md'. The worker proceeded using the AGENTS.md instructions and implicit design direction instead. This is acceptable as the worker delivered quality work, but the skill should either be created or the feature should reference an existing skill.",
+      "evidence": "Feature has skillName 'impeccable-admin-worker' but ls .factory/skills/ shows no such directory"
+    },
+    {
+      "area": "conventions",
+      "observation": "The commit modifies many files beyond the citas feature scope: agendar.tsx, agendar.module.css, index.tsx, login.tsx, __root.tsx, and new UI component files (Alert.tsx, Badge.tsx, Button.tsx, Card.tsx, Input.tsx). While these changes may be related to the broader dashboard-citas-usuarios milestone, the admin-citas-redesign feature only touched citas-related files. This makes the commit scope larger than necessary for the feature being reviewed.",
+      "evidence": "git show f2ee9c3 --stat shows 19 files changed including agendar.tsx (1593 lines), index.tsx (1982 lines), etc."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Feature implementation passes scrutiny. All expected behaviors are implemented: stats grid with icons, calendar with navigation/view switching, event colors, floating 'Nueva cita' button, and step-based modal with form fields. Code quality is good with proper use of design tokens. Two minor observations: skill file missing (but worker delivered quality work anyway), and commit scope includes files beyond this feature (likely due to milestone batch commit)."
+}

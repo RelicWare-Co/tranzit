@@ -1,0 +1,41 @@
+{
+  "milestone": "dashboard-citas-usuarios",
+  "round": 10,
+  "status": "pass",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
+    "typecheck": { "passed": true, "command": "cd packages/server && bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "failedFeatures": [],
+    "note": "Re-run (round 10). Validators pass. admin-citas-redesign (round 8), admin-usuarios-redesign (round 8), admin-dashboard-datasource-fix (this round) all reviewed and pass. admin-dashboard-redesign blocking issue fully resolved."
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [
+    {
+      "target": "library/architecture.md",
+      "description": "Added note about admin.bookings.list API relation behavior: it populates slot, staff, and (after fix d4b5c6b) request relations. Before the fix, only slot and staff were populated, causing dashboard to show staff email instead of citizen name.",
+      "sourceFeature": "admin-dashboard-datasource-fix"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add guidance on commit size: prefer small, focused commits per feature. The admin-citas-redesign commit bundled 19 files with unrelated changes (routes, styles, components) making it hard to isolate feature changes during review.",
+      "evidence": "admin-citas-redesign review found git commit f2ee9c3 had 4248 insertions/2747 deletions across 19 unrelated files.",
+      "isSystemic": true
+    },
+    {
+      "target": "library/architecture.md",
+      "suggestion": "Document CSS design token coverage: error/warning/info color scales only go up to *-600 in design-tokens.css. Components referencing *-700 tokens (e.g., --error-700) will fall back to browser defaults.",
+      "evidence": "admin-citas-redesign referenced --error-700, --warning-700, --info-700 in admin-schedule.css but these tokens are not defined.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/dashboard-citas-usuarios/scrutiny/synthesis.json"
+}

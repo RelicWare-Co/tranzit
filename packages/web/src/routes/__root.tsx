@@ -1,6 +1,10 @@
+/**
+ * TRAZIT Root Layout
+ * Unified navigation and layout shell
+ */
+
 import {
 	AppShell,
-	Avatar,
 	Box,
 	Container,
 	Group,
@@ -17,56 +21,42 @@ import {
 	useRouterState,
 } from "@tanstack/react-router";
 import { ChevronDown, LogOut, User } from "lucide-react";
-import { useAuth } from "../lib/AuthContext";
+import { useAuth } from "#/features/auth/components/AuthContext";
 
-import "../styles.css";
+import "#/shared/styles/styles.css";
 
 export const Route = createRootRoute({
 	component: RootComponent,
 });
 
-// Glass pill navigation item
-function NavPill({
-	label,
-	to,
-	isActive,
-}: {
+// ========================================
+// NAVIGATION COMPONENTS
+// ========================================
+
+interface NavPillProps {
 	label: string;
 	to: string;
 	isActive: boolean;
-}) {
+}
+
+function NavPill({ label, to, isActive }: NavPillProps) {
 	return (
 		<Link
 			to={to}
-			style={{
-				textDecoration: "none",
-				padding: "10px 20px",
-				borderRadius: "9999px",
-				fontWeight: 600,
-				fontSize: "14px",
-				letterSpacing: "-0.2px",
-				color: isActive ? "#111827" : "#6b7280",
-				backgroundColor: isActive ? "#f3f4f6" : "transparent",
-				transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-				display: "inline-block",
-			}}
-			onMouseEnter={(e) => {
-				if (!isActive) {
-					e.currentTarget.style.backgroundColor = "#f9fafb";
-					e.currentTarget.style.color = "#111827";
-				}
-			}}
-			onMouseLeave={(e) => {
-				if (!isActive) {
-					e.currentTarget.style.backgroundColor = "transparent";
-					e.currentTarget.style.color = "#6b7280";
-				}
-			}}
+			className={`px-5 py-2.5 rounded-full text-sm font-semibold tracking-tight transition-all duration-200 ${
+				isActive
+					? "bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+					: "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
+			}`}
 		>
 			{label}
 		</Link>
 	);
 }
+
+// ========================================
+// USER MENU
+// ========================================
 
 function UserMenu() {
 	const { user, logout, isAuthenticated } = useAuth();
@@ -77,31 +67,11 @@ function UserMenu() {
 		return (
 			<Link
 				to="/login"
-				style={{
-					textDecoration: "none",
-					padding: "10px 24px",
-					borderRadius: "9999px",
-					fontWeight: 600,
-					fontSize: "14px",
-					letterSpacing: "-0.2px",
-					color: "#111827",
-					backgroundColor: isProfileActive ? "#fef2f2" : "#ffffff",
-					border: isProfileActive
-						? "1.5px solid #e03131"
-						: "1.5px solid #e5e7eb",
-					boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-					transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-					display: "inline-flex",
-					alignItems: "center",
-				}}
-				onMouseEnter={(e) => {
-					e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)";
-					e.currentTarget.style.transform = "translateY(-1px)";
-				}}
-				onMouseLeave={(e) => {
-					e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-					e.currentTarget.style.transform = "translateY(0)";
-				}}
+				className={`inline-flex items-center px-6 py-2.5 rounded-full font-semibold text-sm tracking-tight transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${
+					isProfileActive
+						? "bg-[var(--brand-50)] border-2 border-[var(--accent-default)] text-[var(--text-primary)]"
+						: "bg-white border-2 border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--border-strong)]"
+				}`}
 			>
 				Iniciar Sesión
 			</Link>
@@ -118,162 +88,53 @@ function UserMenu() {
 		: user.email?.[0].toUpperCase() || "U";
 
 	return (
-		<Menu
-			position="bottom-end"
-			offset={8}
-			withArrow
-			arrowPosition="center"
-			styles={{
-				dropdown: {
-					backgroundColor: "rgba(255, 255, 255, 0.95)",
-					backdropFilter: "blur(20px)",
-					border: "1px solid rgba(0, 0, 0, 0.08)",
-					borderRadius: "20px",
-					padding: "8px",
-					boxShadow: "0 20px 40px -12px rgba(0,0,0,0.15)",
-					minWidth: "220px",
-				},
-				arrow: {
-					backgroundColor: "rgba(255, 255, 255, 0.95)",
-					border: "1px solid rgba(0, 0, 0, 0.08)",
-				},
-			}}
-		>
+		<Menu position="bottom-end" offset={8} withArrow arrowPosition="center">
 			<Menu.Target>
 				<UnstyledButton
-					style={{
-						display: "inline-flex",
-						alignItems: "center",
-						gap: "10px",
-						padding: "6px 20px 6px 6px",
-						borderRadius: "9999px",
-						backgroundColor: isProfileActive ? "#fef2f2" : "#ffffff",
-						border: isProfileActive
-							? "1.5px solid rgba(224, 49, 49, 0.3)"
-							: "1.5px solid rgba(0, 0, 0, 0.08)",
-						boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-						transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-						cursor: "pointer",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)";
-						e.currentTarget.style.transform = "translateY(-1px)";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-						e.currentTarget.style.transform = "translateY(0)";
-					}}
+					className={`inline-flex items-center gap-2.5 pl-1.5 pr-5 py-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+						isProfileActive
+							? "bg-[var(--brand-50)] border-2 border-[var(--brand-200)]"
+							: "bg-white border-2 border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
+					} hover:shadow-lg hover:-translate-y-0.5`}
 				>
-					<Avatar
-						size="md"
-						radius="xl"
-						color="#e03131"
-						style={{
-							backgroundColor: "#fef2f2",
-							border: "2px solid #e03131",
-							fontWeight: 700,
-							fontSize: "13px",
-							boxShadow: "0 2px 4px rgba(224, 49, 49, 0.1)",
-						}}
-					>
+					<div className="w-8 h-8 rounded-full bg-[var(--brand-100)] border-2 border-[var(--accent-default)] flex items-center justify-center text-sm font-bold text-[var(--accent-default)] shadow-sm">
 						{initials}
-					</Avatar>
-					<Text
-						style={{
-							fontSize: "14px",
-							fontWeight: 600,
-							color: isProfileActive ? "#111827" : "#4b5563",
-							letterSpacing: "-0.2px",
-						}}
+					</div>
+					<span
+						className={`text-sm font-semibold ${isProfileActive ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}
 					>
 						Mi Perfil
-					</Text>
-					<ChevronDown
-						size={16}
-						color="#9ca3af"
-						style={{
-							transition: "transform 300ms ease",
-						}}
-						className="chevron-icon"
-					/>
+					</span>
+					<ChevronDown size={16} className="text-[var(--text-tertiary)]" />
 				</UnstyledButton>
 			</Menu.Target>
 
-			<Menu.Dropdown>
+			<Menu.Dropdown className="bg-white/95 backdrop-blur-xl border border-[var(--border-subtle)] rounded-2xl p-2 shadow-xl min-w-[220px]">
 				<Menu.Item
 					component={Link}
 					to="/mi-perfil"
 					leftSection={
-						<Box
-							style={{
-								width: "32px",
-								height: "32px",
-								borderRadius: "10px",
-								backgroundColor: "#f3f4f6",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<User size={16} color="#6b7280" />
-						</Box>
+						<div className="w-8 h-8 rounded-xl bg-[var(--bg-secondary)] flex items-center justify-center">
+							<User size={16} className="text-[var(--text-secondary)]" />
+						</div>
 					}
-					style={{
-						borderRadius: "12px",
-						fontWeight: 600,
-						fontSize: "14px",
-						padding: "12px 16px",
-						color: "#111827",
-						transition: "all 200ms ease",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.backgroundColor = "#f9fafb";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.backgroundColor = "transparent";
-					}}
+					className="rounded-xl font-semibold text-sm py-3 px-4 text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]"
 				>
 					Ver mi perfil
 				</Menu.Item>
-				<Menu.Divider
-					style={{
-						margin: "6px 8px",
-						borderColor: "rgba(0, 0, 0, 0.06)",
-					}}
-				/>
+
+				<Menu.Divider className="my-1.5 mx-2 border-[var(--border-subtle)]" />
+
 				<Menu.Item
 					leftSection={
-						<Box
-							style={{
-								width: "32px",
-								height: "32px",
-								borderRadius: "10px",
-								backgroundColor: "#fef2f2",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							<LogOut size={16} color="#e03131" />
-						</Box>
+						<div className="w-8 h-8 rounded-xl bg-[var(--error-50)] flex items-center justify-center">
+							<LogOut size={16} className="text-[var(--error-600)]" />
+						</div>
 					}
 					onClick={() => {
 						void logout().catch(() => {});
 					}}
-					style={{
-						borderRadius: "12px",
-						fontWeight: 600,
-						fontSize: "14px",
-						padding: "12px 16px",
-						color: "#e03131",
-						transition: "all 200ms ease",
-					}}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.backgroundColor = "#fef2f2";
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.backgroundColor = "transparent";
-					}}
+					className="rounded-xl font-semibold text-sm py-3 px-4 text-[var(--error-600)] hover:bg-[var(--error-50)]"
 				>
 					Cerrar sesión
 				</Menu.Item>
@@ -282,7 +143,11 @@ function UserMenu() {
 	);
 }
 
-function RootComponent() {
+// ========================================
+// HEADER
+// ========================================
+
+function Header() {
 	const router = useRouterState();
 	const [scroll] = useWindowScroll();
 	const isScrolled = scroll.y > 20;
@@ -293,116 +158,85 @@ function RootComponent() {
 		{ label: "Agendar", link: "/agendar" },
 	];
 
+	// Hidden on admin routes
+	if (isAdminSection) return null;
+
+	return (
+		<Box
+			className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+			style={{
+				padding: isScrolled ? 0 : "12px 20px 0",
+			}}
+		>
+			<Box
+				className={`mx-auto transition-all duration-300 ${
+					isScrolled ? "max-w-[1600px]" : "max-w-[1600px]"
+				}`}
+			>
+				<header
+					className={`bg-white/95 backdrop-blur-xl border border-[var(--border-subtle)] transition-all duration-300 ${
+						isScrolled
+							? "rounded-none border-x-0 border-t-0 px-6 py-3.5 shadow-sm"
+							: "rounded-2xl px-6 py-2.5 shadow-lg hover:shadow-xl"
+					}`}
+				>
+					<Container size="xl" style={{ maxWidth: "100%" }}>
+						<Group justify="space-between" align="center" wrap="nowrap">
+							{/* Logo */}
+							<Link
+								to="/"
+								className="flex items-center gap-3 no-underline group"
+							>
+								<div>
+									<Title
+										order={3}
+										className="text-[22px] font-extrabold tracking-tight text-[var(--text-primary)] leading-none"
+									>
+										SIMUT
+									</Title>
+									<Text className="text-[10px] font-bold text-[var(--text-tertiary)] tracking-[0.15em] uppercase mt-0.5 leading-none">
+										Tuluá
+									</Text>
+								</div>
+							</Link>
+
+							{/* Navigation */}
+							<Group visibleFrom="sm" gap={8} wrap="nowrap">
+								{links.map((link) => {
+									const isActive =
+										router.location.pathname === link.link ||
+										(link.link !== "/" &&
+											router.location.pathname.startsWith(link.link));
+									return (
+										<NavPill
+											key={link.label}
+											label={link.label}
+											to={link.link}
+											isActive={isActive}
+										/>
+									);
+								})}
+								<Box ml="md">
+									<UserMenu />
+								</Box>
+							</Group>
+						</Group>
+					</Container>
+				</header>
+			</Box>
+		</Box>
+	);
+}
+
+// ========================================
+// ROOT COMPONENT
+// ========================================
+
+function RootComponent() {
 	return (
 		<AppShell>
-			{/* Portal header: oculto en /admin* (el backoffice trae su propio chrome) */}
-			{!isAdminSection ? (
-				<Box
-					style={{
-						position: "fixed",
-						top: 0,
-						left: 0,
-						right: 0,
-						zIndex: 1000,
-						transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-					}}
-				>
-					<Box
-						style={{
-							maxWidth: isScrolled ? "100%" : "1200px",
-							margin: isScrolled ? "0" : "12px auto 0",
-							padding: isScrolled ? "0" : "0 20px",
-							transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-						}}
-					>
-						<Box
-							className="header-glass-container"
-							style={{
-								backgroundColor: "rgba(255, 255, 255, 0.95)",
-								backdropFilter: "blur(20px) saturate(180%)",
-								borderRadius: isScrolled ? "0" : "20px",
-								padding: isScrolled ? "14px 24px" : "10px 24px",
-								border: "1px solid rgba(0, 0, 0, 0.08)",
-								boxShadow: isScrolled
-									? "0 2px 16px rgba(0,0,0,0.08)"
-									: "0 4px 24px -8px rgba(0,0,0,0.12)",
-								transition: "all 400ms cubic-bezier(0.32, 0.72, 0, 1)",
-							}}
-						>
-							<style>{`
-						.header-glass-container:hover {
-							box-shadow: 0 8px 32px -12px rgba(0,0,0,0.12);
-						}
-					`}</style>
-							<Container size="xl" style={{ maxWidth: "100%" }}>
-								<Group justify="space-between" align="center" wrap="nowrap">
-									{/* Logo with Double Bezel Style */}
-									<Link
-										to="/"
-										style={{
-											display: "flex",
-											alignItems: "center",
-											gap: "12px",
-											textDecoration: "none",
-										}}
-									>
-										<Box>
-											<Title
-												order={3}
-												c="#111827"
-												style={{
-													lineHeight: 1,
-													letterSpacing: "-0.8px",
-													fontWeight: 800,
-													fontSize: "22px",
-												}}
-											>
-												SIMUT
-											</Title>
-											<Text
-												style={{
-													fontSize: "10px",
-													fontWeight: 700,
-													color: "#9ca3af",
-													lineHeight: 1,
-													marginTop: "2px",
-													letterSpacing: "1.5px",
-													textTransform: "uppercase",
-												}}
-											>
-												Tuluá
-											</Text>
-										</Box>
-									</Link>
-
-									{/* Navigation Pills */}
-									<Group visibleFrom="sm" gap={8} wrap="nowrap">
-										{links.map((link) => {
-											const isActive =
-												router.location.pathname === link.link ||
-												(link.link !== "/" &&
-													router.location.pathname.startsWith(link.link));
-											return (
-												<NavPill
-													key={link.label}
-													label={link.label}
-													to={link.link}
-													isActive={isActive}
-												/>
-											);
-										})}
-										<Box ml="md">
-											<UserMenu />
-										</Box>
-									</Group>
-								</Group>
-							</Container>
-						</Box>
-					</Box>
-				</Box>
-			) : null}
-
-			<AppShell.Main>
+			<Header />
+			<AppShell.Main className="pt-0">
 				<Outlet />
 			</AppShell.Main>
 		</AppShell>

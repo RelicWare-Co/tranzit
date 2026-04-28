@@ -1,23 +1,19 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+# Init script for admin UI redesign mission
+# Runs at the start of each worker session
 
-if ! command -v bun >/dev/null 2>&1; then
-  echo "bun is required but not installed"
-  exit 1
-fi
+set -e
 
-if [ ! -d node_modules ]; then
+cd /Users/verzach3/Projects/tranzit
+
+# Install dependencies if needed
+if [ ! -d "node_modules" ]; then
   bun install
 fi
 
-if [ ! -d server/node_modules ]; then
-  cd server
-  bun install
-  cd ..
+# Verify services manifest exists
+if [ ! -f ".factory/services.yaml" ]; then
+  echo "Warning: .factory/services.yaml not found"
 fi
 
-if [ ! -f .env ] && [ -f .env.example ]; then
-  cp .env.example .env
-fi
-
-echo "init complete"
+echo "Environment ready for admin UI redesign mission"

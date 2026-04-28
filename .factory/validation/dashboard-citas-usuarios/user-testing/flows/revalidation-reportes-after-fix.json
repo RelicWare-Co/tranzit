@@ -1,0 +1,32 @@
+{
+  "groupId": "revalidation-reportes-after-fix",
+  "testedAt": "2026-04-20T00:00:00.000Z",
+  "isolation": {
+    "session": "ce7cf99eca45__u4",
+    "url": "http://localhost:3000/admin/login",
+    "credentials": "admin@simut.test / AdminTest123!",
+    "target": "http://localhost:3000/admin/reportes"
+  },
+  "toolsUsed": ["agent-browser"],
+  "assertions": [
+    {
+      "id": "REPORTES-PAGE-LOAD",
+      "title": "Reportes page loads after Title fix",
+      "status": "fail",
+      "steps": [
+        { "action": "Navigate to /admin/login", "expected": "Login form displayed", "observed": "Login form displayed" },
+        { "action": "Fill email and password", "expected": "Fields populated", "observed": "Fields populated" },
+        { "action": "Click Iniciar sesión", "expected": "Redirect to /admin", "observed": "Redirected to /admin" },
+        { "action": "Navigate to /admin/reportes", "expected": "Reportes page loads correctly", "observed": "Error: 'Alert is not defined' displayed" }
+      ],
+      "evidence": {
+        "screenshots": ["dashboard-citas-usuarios/revalidation-reportes-error.png"],
+        "consoleErrors": "none"
+      },
+      "issues": "Page shows 'Something went wrong! Alert is not defined' error instead of loading the reportes page. This indicates the Title import fix did not resolve the issue, or the Alert component from Mantine is not properly imported in the -AdminReportesPage.tsx file."
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "The /admin/reportes page still fails to load. The error message is 'Alert is not defined', which suggests there is a missing import for the Alert component in the reportes page component."
+}

@@ -2,7 +2,7 @@ import { and, eq, inArray, lte } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../../lib/db";
 import { logger } from "../../lib/logger";
-import { throwCapacityConflict, throwRpcError } from "../../orpc/shared";
+import { throwCapacityConflict, throwRpcError } from "../../shared/orpc";
 import { createAuditEvent, buildBookingSummary } from "../audit/audit.service";
 import {
 	confirmExistingBooking,

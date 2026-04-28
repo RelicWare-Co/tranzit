@@ -11,7 +11,7 @@ import {
 	storeIdempotencyKey,
 	throwIdempotencyAwareError,
 	throwRpcError,
-} from "../../orpc/shared";
+} from "../../shared/orpc";
 import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import { releaseCapacity } from "../bookings/capacity-consume.service";
 

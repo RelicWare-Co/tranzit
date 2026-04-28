@@ -1,0 +1,49 @@
+{
+  "milestone": "dashboard-citas-usuarios",
+  "round": 3,
+  "status": "fail",
+  "validatorsRun": {
+    "test": { "passed": true, "command": "bun run test", "exitCode": 0 },
+    "typecheck": { "passed": true, "command": "cd packages/server && bunx tsc --noEmit", "exitCode": 0 },
+    "lint": { "passed": true, "command": "bun run lint", "exitCode": 0 }
+  },
+  "reviewsSummary": {
+    "total": 3,
+    "passed": 2,
+    "failed": 1,
+    "failedFeatures": ["admin-dashboard-redesign"],
+    "note": "Re-run. admin-citas-redesign and admin-usuarios-redesign passed review in prior round. admin-dashboard-redesign has one blocking issue still open. Fix feature 'admin-dashboard-datasource-fix' has not been implemented yet."
+  },
+  "blockingIssues": [
+    {
+      "featureId": "admin-dashboard-redesign",
+      "severity": "blocking",
+      "description": "admin.bookings.list does not populate the `request` relation. The Recent Appointments list tries to access booking.request?.citizen?.name but request is undefined, so it falls back to staff.email. Similarly, booking.request?.procedureType?.name is always undefined, so procedure names fall back to generic labels ('Trámite' or 'Reserva administrativa'). Fix feature 'admin-dashboard-datasource-fix' is pending and has not been implemented yet.",
+      "fixFeature": "admin-dashboard-datasource-fix",
+      "fixStatus": "pending"
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add guidance on commit size: prefer small, focused commits per feature. The admin-citas-redesign commit bundled 19 files with unrelated changes (routes, styles, components) making it hard to isolate feature changes during review.",
+      "evidence": "admin-citas-redesign review found git commit f2ee9c3 had 4248 insertions/2747 deletions across 19 unrelated files.",
+      "isSystemic": true
+    },
+    {
+      "target": "BACKEND_STATUS.md or library",
+      "suggestion": "Document that `admin.bookings.list` only populates `slot` and `staff` relations — not `request`. Workers building dashboard UIs that need citizen name and procedure type should use a different API or the API should be enhanced to include request relations.",
+      "evidence": "admin-dashboard-redesign failed because worker assumed request relation was available. The actual API (bookings-read.service.ts) only returns slot and staff. This caused blocking bug in Recent Appointments list.",
+      "isSystemic": false
+    },
+    {
+      "target": "library",
+      "suggestion": "Add a note about CSS design token coverage: error/warning/info color scales only go up to *-600 in design-tokens.css. Components referencing *-700 tokens (e.g., --error-700) will fall back to browser defaults.",
+      "evidence": "admin-citas-redesign referenced --error-700, --warning-700, --info-700 in admin-schedule.css but these tokens are not defined.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/dashboard-citas-usuarios/scrutiny/synthesis.json"
+}

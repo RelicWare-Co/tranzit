@@ -3,10 +3,10 @@ import { Hono } from "hono";
 import { pinoLogger } from "hono-pino";
 import { authApp } from "./features/auth/auth.routes";
 import { logger } from "./lib/logger";
-import { requireRole } from "./middlewares/authorization";
-import { adminCorsMiddleware, authCorsMiddleware } from "./middlewares/cors";
-import { sessionMiddleware } from "./middlewares/session";
-import { createTranzitRpcRouter } from "./orpc/router";
+import { requireRole } from "./middleware/authorization";
+import { adminCorsMiddleware, authCorsMiddleware } from "./middleware/cors";
+import { sessionMiddleware } from "./middleware/session";
+import { createTranzitRpcRouter } from "./shared/orpc/router";
 import type { AppVariables } from "./shared/types/app-context";
 
 export const app = new Hono<{ Variables: AppVariables }>();

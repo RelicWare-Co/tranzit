@@ -1,0 +1,61 @@
+{
+  "groupId": "revalidation-reportes-after-fix2",
+  "testedAt": "2026-04-20T00:00:00.000Z",
+  "isolation": {
+    "session": "ce7cf99eca45__u5",
+    "url": "http://localhost:3000",
+    "credentials": {
+      "email": "admin@simut.test",
+      "role": "admin"
+    }
+  },
+  "toolsUsed": ["agent-browser"],
+  "assertions": [
+    {
+      "id": "REPORTES-ALERT-FIX",
+      "title": "Reportes page loads correctly after Alert import fix",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Navigate to http://localhost:3000/admin/login",
+          "expected": "Login form displayed",
+          "observed": "Login form displayed with email/password fields"
+        },
+        {
+          "action": "Fill email 'admin@simut.test' and password 'AdminTest123!'",
+          "expected": "Fields populated",
+          "observed": "Fields populated successfully"
+        },
+        {
+          "action": "Click 'Iniciar sesión' button",
+          "expected": "Redirect to admin dashboard",
+          "observed": "Redirected to /admin"
+        },
+        {
+          "action": "Navigate to http://localhost:3000/admin/reportes",
+          "expected": "Reportes page loads without errors",
+          "observed": "Page loaded correctly at /admin/reportes"
+        },
+        {
+          "action": "Wait 8 seconds for page to fully load",
+          "expected": "Full page content rendered",
+          "observed": "Full content rendered including Citas administrativas table with data"
+        },
+        {
+          "action": "Check page content and console errors",
+          "expected": "No errors, page shows proper content",
+          "observed": "Page shows 'Reportes y operaciones' heading, alert with session info 'Sesión: admin@simut.test (admin)', citas table with data, and series section. No console errors."
+        }
+      ],
+      "evidence": {
+        "screenshots": ["dashboard-citas-usuarios/reportes-after-fix2/reportes-page.png"],
+        "consoleErrors": "none",
+        "network": "GET /admin/reportes -> 200"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 1 assertion: 1 passed. The /admin/reportes page loads correctly after the Alert import fix. The page renders 'Reportes y operaciones' heading, session info alert, citas administrativas table with real data, and series de reserva administrativa section. No console errors detected."
+}

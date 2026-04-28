@@ -6,7 +6,7 @@ import {
 	assertOptimisticConcurrency,
 	throwCapacityConflict,
 	throwRpcError,
-} from "../../orpc/shared";
+} from "../../shared/orpc";
 import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import { checkCapacity } from "../bookings/capacity-check.service";
 

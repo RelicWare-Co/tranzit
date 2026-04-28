@@ -8,7 +8,7 @@ import {
 	sql,
 } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
-import { throwRpcError } from "../../orpc/shared";
+import { throwRpcError } from "../../shared/orpc";
 
 /**
  * Input for listing audit events with pagination and filters.

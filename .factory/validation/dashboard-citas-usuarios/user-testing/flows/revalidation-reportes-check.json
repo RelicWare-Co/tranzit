@@ -1,0 +1,33 @@
+{
+  "groupId": "revalidation-reportes-check",
+  "testedAt": "2026-04-20T00:00:00.000Z",
+  "isolation": {
+    "session": "ce7cf99eca45__u3",
+    "url": "http://localhost:3000",
+    "credentials": "admin@simut.test / AdminTest123!"
+  },
+  "toolsUsed": ["agent-browser"],
+  "assertions": [
+    {
+      "id": "REPORTES-001",
+      "title": "/admin/reportes page loads without error",
+      "status": "fail",
+      "steps": [
+        { "action": "Navigate to /admin/login", "expected": "Login form displayed", "observed": "Login form displayed" },
+        { "action": "Fill email/password", "expected": "Fields populated", "observed": "Fields populated" },
+        { "action": "Click 'Iniciar sesión'", "expected": "Redirect to admin dashboard", "observed": "Redirected to /admin" },
+        { "action": "Click 'Reportes' link", "expected": "Navigate to /admin/reportes", "observed": "Navigated to /admin/reportes" },
+        { "action": "Wait 5s for page load", "expected": "Reportes page renders correctly", "observed": "Error overlay: 'Title is not defined'" }
+      ],
+      "evidence": {
+        "screenshots": ["dashboard-citas-usuarios/evidence/reportes-page-check.png"],
+        "consoleErrors": "none (no console errors detected)",
+        "network": "Page loaded but threw runtime error: 'Title is not defined'"
+      },
+      "issues": "The /admin/reportes page throws a runtime JavaScript error: 'Title is not defined'. The page only shows an error overlay with the message 'Something went wrong! Title is not defined'. This indicates a bug in the Reportes page component where a variable named 'Title' is referenced but not defined."
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested /admin/reportes page: login succeeded, navigation to reportes succeeded, but the page throws a runtime error 'Title is not defined' and shows an error overlay instead of the expected bookings table. No bookings are visible."
+}

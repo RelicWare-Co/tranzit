@@ -4,7 +4,7 @@ import {
 	assertOptimisticConcurrency,
 	isDateOnOrAfter,
 	throwRpcError,
-} from "../../orpc/shared";
+} from "../../shared/orpc";
 import { buildSeriesSummary, createAuditEvent } from "../audit/audit.service";
 import type { CapacityConflict } from "../bookings/capacity.types";
 import { checkCapacity } from "../bookings/capacity-check.service";

@@ -1,6 +1,6 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
-import { throwRpcError } from "../../orpc/shared";
+import { throwRpcError } from "../../shared/orpc";
 import { checkCapacity } from "./capacity-check.service";
 
 export interface ListBookingsInput {
@@ -97,6 +97,21 @@ export async function listBookings(input?: ListBookingsInput) {
 						where: eq(schema.user.id, booking.staffUserId),
 					})
 				: null;
+			const serviceReq = booking.requestId
+				? await db.query.serviceRequest.findFirst({
+						where: eq(schema.serviceRequest.id, booking.requestId),
+					})
+				: null;
+			const procedureType = serviceReq
+				? await db.query.procedureType.findFirst({
+						where: eq(schema.procedureType.id, serviceReq.procedureTypeId),
+					})
+				: null;
+			const citizenUser = serviceReq?.citizenUserId
+				? await db.query.user.findFirst({
+						where: eq(schema.user.id, serviceReq.citizenUserId),
+					})
+				: null;
 
 			return {
 				...booking,
@@ -106,6 +121,41 @@ export async function listBookings(input?: ListBookingsInput) {
 							id: staffUser.id,
 							name: staffUser.name,
 							email: staffUser.email,
+						}
+					: null,
+				request: serviceReq
+					? {
+							id: serviceReq.id,
+							procedureTypeId: serviceReq.procedureTypeId,
+							citizenUserId: serviceReq.citizenUserId,
+							email: serviceReq.email,
+							documentType: serviceReq.documentType,
+							documentNumber: serviceReq.documentNumber,
+							status: serviceReq.status,
+							procedureConfigVersion: serviceReq.procedureConfigVersion,
+							activeBookingId: serviceReq.activeBookingId,
+							createdAt: serviceReq.createdAt,
+							updatedAt: serviceReq.updatedAt,
+							verifiedAt: serviceReq.verifiedAt,
+							confirmedAt: serviceReq.confirmedAt,
+							cancelledAt: serviceReq.cancelledAt,
+							procedureSnapshot: serviceReq.procedureSnapshot,
+							eligibilityResult: serviceReq.eligibilityResult,
+							draftData: serviceReq.draftData,
+							procedureType: procedureType
+								? {
+										id: procedureType.id,
+										name: procedureType.name,
+										slug: procedureType.slug,
+									}
+								: null,
+							citizen: citizenUser
+								? {
+										id: citizenUser.id,
+										name: citizenUser.name,
+										email: citizenUser.email,
+									}
+								: null,
 						}
 					: null,
 			};
