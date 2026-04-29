@@ -29,7 +29,7 @@ const otpAllowedAttempts = readPositiveInt(
 );
 
 export const auth = betterAuth({
-	baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+	baseURL: process.env.BETTER_AUTH_URL || "https://tranzit.localhost",
 	secret,
 	database: drizzleAdapter(db, {
 		provider: "sqlite",

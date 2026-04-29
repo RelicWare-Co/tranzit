@@ -1,22 +1,24 @@
 {
   "name": "tranzit",
   "version": "1.0.0",
+  "packageManager": "bun@1.2.0",
   "devDependencies": {
-    "@biomejs/biome": "2.4.13"
+    "@biomejs/biome": "2.4.13",
+    "concurrently": "^9.2.1",
+    "portless": "^0.12.0",
+    "turbo": "^2.9.6"
   },
   "description": "Plataforma de agendamiento para SIMUT Tulúa",
   "private": true,
   "scripts": {
-    "dev": "bun --cwd packages/web dev",
-    "dev:server": "bun --cwd packages/server dev",
-    "dev:all": "bun run --workspaces --parallel dev",
-    "build": "bun --cwd packages/web build",
+    "dev": "turbo run @tranzit/web#dev @tranzit/server#dev @tranzit/server#maildev",
+    "build": "turbo build",
     "preview": "bun --cwd packages/web preview",
     "maildev": "bun run --cwd packages/server maildev",
     "test": "bun run --cwd packages/server test",
-    "lint": "bun run --filter=\"*\" lint",
+    "lint": "turbo lint",
     "format": "bun run --filter=\"*\" format",
-    "check": "bun run --filter=\"*\" check",
+    "check": "turbo check",
     "db:generate": "bun run --cwd packages/server db:generate",
     "db:migrate": "bun run --cwd packages/server db:migrate",
     "tsc:web": "bun --cwd packages/web tsc --noEmit",

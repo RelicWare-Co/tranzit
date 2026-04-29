@@ -18,6 +18,9 @@ __unconfig*
 todos.json
 tsconfig.tsbuildinfo
 
+# Turborepo
+.turbo
+
 # Local databases
 packages/server/sqlite.db
 *.db-shm

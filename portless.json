@@ -1,0 +1,6 @@
+{
+  "apps": {
+    "packages/web": { "name": "tranzit" },
+    "packages/server": { "name": "api.tranzit" }
+  }
+}

@@ -1,5 +1,9 @@
 {
   "name": "@tranzit/web",
+  "portless": {
+    "name": "tranzit",
+    "script": "dev:app"
+  },
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +11,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "portless run vite dev",
     "dev:server": "bun run --cwd ../server dev",
     "build": "vite build",
     "maildev": "bun run --cwd ../server maildev",
