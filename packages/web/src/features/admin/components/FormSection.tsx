@@ -44,7 +44,7 @@ export function FormSection({
 interface FormFieldProps {
 	label: string;
 	children: React.ReactNode;
-	error?: string | null;
+	error?: string | null | React.ReactNode;
 	helper?: string;
 	required?: boolean;
 	className?: string;

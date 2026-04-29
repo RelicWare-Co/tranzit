@@ -1,4 +1,5 @@
 import {
+  ActionIcon,
   Alert,
   Badge,
   Box,
@@ -19,9 +20,7 @@ import {
   ClipboardList,
   FileCheck,
   FileText,
-  FolderPlus,
   GripVertical,
-  Link2,
   List,
   Plus,
   Trash2,
@@ -36,18 +35,25 @@ import {
   PremiumModal,
 } from "#/features/admin/components";
 import { cx } from "#/shared/lib/cx";
-import type { DocumentRequirement, FormFieldDef } from "./types";
-import { generateId, generateSlugFromName, sanitizeSlug } from "./utils";
+import type {
+  DocumentRequirement,
+  DocumentSchema,
+  FormFieldDef,
+  FormSchema,
+  ProcedureType,
+} from "./types";
+import { generateId } from "./utils";
 
-interface AddProcedureModalProps {
+interface EditProcedureModalProps {
   opened: boolean;
   onClose: () => void;
-  onCreate: (payload: {
-    name: string;
-    slug: string;
+  procedure: ProcedureType;
+  onUpdate: (payload: {
+    id: string;
+    name?: string;
     description?: string;
-    requiresVehicle: boolean;
-    allowsPhysicalDocuments: boolean;
+    requiresVehicle?: boolean;
+    allowsPhysicalDocuments?: boolean;
     instructions?: string;
     documentSchema?: Record<string, unknown>;
     formSchema?: Record<string, unknown>;
@@ -63,27 +69,49 @@ const FIELD_TYPE_OPTIONS: { value: FormFieldDef["type"]; label: string }[] = [
   { value: "textarea", label: "Área de texto" },
 ];
 
-export function AddProcedureModal({
+export function EditProcedureModal({
   opened,
   onClose,
-  onCreate,
-}: AddProcedureModalProps) {
+  procedure,
+  onUpdate,
+}: EditProcedureModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+
+  const docSchema = (procedure.documentSchema ?? {}) as DocumentSchema;
+  const initialRequirements: DocumentRequirement[] =
+    docSchema.requirements?.map((r, i) => ({
+      id: (r as DocumentRequirement).id ?? generateId(),
+      name: (r as DocumentRequirement).name ?? "",
+      description: (r as DocumentRequirement).description ?? "",
+      isRequired: (r as DocumentRequirement).isRequired ?? true,
+      downloadUrl: (r as DocumentRequirement).downloadUrl ?? "",
+      order: (r as DocumentRequirement).order ?? i,
+    })) ?? [];
+
+  const formSchemaData = (procedure.formSchema ?? {}) as FormSchema;
+  const initialFields: FormFieldDef[] =
+    formSchemaData.fields?.map((f, i) => ({
+      id: (f as FormFieldDef).id ?? generateId(),
+      label: (f as FormFieldDef).label ?? "",
+      type: (f as FormFieldDef).type ?? "text",
+      required: (f as FormFieldDef).required ?? false,
+      placeholder: (f as FormFieldDef).placeholder ?? "",
+      options: (f as FormFieldDef).options ?? [],
+      order: (f as FormFieldDef).order ?? i,
+    })) ?? [];
 
   const form = useForm({
     mode: "uncontrolled",
     initialValues: {
-      name: "",
-      slug: "",
-      description: "",
-      requiresVehicle: false,
-      allowsPhysicalDocuments: true,
-      instructions: "",
-      requirements: [] as DocumentRequirement[],
-      formFields: [] as FormFieldDef[],
+      name: procedure.name,
+      description: procedure.description ?? "",
+      requiresVehicle: procedure.requiresVehicle,
+      allowsPhysicalDocuments: procedure.allowsPhysicalDocuments,
+      instructions: procedure.instructions ?? "",
+      requirements: initialRequirements,
+      formFields: initialFields,
     },
     validate: {
       name: (value) => {
@@ -93,17 +121,6 @@ export function AddProcedureModal({
           return "El nombre debe tener al menos 3 caracteres";
         if (trimmed.length > 120)
           return "El nombre no puede exceder 120 caracteres";
-        return null;
-      },
-      slug: (value) => {
-        const trimmed = value.trim();
-        if (!trimmed) return "El slug es obligatorio";
-        if (trimmed.length < 2)
-          return "El slug debe tener al menos 2 caracteres";
-        if (trimmed.length > 60)
-          return "El slug no puede exceder 60 caracteres";
-        if (!/^[a-z0-9-]+$/.test(trimmed))
-          return "Solo letras minúsculas, números y guiones";
         return null;
       },
       description: (value) => {
@@ -121,29 +138,20 @@ export function AddProcedureModal({
 
   useEffect(() => {
     if (opened) {
-      form.reset();
+      form.setValues({
+        name: procedure.name,
+        description: procedure.description ?? "",
+        requiresVehicle: procedure.requiresVehicle,
+        allowsPhysicalDocuments: procedure.allowsPhysicalDocuments,
+        instructions: procedure.instructions ?? "",
+        requirements: initialRequirements,
+        formFields: initialFields,
+      });
       setSubmitError(null);
-      setSlugManuallyEdited(false);
       setActiveTab("general");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened]);
-
-  // Auto-generar slug desde nombre
-  useEffect(() => {
-    const name = form.getValues().name;
-    if (!slugManuallyEdited && name.trim()) {
-      const generated = generateSlugFromName(name);
-      if (generated !== form.getValues().slug) {
-        form.setFieldValue("slug", generated);
-      }
-    }
-  }, [form.getValues().name, slugManuallyEdited]);
-
-  const handleClose = () => {
-    if (isSubmitting) return;
-    onClose();
-  };
+  }, [opened, procedure.id]);
 
   const handleAddRequirement = () => {
     form.insertListItem("requirements", {
@@ -194,7 +202,7 @@ export function AddProcedureModal({
     setIsSubmitting(true);
 
     try {
-      const documentSchema = {
+      const documentSchema: DocumentSchema = {
         requirements: values.requirements
           .filter((r) => r.name.trim())
           .map((r, i) => ({
@@ -206,7 +214,7 @@ export function AddProcedureModal({
           })),
       };
 
-      const formSchemaPayload = {
+      const formSchemaPayload: FormSchema = {
         fields: values.formFields
           .filter((f) => f.label.trim())
           .map((f, i) => ({
@@ -221,31 +229,24 @@ export function AddProcedureModal({
           })),
       };
 
-      await onCreate({
+      await onUpdate({
+        id: procedure.id,
         name: values.name.trim(),
-        slug: values.slug.trim(),
         description: values.description.trim() || undefined,
         requiresVehicle: values.requiresVehicle,
         allowsPhysicalDocuments: values.allowsPhysicalDocuments,
         instructions: values.instructions.trim() || undefined,
-        documentSchema,
-        formSchema: formSchemaPayload,
+        documentSchema: documentSchema as Record<string, unknown>,
+        formSchema: formSchemaPayload as Record<string, unknown>,
       });
-      form.reset();
       onClose();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "No se pudo crear el trámite";
+        error instanceof Error ? error.message : "No se pudo actualizar el trámite";
       setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const sanitized = sanitizeSlug(e.currentTarget.value);
-    form.setFieldValue("slug", sanitized);
-    setSlugManuallyEdited(true);
   };
 
   const values = form.getValues();
@@ -253,9 +254,11 @@ export function AddProcedureModal({
   return (
     <PremiumModal
       opened={opened}
-      onClose={handleClose}
-      title="Nuevo trámite"
-      subtitle="Configura un nuevo tipo de trámite para la agenda ciudadana"
+      onClose={() => {
+        if (!isSubmitting) onClose();
+      }}
+      title={procedure.name}
+      subtitle="Editar configuración del trámite"
       size="xl"
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -304,7 +307,7 @@ export function AddProcedureModal({
                   title="Información básica"
                   description="Datos identificativos del trámite"
                   icon={
-                    <FolderPlus
+                    <FileText
                       size={18}
                       className="text-zinc-500"
                       strokeWidth={1.5}
@@ -315,7 +318,6 @@ export function AddProcedureModal({
                     <FormField
                       label="Nombre del trámite"
                       error={form.errors.name}
-                      helper="Ej: Renovación de Licencia de Conducción"
                       required
                     >
                       <TextInput
@@ -325,82 +327,12 @@ export function AddProcedureModal({
                         disabled={isSubmitting}
                         key={form.key("name")}
                         {...form.getInputProps("name")}
-                        className={cx(
-                          "transition-all duration-200",
-                          form.getValues().name &&
-                            !form.errors.name &&
-                            "border-emerald-500/50",
-                        )}
-                        styles={{
-                          input: {
-                            "&:focus": {
-                              boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-                            },
-                          },
-                        }}
                       />
-                    </FormField>
-
-                    <FormField
-                      label="Slug identificador"
-                      error={form.errors.slug}
-                      helper="Identificador único para URLs (se genera automáticamente desde el nombre)"
-                      required
-                    >
-                      <div className="relative">
-                        <TextInput
-                          placeholder="renovacion-licencia"
-                          radius="md"
-                          size="md"
-                          disabled={isSubmitting}
-                          value={values.slug}
-                          onChange={handleSlugChange}
-                          onBlur={() => form.validateField("slug")}
-                          error={form.errors.slug}
-                          leftSection={
-                            <Link2 size={14} className="text-zinc-400" />
-                          }
-                          className={cx(
-                            "transition-all duration-200",
-                            values.slug &&
-                              !form.errors.slug &&
-                              "border-emerald-500/50",
-                          )}
-                          styles={{
-                            input: {
-                              fontFamily: "monospace",
-                              fontSize: "0.875rem",
-                              "&:focus": {
-                                boxShadow:
-                                  "0 0 0 3px rgba(9, 9, 11, 0.08)",
-                              },
-                            },
-                          }}
-                        />
-                      </div>
-                      {slugManuallyEdited &&
-                        values.name &&
-                        !values.slug && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              form.setFieldValue(
-                                "slug",
-                                generateSlugFromName(values.name),
-                              );
-                              setSlugManuallyEdited(false);
-                            }}
-                            className="mt-1 text-xs text-zinc-500 hover:text-zinc-700 underline"
-                          >
-                            Restaurar slug automático
-                          </button>
-                        )}
                     </FormField>
 
                     <FormField
                       label="Descripción"
                       error={form.errors.description}
-                      helper="Descripción opcional para ayudar a los ciudadanos a entender el trámite"
                     >
                       <Textarea
                         placeholder="Describe el propósito y requisitos del trámite..."
@@ -411,19 +343,6 @@ export function AddProcedureModal({
                         disabled={isSubmitting}
                         key={form.key("description")}
                         {...form.getInputProps("description")}
-                        className={cx(
-                          "transition-all duration-200",
-                          values.description &&
-                            !form.errors.description &&
-                            "border-emerald-500/50",
-                        )}
-                        styles={{
-                          input: {
-                            "&:focus": {
-                              boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-                            },
-                          },
-                        }}
                       />
                       <div className="flex justify-end">
                         <span
@@ -455,7 +374,6 @@ export function AddProcedureModal({
                   <FormField
                     label="Instrucciones"
                     error={form.errors.instructions}
-                    helper="Pasos, recomendaciones o información importante que el ciudadano debe conocer"
                   >
                     <Textarea
                       placeholder="1. Traer documento de identidad original..."
@@ -466,13 +384,6 @@ export function AddProcedureModal({
                       disabled={isSubmitting}
                       key={form.key("instructions")}
                       {...form.getInputProps("instructions")}
-                      styles={{
-                        input: {
-                          "&:focus": {
-                            boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-                          },
-                        },
-                      }}
                     />
                   </FormField>
                 </FormSection>
@@ -519,12 +430,23 @@ export function AddProcedureModal({
                     </div>
 
                     <div className="flex items-start gap-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/30">
+                      <Switch
+                        checked={values.allowsPhysicalDocuments}
+                        onChange={(e) =>
+                          form.setFieldValue(
+                            "allowsPhysicalDocuments",
+                            e.currentTarget.checked,
+                          )
+                        }
+                        size="sm"
+                        className="mt-0.5"
+                      />
                       <div className="flex-1">
                         <div className="font-medium text-sm text-zinc-900">
-                          Requisitos físicos habilitados
+                          Permite documentos físicos
                         </div>
                         <div className="text-xs text-zinc-500 mt-0.5">
-                          Los ciudadanos deben llevar documentación y formatos impresos el día de la cita.
+                          Los ciudadanos deben llevar documentación impresa el día de la cita
                         </div>
                       </div>
                     </div>
@@ -639,7 +561,7 @@ export function AddProcedureModal({
                           disabled={isSubmitting}
                         />
                       </Stack>
-                      <Button
+                      <ActionIcon
                         variant="subtle"
                         color="red"
                         radius="md"
@@ -649,7 +571,7 @@ export function AddProcedureModal({
                         className="mt-1"
                       >
                         <Trash2 size={14} />
-                      </Button>
+                      </ActionIcon>
                     </Group>
                   </Box>
                 ))}
@@ -786,7 +708,7 @@ export function AddProcedureModal({
                                     }}
                                     disabled={isSubmitting}
                                   />
-                                  <Button
+                                  <ActionIcon
                                     variant="subtle"
                                     color="gray"
                                     radius="md"
@@ -797,7 +719,7 @@ export function AddProcedureModal({
                                     disabled={isSubmitting}
                                   >
                                     <X size={12} />
-                                  </Button>
+                                  </ActionIcon>
                                 </Group>
                               ))}
                               <Button
@@ -815,7 +737,7 @@ export function AddProcedureModal({
                           </Box>
                         )}
                       </Stack>
-                      <Button
+                      <ActionIcon
                         variant="subtle"
                         color="red"
                         radius="md"
@@ -825,7 +747,7 @@ export function AddProcedureModal({
                         className="mt-1"
                       >
                         <Trash2 size={14} />
-                      </Button>
+                      </ActionIcon>
                     </Group>
                   </Box>
                 ))}
@@ -836,7 +758,7 @@ export function AddProcedureModal({
           <FormActions align="right">
             <FormActionButton
               variant="secondary"
-              onClick={handleClose}
+              onClick={onClose}
               disabled={isSubmitting}
             >
               Cancelar
@@ -844,9 +766,9 @@ export function AddProcedureModal({
             <FormActionButton
               variant="primary"
               isLoading={isSubmitting}
-              leftSection={<FileText size={16} strokeWidth={1.5} />}
+              type="submit"
             >
-              Crear trámite
+              Guardar cambios
             </FormActionButton>
           </FormActions>
         </Stack>

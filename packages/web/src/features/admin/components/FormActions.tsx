@@ -6,6 +6,7 @@ interface FormActionButtonProps extends Omit<ButtonProps, "onClick"> {
 	isLoading?: boolean;
 	onClick?: () => void;
 	children: React.ReactNode;
+	type?: "button" | "submit" | "reset";
 }
 
 export function FormActionButton({

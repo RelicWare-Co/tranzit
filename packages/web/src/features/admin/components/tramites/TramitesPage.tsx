@@ -1,52 +1,61 @@
 import {
-	Alert,
+	ActionIcon,
+	Badge,
 	Box,
 	Button,
 	Card,
-	Grid,
 	Group,
+	Menu,
 	Skeleton,
 	Stack,
+	Table,
 	Text,
+	TextInput,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { AlertCircle, CheckCircle2, List, Plus } from "lucide-react";
+import {
+	AlertCircle,
+	CheckCircle2,
+	Copy,
+	Edit3,
+	FileText,
+	List,
+	MoreHorizontal,
+	Plus,
+	Search,
+	Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { orpcClient } from "#/shared/lib/orpc-client";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { getErrorMessage } from "#/features/admin/components/errors";
 import { AddProcedureModal } from "./AddProcedureModal";
-import {
-	ProcedureDetailEmptyState,
-	ProcedureDetailPanel,
-} from "./ProcedureDetailPanel";
-import { ProcedureSummaryCard } from "./ProcedureSummaryCard";
-import type { ProcedureCreateInput, ProcedureType } from "./types";
+import { EditProcedureModal } from "./EditProcedureModal";
+import type { ProcedureType } from "./types";
 import { buildDuplicateSlug } from "./utils";
+
+type SortKey = "name" | "slug" | "status" | "requirements";
+type SortDir = "asc" | "desc";
 
 export function TramitesPage() {
 	const [procedures, setProcedures] = useState<ProcedureType[]>([]);
-	const [selectedProcedureId, setSelectedProcedureId] = useState<string | null>(
-		null,
-	);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isMutatingId, setIsMutatingId] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
-	const [addModalOpened, { open: openAdd, close: closeAdd }] =
-		useDisclosure(false);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [sortKey, setSortKey] = useState<SortKey>("name");
+	const [sortDir, setSortDir] = useState<SortDir>("asc");
+	const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+	const [addModalOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
+	const [editModalOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
+	const [editingProcedure, setEditingProcedure] = useState<ProcedureType | null>(null);
 
 	const loadProcedures = useCallback(async () => {
 		setError(null);
 		const data = await orpcClient.admin.procedures.list({});
 		setProcedures(data);
-		setSelectedProcedureId((current) => {
-			if (current && data.some((procedure) => procedure.id === current)) {
-				return current;
-			}
-			return data[0]?.id ?? null;
-		});
 	}, []);
 
 	useEffect(() => {
@@ -55,33 +64,74 @@ export function TramitesPage() {
 		void loadProcedures()
 			.catch((loadError) => {
 				if (!mounted) return;
-				setError(
-					getErrorMessage(loadError, "No se pudieron cargar los trámites."),
-				);
+				setError(getErrorMessage(loadError, "No se pudieron cargar los trámites."));
 			})
 			.finally(() => {
-				if (mounted) {
-					setIsLoading(false);
-				}
+				if (mounted) setIsLoading(false);
 			});
-
 		return () => {
 			mounted = false;
 		};
 	}, [loadProcedures]);
 
-	const selectedProcedure = useMemo(
-		() =>
-			procedures.find((procedure) => procedure.id === selectedProcedureId) ??
-			null,
-		[procedures, selectedProcedureId],
-	);
+	const filteredProcedures = useMemo(() => {
+		let result = [...procedures];
 
-	const activeCount = procedures.filter(
-		(procedure) => procedure.isActive,
-	).length;
+		if (statusFilter !== "all") {
+			result = result.filter((p) =>
+				statusFilter === "active" ? p.isActive : !p.isActive,
+			);
+		}
 
-	const handleCreateProcedure = async (payload: ProcedureCreateInput) => {
+		if (searchQuery.trim()) {
+			const q = searchQuery.toLowerCase();
+			result = result.filter(
+				(p) =>
+					p.name.toLowerCase().includes(q) ||
+					p.slug.toLowerCase().includes(q) ||
+					(p.description ?? "").toLowerCase().includes(q),
+			);
+		}
+
+		result.sort((a, b) => {
+			let cmp = 0;
+			switch (sortKey) {
+				case "name":
+					cmp = a.name.localeCompare(b.name);
+					break;
+				case "slug":
+					cmp = a.slug.localeCompare(b.slug);
+					break;
+				case "status":
+					cmp = Number(b.isActive) - Number(a.isActive);
+					break;
+				case "requirements": {
+					const aCount =
+						(a.documentSchema?.requirements as unknown[])?.length ?? 0;
+					const bCount =
+						(b.documentSchema?.requirements as unknown[])?.length ?? 0;
+					cmp = bCount - aCount;
+					break;
+				}
+			}
+			return sortDir === "asc" ? cmp : -cmp;
+		});
+
+		return result;
+	}, [procedures, searchQuery, sortKey, sortDir, statusFilter]);
+
+	const activeCount = procedures.filter((p) => p.isActive).length;
+
+	const handleCreateProcedure = async (payload: {
+		name: string;
+		slug: string;
+		description?: string;
+		requiresVehicle: boolean;
+		allowsPhysicalDocuments: boolean;
+		instructions?: string;
+		documentSchema?: Record<string, unknown>;
+		formSchema?: Record<string, unknown>;
+	}) => {
 		setNotice(null);
 		setError(null);
 		await orpcClient.admin.procedures.create(payload);
@@ -89,10 +139,31 @@ export function TramitesPage() {
 		setNotice("Trámite creado correctamente.");
 	};
 
-	const handleToggleActive = (
-		procedure: ProcedureType,
-		nextActive: boolean,
-	) => {
+	const handleUpdateProcedure = async (payload: {
+		id: string;
+		name?: string;
+		description?: string;
+		requiresVehicle?: boolean;
+		allowsPhysicalDocuments?: boolean;
+		instructions?: string;
+		documentSchema?: Record<string, unknown>;
+		formSchema?: Record<string, unknown>;
+	}) => {
+		setNotice(null);
+		setError(null);
+		setIsMutatingId(payload.id);
+		try {
+			await orpcClient.admin.procedures.update(payload);
+			await loadProcedures();
+			setNotice("Trámite actualizado correctamente.");
+		} catch (updateError) {
+			setError(getErrorMessage(updateError, "No se pudo actualizar el trámite."));
+		} finally {
+			setIsMutatingId(null);
+		}
+	};
+
+	const handleToggleActive = (procedure: ProcedureType, nextActive: boolean) => {
 		void (async () => {
 			setIsMutatingId(procedure.id);
 			setError(null);
@@ -152,7 +223,6 @@ export function TramitesPage() {
 		if (!window.confirm(`¿Eliminar trámite "${procedure.name}"?`)) {
 			return;
 		}
-
 		setIsMutatingId(procedure.id);
 		setError(null);
 		setNotice(null);
@@ -169,11 +239,35 @@ export function TramitesPage() {
 		}
 	};
 
+	const handleEdit = (procedure: ProcedureType) => {
+		setEditingProcedure(procedure);
+		openEdit();
+	};
+
+	const toggleSort = (key: SortKey) => {
+		if (sortKey === key) {
+			setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+		} else {
+			setSortKey(key);
+			setSortDir("asc");
+		}
+	};
+
+	const SortIndicator = ({ column }: { column: SortKey }) => {
+		if (sortKey !== column) return <span className="text-zinc-300 ml-1">↕</span>;
+		return (
+			<span className="text-zinc-700 ml-1 font-bold">
+				{sortDir === "asc" ? "↑" : "↓"}
+			</span>
+		);
+	};
+
 	if (isLoading) {
 		return (
 			<Stack gap="xl">
 				<Skeleton height={36} width="min(100%, 320px)" radius="md" mb="xs" />
-				<Skeleton height={200} radius="lg" />
+				<Skeleton height={48} radius="lg" />
+				<Skeleton height={400} radius="lg" />
 			</Stack>
 		);
 	}
@@ -182,7 +276,7 @@ export function TramitesPage() {
 		<Stack gap="lg">
 			<AdminPageHeader
 				title="Gestión de trámites"
-				description="Definí qué procedimientos están disponibles para agendamiento ciudadano y mantené la configuración alineada con operaciones."
+				description="Definí qué procedimientos están disponibles para agendamiento ciudadano. Configurá requisitos, formularios y mantené la información alineada con operaciones."
 				actions={
 					<Button
 						leftSection={<Plus size={18} strokeWidth={1.75} />}
@@ -197,24 +291,14 @@ export function TramitesPage() {
 			/>
 
 			{error && (
-				<Alert
-					color="red"
-					variant="light"
-					radius="md"
-					icon={<AlertCircle size={16} />}
-				>
+				<InlineAlert color="red" icon={<AlertCircle size={16} />}>
 					{error}
-				</Alert>
+				</InlineAlert>
 			)}
 			{notice && (
-				<Alert
-					color="teal"
-					variant="light"
-					radius="md"
-					icon={<CheckCircle2 size={16} />}
-				>
+				<InlineAlert color="teal" icon={<CheckCircle2 size={16} />}>
 					{notice}
-				</Alert>
+				</InlineAlert>
 			)}
 
 			{procedures.length > 0 ? (
@@ -261,34 +345,230 @@ export function TramitesPage() {
 					</Stack>
 				</Card>
 			) : (
-				<Grid gap="lg">
-					<Grid.Col span={{ base: 12, md: 5 }}>
-						<Stack gap="sm">
-							{procedures.map((procedure) => (
-								<ProcedureSummaryCard
-									key={procedure.id}
-									procedure={procedure}
-									selected={procedure.id === selectedProcedureId}
-									onSelect={() => setSelectedProcedureId(procedure.id)}
-								/>
+				<Stack gap="md">
+					<Group gap="sm" wrap="wrap">
+						<TextInput
+							placeholder="Buscar trámites..."
+							leftSection={<Search size={16} className="text-zinc-400" />}
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.currentTarget.value)}
+							radius="md"
+							size="sm"
+							className="flex-1 min-w-[240px]"
+							styles={{
+								input: {
+									"&:focus": {
+										boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
+									},
+								},
+							}}
+						/>
+						<Group gap="xs">
+							{(["all", "active", "inactive"] as const).map((status) => (
+								<Button
+									key={status}
+									size="sm"
+									radius="md"
+									variant={statusFilter === status ? "filled" : "light"}
+									color={statusFilter === status ? "dark" : "gray"}
+									onClick={() => setStatusFilter(status)}
+									className="font-medium"
+								>
+									{status === "all" && "Todos"}
+									{status === "active" && "Activos"}
+									{status === "inactive" && "Inactivos"}
+								</Button>
 							))}
-						</Stack>
-					</Grid.Col>
+						</Group>
+					</Group>
 
-					<Grid.Col span={{ base: 12, md: 7 }}>
-						{selectedProcedure ? (
-							<ProcedureDetailPanel
-								procedure={selectedProcedure}
-								isMutating={isMutatingId === selectedProcedure.id}
-								onToggleActive={handleToggleActive}
-								onDuplicate={handleDuplicate}
-								onRemove={handleRemove}
-							/>
-						) : (
-							<ProcedureDetailEmptyState />
+					<Card
+						className={adminUi.surface}
+						radius="lg"
+						p={0}
+						shadow="none"
+					>
+						<Table.ScrollContainer minWidth={600}>
+							<Table verticalSpacing="sm" highlightOnHover>
+								<Table.Thead>
+									<Table.Tr className="bg-zinc-50/80">
+										<Table.Th
+											className="cursor-pointer select-none font-['Sora'] text-xs font-semibold uppercase tracking-wider text-zinc-500"
+											onClick={() => toggleSort("name")}
+										>
+											Trámite <SortIndicator column="name" />
+										</Table.Th>
+										<Table.Th
+											className="cursor-pointer select-none font-['Sora'] text-xs font-semibold uppercase tracking-wider text-zinc-500"
+											onClick={() => toggleSort("slug")}
+										>
+											Slug <SortIndicator column="slug" />
+										</Table.Th>
+										<Table.Th
+											className="cursor-pointer select-none font-['Sora'] text-xs font-semibold uppercase tracking-wider text-zinc-500"
+											onClick={() => toggleSort("status")}
+										>
+											Estado <SortIndicator column="status" />
+										</Table.Th>
+										<Table.Th
+											className="cursor-pointer select-none font-['Sora'] text-xs font-semibold uppercase tracking-wider text-zinc-500"
+											onClick={() => toggleSort("requirements")}
+										>
+											Requisitos <SortIndicator column="requirements" />
+										</Table.Th>
+										<Table.Th className="font-['Sora'] text-xs font-semibold uppercase tracking-wider text-zinc-500 w-12" />
+									</Table.Tr>
+								</Table.Thead>
+								<Table.Tbody>
+									{filteredProcedures.map((procedure) => {
+										const docCount =
+											(procedure.documentSchema?.requirements as unknown[])
+												?.length ?? 0;
+										const isMutating = isMutatingId === procedure.id;
+
+										return (
+											<Table.Tr
+												key={procedure.id}
+												className={
+													!procedure.isActive ? "opacity-60" : ""
+												}
+											>
+												<Table.Td>
+													<Group gap="sm" wrap="nowrap">
+														<Box className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
+															<FileText
+																size={16}
+																className="text-red-700"
+																strokeWidth={1.5}
+															/>
+														</Box>
+														<Stack gap={0}>
+															<Text
+																className="font-semibold text-zinc-900 text-sm"
+																lineClamp={1}
+															>
+																{procedure.name}
+															</Text>
+															{procedure.description && (
+																<Text
+																	size="xs"
+																	className="text-zinc-500"
+																	lineClamp={1}
+																>
+																	{procedure.description}
+																</Text>
+															)}
+														</Stack>
+													</Group>
+												</Table.Td>
+												<Table.Td>
+													<code className="text-xs font-mono text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded">
+														{procedure.slug}
+													</code>
+												</Table.Td>
+												<Table.Td>
+													<Badge
+														variant="light"
+														color={procedure.isActive ? "teal" : "gray"}
+														size="sm"
+													>
+														{procedure.isActive ? "Activo" : "Inactivo"}
+														{isMutating && "..."}
+													</Badge>
+													{procedure.requiresVehicle && (
+														<Badge
+															variant="light"
+															color="orange"
+															size="sm"
+															ml="xs"
+														>
+															Vehículo
+														</Badge>
+													)}
+												</Table.Td>
+												<Table.Td>
+													<Text size="sm" className="text-zinc-600">
+														{docCount}{" "}
+														{docCount === 1
+															? "requisito"
+															: "requisitos"}
+													</Text>
+												</Table.Td>
+												<Table.Td>
+													<Menu position="bottom-end" withinPortal>
+														<Menu.Target>
+															<ActionIcon
+																variant="subtle"
+																color="gray"
+																radius="md"
+																size="sm"
+															>
+																<MoreHorizontal size={16} />
+															</ActionIcon>
+														</Menu.Target>
+														<Menu.Dropdown>
+															<Menu.Item
+																leftSection={<Edit3 size={14} />}
+																disabled={isMutating}
+																onClick={() => handleEdit(procedure)}
+															>
+																Editar
+															</Menu.Item>
+															<Menu.Item
+																leftSection={<Copy size={14} />}
+																disabled={isMutating}
+																onClick={() => handleDuplicate(procedure)}
+															>
+																Duplicar
+															</Menu.Item>
+															<Menu.Item
+																leftSection={
+																	procedure.isActive ? (
+																		<AlertCircle size={14} />
+																	) : (
+																		<CheckCircle2 size={14} />
+																	)
+																}
+																disabled={isMutating}
+																onClick={() =>
+																	handleToggleActive(
+																		procedure,
+																		!procedure.isActive,
+																	)
+																}
+															>
+																{procedure.isActive
+																	? "Desactivar"
+																	: "Activar"}
+															</Menu.Item>
+															<Menu.Divider />
+															<Menu.Item
+																leftSection={<Trash2 size={14} />}
+																color="red"
+																disabled={isMutating}
+																onClick={() => handleRemove(procedure)}
+															>
+																Eliminar
+															</Menu.Item>
+														</Menu.Dropdown>
+													</Menu>
+												</Table.Td>
+											</Table.Tr>
+										);
+									})}
+								</Table.Tbody>
+							</Table>
+						</Table.ScrollContainer>
+
+						{filteredProcedures.length === 0 && (
+							<Box p="xl" className="text-center">
+								<Text className="text-zinc-500">
+									No se encontraron trámites con los filtros aplicados.
+								</Text>
+							</Box>
 						)}
-					</Grid.Col>
-				</Grid>
+					</Card>
+				</Stack>
 			)}
 
 			<AddProcedureModal
@@ -296,6 +576,48 @@ export function TramitesPage() {
 				onClose={closeAdd}
 				onCreate={handleCreateProcedure}
 			/>
+
+			{editingProcedure && (
+				<EditProcedureModal
+					opened={editModalOpened}
+					onClose={() => {
+						closeEdit();
+						setEditingProcedure(null);
+					}}
+					procedure={editingProcedure}
+					onUpdate={handleUpdateProcedure}
+				/>
+			)}
 		</Stack>
+	);
+}
+
+// Simple Alert component for inline use
+function InlineAlert({
+	color,
+	icon,
+	children,
+}: {
+	color: "red" | "teal";
+	icon: React.ReactNode;
+	children: React.ReactNode;
+}) {
+	const bgMap = {
+		red: "bg-red-50",
+		teal: "bg-teal-50",
+	};
+	const textMap = {
+		red: "text-red-800",
+		teal: "text-teal-800",
+	};
+	return (
+		<Box
+			className={`flex items-start gap-3 rounded-md ${bgMap[color]} px-4 py-3`}
+		>
+			<Box className="mt-0.5 shrink-0">{icon}</Box>
+			<Text size="sm" className={textMap[color]}>
+				{children}
+			</Text>
+		</Box>
 	);
 }

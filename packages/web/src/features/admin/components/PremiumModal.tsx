@@ -28,33 +28,55 @@ export function PremiumModal({
 		<Modal
 			{...props}
 			size={sizeMap[size]}
-			radius="xl"
+			radius="md"
 			centered
 			yOffset="5vh"
+			scrollAreaComponent={undefined}
 			overlayProps={{
 				backgroundOpacity: 0.55,
-				blur: 8,
+				blur: 3,
 			}}
 			styles={{
+				root: {
+					overflow: "hidden",
+				},
+				inner: {
+					padding: "16px",
+				},
 				content: {
 					border: "1px solid rgba(24, 24, 27, 0.08)",
 					boxShadow:
-						"0 28px 56px -28px rgba(9, 9, 11, 0.35), 0 0 0 1px rgba(255,255,255,0.5) inset",
+						"0 20px 40px -12px rgba(9, 9, 11, 0.25)",
+					borderRadius: "12px",
+					maxHeight: "calc(100dvh - 32px)",
+					overflow: "hidden",
+					display: "flex",
+					flexDirection: "column",
 					...(styles?.content || {}),
 				},
 				header: {
 					borderBottom: "1px solid rgba(228, 228, 231, 0.9)",
-					paddingBottom: 16,
+					paddingBottom: 12,
+					paddingTop: 16,
+					paddingLeft: 20,
+					paddingRight: 20,
+					flexShrink: 0,
 					...(styles?.header || {}),
 				},
 				body: {
-					paddingTop: 20,
+					paddingTop: 16,
+					paddingBottom: 16,
+					paddingLeft: 20,
+					paddingRight: 20,
+					overflowY: "auto",
+					overflowX: "hidden",
+					flex: 1,
 					...(styles?.body || {}),
 				},
 			}}
 			title={
-				<div className="space-y-1">
-					<h2 className="text-lg font-semibold tracking-tight text-zinc-900">
+				<div className="space-y-0.5">
+					<h2 className="text-base font-semibold tracking-tight text-zinc-900">
 						{title}
 					</h2>
 					{subtitle && <p className="text-sm text-zinc-500">{subtitle}</p>}
