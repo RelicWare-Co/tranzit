@@ -1,4 +1,4 @@
-import { Card, Group, Stack, Title, Text } from "@mantine/core";
+import { Card, Group, Stack, Text, Title } from "@mantine/core";
 import { FileText } from "lucide-react";
 import { useMemo } from "react";
 import { adminUi } from "#/features/admin/components/admin-ui";
@@ -95,7 +95,8 @@ export function SeriesSection({
 								Series de reserva administrativa
 							</Title>
 							<Text size="sm" className="text-[var(--text-secondary)]">
-								Creá y gestioná reservas recurrentes con reglas RRULE.
+								Creá y gestioná reservas recurrentes con reglas de recurrencia
+								guiadas.
 							</Text>
 						</Stack>
 					</Group>

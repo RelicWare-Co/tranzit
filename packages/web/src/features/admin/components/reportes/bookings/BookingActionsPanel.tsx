@@ -1,5 +1,21 @@
-import { Button, Card, Divider, Group, Select, Stack, Title } from "@mantine/core";
+import {
+	Button,
+	Divider,
+	Group,
+	Select,
+	Stack,
+	Text,
+	Title,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
+import {
+	AlertTriangle,
+	ArrowDownUp,
+	CheckCircle2,
+	Eye,
+	Info,
+	UserCheck,
+} from "lucide-react";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { orpcClient } from "#/shared/lib/orpc-client";
 
@@ -40,7 +56,7 @@ export function BookingActionsPanel({
 }: BookingActionsPanelProps) {
 	const releaseForm = useForm({
 		mode: "uncontrolled",
-		initialValues: { reason: releaseReason as "cancelled" | "expired" | "attended" },
+		initialValues: { reason: releaseReason },
 	});
 
 	const reassignForm = useForm({
@@ -53,115 +69,88 @@ export function BookingActionsPanel({
 	});
 
 	return (
-		<Card className={adminUi.callout} radius="lg" p="md" shadow="none">
-			<Stack gap="md">
-				<Stack gap={2}>
-					<Title
-						order={5}
-						className="text-sm font-semibold text-[var(--text-primary)]"
+		<div className={adminUi.surfaceInset}>
+			<Stack gap="lg">
+				{/* Header */}
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
+							<Info size={16} className="text-red-700" strokeWidth={1.75} />
+						</div>
+						<Stack gap={2}>
+							<Title
+								order={5}
+								className="text-sm font-semibold text-[var(--text-primary)]"
+							>
+								Acciones sobre cita seleccionada
+							</Title>
+							<Text
+								size="xs"
+								className="font-mono text-[var(--text-secondary)]"
+							>
+								ID: {selectedBooking.id.slice(0, 8)}… |{" "}
+								{selectedBooking.slot?.slotDate ?? "-"}{" "}
+								{selectedBooking.slot?.startTime ?? "--"}
+							</Text>
+						</Stack>
+					</div>
+				</div>
+
+				<Divider className={adminUi.divider} />
+
+				{/* Quick Actions */}
+				<Stack gap="xs">
+					<Text
+						size="xs"
+						fw={600}
+						className="uppercase tracking-wider text-[var(--text-secondary)]"
 					>
-						Acciones sobre cita seleccionada
-					</Title>
-					<Title
-						order={6}
-						className="text-xs font-mono text-[var(--text-secondary)]"
-					>
-						ID: {selectedBooking.id.slice(0, 8)}… | Slot:{" "}
-						{selectedBooking.slot?.slotDate ?? "-"}{" "}
-						{selectedBooking.slot?.startTime ?? "--"}
-					</Title>
+						Acciones rápidas
+					</Text>
+					<Group gap="sm" wrap="wrap">
+						<Button
+							size="sm"
+							leftSection={<CheckCircle2 size={14} />}
+							loading={isRunning === "booking-confirm"}
+							onClick={() =>
+								void runAction(
+									"booking-confirm",
+									async () =>
+										await orpcClient.admin.bookings.confirm({
+											id: selectedBooking.id,
+										}),
+									"Cita confirmada.",
+									"No se pudo confirmar la cita.",
+								)
+							}
+						>
+							Confirmar
+						</Button>
+						<Button
+							variant="light"
+							size="sm"
+							leftSection={<Eye size={14} />}
+							loading={isRunning === "booking-capacity"}
+							onClick={() =>
+								void runAction(
+									"booking-capacity",
+									async () =>
+										await orpcClient.admin.bookings.capacity({
+											id: selectedBooking.id,
+										}),
+									"Capacidad consultada.",
+									"No se pudo consultar la capacidad.",
+								)
+							}
+						>
+							Ver capacidad
+						</Button>
+					</Group>
 				</Stack>
 
 				<Divider className={adminUi.divider} />
 
-				<Group gap="sm" wrap="wrap">
-					<Button
-						size="sm"
-						loading={isRunning === "booking-confirm"}
-						onClick={() =>
-							void runAction(
-								"booking-confirm",
-								async () =>
-									await orpcClient.admin.bookings.confirm({
-										id: selectedBooking.id,
-									}),
-								"Cita confirmada.",
-								"No se pudo confirmar la cita.",
-							)
-						}
-					>
-						Confirmar
-					</Button>
-					<Button
-						variant="light"
-						size="sm"
-						loading={isRunning === "booking-capacity"}
-						onClick={() =>
-							void runAction(
-								"booking-capacity",
-								async () =>
-									await orpcClient.admin.bookings.capacity({
-										id: selectedBooking.id,
-									}),
-								"Capacidad consultada.",
-								"No se pudo consultar la capacidad.",
-							)
-						}
-					>
-						Ver capacidad
-					</Button>
-				</Group>
-
-				<Divider className={adminUi.divider} />
-
-				<form
-					onSubmit={releaseForm.onSubmit(() => {
-						onReleaseReasonChange(releaseForm.values.reason);
-						void runAction(
-							"booking-release",
-							async () =>
-								await orpcClient.admin.bookings.release({
-									id: selectedBooking.id,
-									reason: releaseForm.values.reason,
-								}),
-							"Cita liberada.",
-							"No se pudo liberar la cita.",
-						);
-					})}
-				>
-					<Group gap="md" align="flex-end" wrap="wrap">
-						<Select
-							label="Razón de liberación"
-							size="sm"
-							w={220}
-							key={releaseForm.key("reason")}
-							{...releaseForm.getInputProps("reason")}
-							data={[
-								{ value: "cancelled", label: "Cancelada" },
-								{ value: "expired", label: "Expirada" },
-								{ value: "attended", label: "Atendida" },
-							]}
-							onChange={(val) => {
-								const value = val ?? "cancelled";
-								const typedValue = value as "cancelled" | "expired" | "attended";
-								releaseForm.setFieldValue("reason", typedValue);
-								onReleaseReasonChange(typedValue);
-							}}
-						/>
-						<Button
-							type="submit"
-							color="red"
-							variant="light"
-							size="sm"
-							loading={isRunning === "booking-release"}
-						>
-							Liberar cita
-						</Button>
-					</Group>
-				</form>
-
-				<Divider className={adminUi.divider} />
-
+				{/* Reassign */}
 				<form
 					onSubmit={reassignForm.onSubmit(() => {
 						onReassignTargetChange(reassignForm.values.targetStaffUserId);
@@ -178,11 +167,24 @@ export function BookingActionsPanel({
 					})}
 				>
 					<Stack gap="md">
+						<Text
+							size="xs"
+							fw={600}
+							className="uppercase tracking-wider text-[var(--text-secondary)]"
+						>
+							Reasignar
+						</Text>
 						<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 							<Select
-								label="Reasignar a"
+								label="Funcionario destino"
 								size="sm"
 								placeholder="Seleccioná funcionario"
+								leftSection={
+									<UserCheck
+										size={14}
+										className="text-[var(--text-secondary)]"
+									/>
+								}
 								key={reassignForm.key("targetStaffUserId")}
 								{...reassignForm.getInputProps("targetStaffUserId")}
 								data={staffOptions}
@@ -196,6 +198,7 @@ export function BookingActionsPanel({
 								<Button
 									variant="light"
 									size="sm"
+									leftSection={<Eye size={14} />}
 									loading={isRunning === "booking-reassign-preview"}
 									onClick={() => {
 										if (!reassignForm.values.targetStaffUserId) {
@@ -223,6 +226,7 @@ export function BookingActionsPanel({
 								<Button
 									type="submit"
 									size="sm"
+									leftSection={<ArrowDownUp size={14} />}
 									loading={isRunning === "booking-reassign"}
 								>
 									Reasignar
@@ -230,6 +234,7 @@ export function BookingActionsPanel({
 								<Button
 									variant="default"
 									size="sm"
+									leftSection={<Info size={14} />}
 									loading={isRunning === "booking-availability"}
 									onClick={() => {
 										if (!reassignForm.values.targetStaffUserId) {
@@ -242,13 +247,10 @@ export function BookingActionsPanel({
 										void runAction(
 											"booking-availability",
 											async () =>
-												await orpcClient.admin.bookings.availabilityCheck(
-													{
-														slotId: selectedBooking.slotId,
-														staffUserId:
-															reassignForm.values.targetStaffUserId,
-													},
-												),
+												await orpcClient.admin.bookings.availabilityCheck({
+													slotId: selectedBooking.slotId,
+													staffUserId: reassignForm.values.targetStaffUserId,
+												}),
 											"Availability consultada.",
 											"No se pudo consultar availability.",
 										);
@@ -260,7 +262,69 @@ export function BookingActionsPanel({
 						</div>
 					</Stack>
 				</form>
+
+				<Divider className={adminUi.divider} />
+
+				{/* Release */}
+				<form
+					onSubmit={releaseForm.onSubmit(() => {
+						onReleaseReasonChange(releaseForm.values.reason);
+						void runAction(
+							"booking-release",
+							async () =>
+								await orpcClient.admin.bookings.release({
+									id: selectedBooking.id,
+									reason: releaseForm.values.reason,
+								}),
+							"Cita liberada.",
+							"No se pudo liberar la cita.",
+						);
+					})}
+				>
+					<Stack gap="md">
+						<Text
+							size="xs"
+							fw={600}
+							className="uppercase tracking-wider text-[var(--text-secondary)]"
+						>
+							Liberar cita
+						</Text>
+						<Group gap="md" align="flex-end" wrap="wrap">
+							<Select
+								label="Razón de liberación"
+								size="sm"
+								w={220}
+								key={releaseForm.key("reason")}
+								{...releaseForm.getInputProps("reason")}
+								data={[
+									{ value: "cancelled", label: "Cancelada" },
+									{ value: "expired", label: "Expirada" },
+									{ value: "attended", label: "Atendida" },
+								]}
+								onChange={(val) => {
+									const value = val ?? "cancelled";
+									const typedValue = value as
+										| "cancelled"
+										| "expired"
+										| "attended";
+									releaseForm.setFieldValue("reason", typedValue);
+									onReleaseReasonChange(typedValue);
+								}}
+							/>
+							<Button
+								type="submit"
+								color="red"
+								variant="light"
+								size="sm"
+								leftSection={<AlertTriangle size={14} />}
+								loading={isRunning === "booking-release"}
+							>
+								Liberar cita
+							</Button>
+						</Group>
+					</Stack>
+				</form>
 			</Stack>
-		</Card>
+		</div>
 	);
 }

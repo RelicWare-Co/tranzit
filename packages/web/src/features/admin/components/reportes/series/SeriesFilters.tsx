@@ -1,4 +1,5 @@
-import { Group, Select } from "@mantine/core";
+import { Select } from "@mantine/core";
+import { Filter } from "lucide-react";
 import type { ReservationSeriesFilters } from "../types";
 
 interface SeriesFiltersProps {
@@ -8,15 +9,19 @@ interface SeriesFiltersProps {
 
 export function SeriesFilters({ filters, onChange }: SeriesFiltersProps) {
 	return (
-		<Group gap="sm">
+		<div className="flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-3">
+			<div className="flex items-center gap-2 text-[var(--text-secondary)]">
+				<Filter size={14} strokeWidth={1.75} />
+				<span className="text-xs font-semibold uppercase tracking-wider">
+					Series
+				</span>
+			</div>
 			<Select
-				label="Filtrar series"
 				size="sm"
 				value={filters.isActive}
 				onChange={(value) =>
 					onChange({
-						isActive:
-							(value as ReservationSeriesFilters["isActive"]) ?? "all",
+						isActive: (value as ReservationSeriesFilters["isActive"]) ?? "all",
 					})
 				}
 				data={[
@@ -25,6 +30,6 @@ export function SeriesFilters({ filters, onChange }: SeriesFiltersProps) {
 					{ value: "false", label: "Inactivas" },
 				]}
 			/>
-		</Group>
+		</div>
 	);
 }

@@ -1,24 +1,32 @@
-import { Button, Card, Group, Select, Stack, Text, TextInput } from "@mantine/core";
+import { Button, Group, Select, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { Filter, Search, XCircle } from "lucide-react";
+import { Calendar, Filter, Search, XCircle } from "lucide-react";
 import { useEffect } from "react";
-import { type BookingFilters, defaultBookingFilters } from "../types";
+import {
+	type BookingFilters as BookingFiltersType,
+	defaultBookingFilters,
+} from "../types";
 
 interface BookingFiltersProps {
-	filters: BookingFilters;
-	onApply: (filters: BookingFilters) => void;
+	filters: BookingFiltersType;
+	onApply: (filters: BookingFiltersType) => void;
 	isLoading: boolean;
 }
 
-export function BookingFilters({ filters, onApply, isLoading }: BookingFiltersProps) {
+export function BookingFilters({
+	filters,
+	onApply,
+	isLoading,
+}: BookingFiltersProps) {
 	const form = useForm({
 		mode: "uncontrolled",
 		initialValues: filters,
 	});
 
+	const { dateFrom, dateTo, status, isActive } = filters;
 	useEffect(() => {
-		form.setValues(filters);
-	}, [filters.dateFrom, filters.dateTo, filters.status, filters.isActive]);
+		form.setValues({ dateFrom, dateTo, status, isActive });
+	}, [dateFrom, dateTo, status, isActive, form.setValues]);
 
 	const handleApply = () => {
 		onApply(form.getValues());
@@ -30,23 +38,23 @@ export function BookingFilters({ filters, onApply, isLoading }: BookingFiltersPr
 	};
 
 	return (
-		<Card className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)]" radius="lg" p="md" shadow="none">
-			<Stack gap="md">
-				<Group gap="sm" wrap="nowrap">
-					<Filter
-						size={16}
-						className="text-[var(--text-secondary)]"
-						strokeWidth={1.75}
-					/>
-					<Text fw={600} size="sm" className="text-[var(--text-primary)]">
+		<div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-3">
+			<div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+				<div className="flex items-center gap-2 text-[var(--text-secondary)] lg:pb-2">
+					<Filter size={14} strokeWidth={1.75} />
+					<span className="text-xs font-semibold uppercase tracking-wider">
 						Filtros
-					</Text>
-				</Group>
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+					</span>
+				</div>
+
+				<div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 					<TextInput
 						label="Desde"
 						type="date"
 						size="sm"
+						leftSection={
+							<Calendar size={14} className="text-[var(--text-secondary)]" />
+						}
 						key={form.key("dateFrom")}
 						{...form.getInputProps("dateFrom")}
 					/>
@@ -54,6 +62,9 @@ export function BookingFilters({ filters, onApply, isLoading }: BookingFiltersPr
 						label="Hasta"
 						type="date"
 						size="sm"
+						leftSection={
+							<Calendar size={14} className="text-[var(--text-secondary)]" />
+						}
 						key={form.key("dateTo")}
 						{...form.getInputProps("dateTo")}
 					/>
@@ -76,7 +87,8 @@ export function BookingFilters({ filters, onApply, isLoading }: BookingFiltersPr
 						]}
 					/>
 				</div>
-				<Group justify="flex-end" gap="sm">
+
+				<Group gap="xs" className="lg:pb-0.5">
 					<Button
 						variant="default"
 						size="sm"
@@ -91,10 +103,10 @@ export function BookingFilters({ filters, onApply, isLoading }: BookingFiltersPr
 						loading={isLoading}
 						leftSection={<Search size={14} />}
 					>
-						Aplicar filtros
+						Aplicar
 					</Button>
 				</Group>
-			</Stack>
-		</Card>
+			</div>
+		</div>
 	);
 }

@@ -3,8 +3,8 @@ import { RefreshCw, Users } from "lucide-react";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { BookingsSection } from "./bookings";
-import { SeriesSection } from "./series";
 import { StatsOverview } from "./StatsOverview";
+import { SeriesSection } from "./series";
 import { useReportesData } from "./useReportesData";
 
 export function AdminReportesPage() {

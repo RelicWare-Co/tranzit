@@ -1,12 +1,11 @@
 {
   "name": "tranzit",
   "version": "1.0.0",
-  "private": true,
+  "devDependencies": {
+    "@biomejs/biome": "2.4.13"
+  },
   "description": "Plataforma de agendamiento para SIMUT Tulúa",
-  "workspaces": [
-    "packages/web",
-    "packages/server"
-  ],
+  "private": true,
   "scripts": {
     "dev": "bun --cwd packages/web dev",
     "dev:server": "bun --cwd packages/server dev",
@@ -24,7 +23,8 @@
     "tsc:server": "bun --cwd packages/server tsc --noEmit",
     "tsc": "bun run tsc:web && bun run tsc:server"
   },
-  "devDependencies": {
-    "@biomejs/biome": "2.4.13"
-  }
+  "workspaces": [
+    "packages/web",
+    "packages/server"
+  ]
 }

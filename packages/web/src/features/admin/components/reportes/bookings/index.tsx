@@ -1,14 +1,12 @@
-import { useState } from "react";
 import { Card, Group, Loader, Stack, Text, Title } from "@mantine/core";
-import { Calendar } from "lucide-react";
+import { AlertCircle, Calendar } from "lucide-react";
+import { useState } from "react";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { getErrorMessage } from "#/features/admin/components/errors";
-import { AlertCircle } from "lucide-react";
-import { Card as MantineCard, Group as MantineGroup, Text as MantineText } from "@mantine/core";
-import { type BookingFilters } from "../types";
+import type { BookingFilters } from "../types";
+import { BookingActionsPanel } from "./BookingActionsPanel";
 import { BookingFilters as BookingFiltersComponent } from "./BookingFilters";
 import { BookingTable } from "./BookingTable";
-import { BookingActionsPanel } from "./BookingActionsPanel";
 
 interface BookingsSectionProps {
 	filtersDraft: BookingFilters;
@@ -58,10 +56,13 @@ export function BookingsSection({
 	isRunning,
 	runAction,
 }: BookingsSectionProps) {
-	const [releaseReason, setReleaseReason] = useState<"cancelled" | "expired" | "attended">("cancelled");
+	const [releaseReason, setReleaseReason] = useState<
+		"cancelled" | "expired" | "attended"
+	>("cancelled");
 	const [reassignTargetStaffId, setReassignTargetStaffId] = useState("");
 
-	const selectedBooking = bookingsQuery.data?.find((b) => b.id === selectedBookingId) ?? null;
+	const selectedBooking =
+		bookingsQuery.data?.find((b) => b.id === selectedBookingId) ?? null;
 
 	const handleApplyFilters = (filters: BookingFilters) => {
 		setFiltersDraft(filters);
@@ -102,17 +103,17 @@ export function BookingsSection({
 
 				{/* Error state */}
 				{bookingsQuery.isError ? (
-					<MantineCard className={adminUi.callout} radius="lg" p="md">
-						<MantineGroup gap="sm">
-							<AlertCircle size={16} className="text-red-600" />
-							<MantineText size="sm" className="text-red-700">
-								{getErrorMessage(
-									bookingsQuery.error,
-									"No se pudieron cargar las citas",
-								)}
-							</MantineText>
-						</MantineGroup>
-					</MantineCard>
+					<div
+						className={`${adminUi.callout} flex items-center gap-3 px-4 py-3`}
+					>
+						<AlertCircle size={16} className="text-red-600 shrink-0" />
+						<Text size="sm" className="text-red-700">
+							{getErrorMessage(
+								bookingsQuery.error,
+								"No se pudieron cargar las citas",
+							)}
+						</Text>
+					</div>
 				) : null}
 
 				{/* Table */}

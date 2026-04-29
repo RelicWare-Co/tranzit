@@ -1,8 +1,21 @@
-import { Button, Group, Loader, Select, Stack, Textarea, TextInput, Title } from "@mantine/core";
+import {
+	Button,
+	Group,
+	Loader,
+	Select,
+	Stack,
+	Text,
+	Textarea,
+	TextInput,
+	Title,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { CalendarDays, Clock, FileText, Plus, User } from "lucide-react";
+import { useState } from "react";
+import { adminUi } from "#/features/admin/components/admin-ui";
 import { orpcClient } from "#/shared/lib/orpc-client";
+import { RRuleBuilder, type RRuleValue, useRRuleString } from "./RRuleBuilder";
 
 interface CreateSeriesFormProps {
 	staffOptions: Array<{ value: string; label: string }>;
@@ -22,10 +35,18 @@ export function CreateSeriesForm({
 	isRunning,
 	createSeries,
 }: CreateSeriesFormProps) {
+	const [rruleValue, setRruleValue] = useState<RRuleValue>({
+		freq: "WEEKLY",
+		interval: 1,
+		byDay: ["MO"],
+		byMonthDay: null,
+	});
+
+	const recurrenceRuleString = useRRuleString(rruleValue);
+
 	const form = useForm({
 		mode: "uncontrolled",
 		initialValues: {
-			recurrenceRule: "FREQ=WEEKLY;BYDAY=MO",
 			slotDate: "",
 			slotId: "",
 			staffUserId: "",
@@ -34,14 +55,10 @@ export function CreateSeriesForm({
 			notes: "",
 		},
 		validate: {
-			recurrenceRule: (value) =>
-				!value.trim() ? "La regla RRULE es requerida" : null,
 			slotId: (value) => (!value ? "Seleccioná un slot" : null),
 			staffUserId: (value) => (!value ? "Seleccioná un funcionario" : null),
-			startDate: (value) =>
-				!value ? "La fecha de inicio es requerida" : null,
-			endDate: (value) =>
-				!value ? "La fecha de fin es requerida" : null,
+			startDate: (value) => (!value ? "La fecha de inicio es requerida" : null),
+			endDate: (value) => (!value ? "La fecha de fin es requerida" : null),
 		},
 	});
 
@@ -64,39 +81,60 @@ export function CreateSeriesForm({
 			.filter((slot) => slot.status === "open")
 			.map((slot) => ({
 				value: slot.id,
-				label: `${slot.startTime} - ${slot.endTime} (${slot.remainingCapacity ?? "∞"})`,
+				label: `${slot.startTime} – ${slot.endTime} (${slot.remainingCapacity ?? "∞"})`,
 			})) ?? [];
 
+	const handleSubmit = form.onSubmit((values) => {
+		void createSeries({
+			recurrenceRule: recurrenceRuleString,
+			slotId: values.slotId,
+			staffUserId: values.staffUserId,
+			startDate: values.startDate,
+			endDate: values.endDate,
+			notes: values.notes.trim() || null,
+		});
+	});
+
 	return (
-		<div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
-			<Stack gap="md">
-				<Title
-					order={5}
-					className="text-sm font-semibold text-[var(--text-primary)]"
-				>
-					Nueva serie
-				</Title>
-				<form
-					onSubmit={form.onSubmit((values) =>
-						void createSeries({
-							...values,
-							notes: values.notes.trim() || null,
-						}),
-					)}
-				>
-					<Stack gap="md">
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-							<TextInput
-								label="Regla RRULE"
-								size="sm"
-								placeholder="FREQ=WEEKLY;BYDAY=MO"
-								key={form.key("recurrenceRule")}
-								{...form.getInputProps("recurrenceRule")}
-							/>
+		<div className={adminUi.surfaceInset}>
+			<Stack gap="lg">
+				<div className="flex items-center gap-3">
+					<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
+						<Plus size={16} className="text-red-700" strokeWidth={1.75} />
+					</div>
+					<Title
+						order={5}
+						className="text-sm font-semibold text-[var(--text-primary)]"
+					>
+						Nueva serie de reserva
+					</Title>
+				</div>
+
+				<form onSubmit={handleSubmit}>
+					<Stack gap="lg">
+						{/* Recurrence */}
+						<Stack gap="xs">
+							<div className="flex items-center gap-2">
+								<CalendarDays
+									size={14}
+									className="text-[var(--text-secondary)]"
+									strokeWidth={1.75}
+								/>
+								<Text size="sm" fw={600} className="text-[var(--text-primary)]">
+									Regla de recurrencia
+								</Text>
+							</div>
+							<RRuleBuilder value={rruleValue} onChange={setRruleValue} />
+						</Stack>
+
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							<TextInput
 								label="Fecha para slot base"
 								size="sm"
 								type="date"
+								leftSection={
+									<Clock size={14} className="text-[var(--text-secondary)]" />
+								}
 								key={form.key("slotDate")}
 								{...form.getInputProps("slotDate")}
 							/>
@@ -107,9 +145,7 @@ export function CreateSeriesForm({
 								key={form.key("slotId")}
 								{...form.getInputProps("slotId")}
 								data={slotOptions}
-								disabled={
-									!form.values.slotDate || slotsQuery.isLoading
-								}
+								disabled={!form.values.slotDate || slotsQuery.isLoading}
 								rightSection={
 									slotsQuery.isLoading ? <Loader size="xs" /> : null
 								}
@@ -118,6 +154,9 @@ export function CreateSeriesForm({
 								label="Funcionario"
 								size="sm"
 								placeholder="Seleccioná funcionario"
+								leftSection={
+									<User size={14} className="text-[var(--text-secondary)]" />
+								}
 								key={form.key("staffUserId")}
 								{...form.getInputProps("staffUserId")}
 								data={staffOptions}
@@ -126,6 +165,12 @@ export function CreateSeriesForm({
 								label="Inicio serie"
 								size="sm"
 								type="date"
+								leftSection={
+									<CalendarDays
+										size={14}
+										className="text-[var(--text-secondary)]"
+									/>
+								}
 								key={form.key("startDate")}
 								{...form.getInputProps("startDate")}
 							/>
@@ -133,17 +178,31 @@ export function CreateSeriesForm({
 								label="Fin serie"
 								size="sm"
 								type="date"
+								leftSection={
+									<CalendarDays
+										size={14}
+										className="text-[var(--text-secondary)]"
+									/>
+								}
 								key={form.key("endDate")}
 								{...form.getInputProps("endDate")}
 							/>
 						</div>
+
 						<Textarea
 							label="Notas"
 							size="sm"
 							minRows={2}
+							leftSection={
+								<FileText
+									size={14}
+									className="text-[var(--text-secondary)] mt-1"
+								/>
+							}
 							key={form.key("notes")}
 							{...form.getInputProps("notes")}
 						/>
+
 						<Group justify="flex-end">
 							<Button
 								type="submit"
