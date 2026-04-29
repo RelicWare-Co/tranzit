@@ -1,8 +1,8 @@
 import { Box, Container, Stack, Text } from "@mantine/core";
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
-import { useAuth } from "#/features/auth/components/AuthContext";
 import { adminUi } from "#/features/admin/components/admin-ui";
+import { useAuth } from "#/features/auth/components/AuthContext";
 import { AdminNavbar } from "./AdminNavbar";
 import { AdminSidebar } from "./AdminSidebar";
 
@@ -94,7 +94,7 @@ export function AdminLayout() {
 	return (
 		<Box
 			component="div"
-			className="flex min-h-[100dvh] flex-col bg-[var(--bg-primary)]"
+			className="flex min-h-[100dvh] flex-col bg-[var(--bg-primary)] pt-[44px]"
 		>
 			<AdminNavbar />
 

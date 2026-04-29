@@ -15,10 +15,10 @@ import {
 } from "@mantine/schedule";
 import { AlertCircle, CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { orpcClient } from "#/shared/lib/orpc-client";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
-import { getErrorMessage } from "#/features/admin/components/errors";
 import { formatDateLocal } from "#/features/admin/components/dates";
+import { getErrorMessage } from "#/features/admin/components/errors";
+import { orpcClient } from "#/shared/lib/orpc-client";
 import "./admin-schedule.css";
 import { BookingStatsGrid } from "./BookingStatsGrid";
 import { NewBookingModal } from "./NewBookingModal";
@@ -210,7 +210,7 @@ export function AdminCitasPage() {
 
 	return (
 		<Box className="admin-citas-calendar-scope flex min-h-0 flex-1 flex-col">
-			<Box className="px-4 pt-5 sm:px-6">
+			<Box className="px-4 pt-15 sm:px-6">
 				<AdminPageHeader
 					title="Gestión de Citas"
 					description="Visualiza y administra las citas en el calendario. Usa los filtros de vista para navegar por día, semana, mes o año."
