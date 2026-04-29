@@ -251,8 +251,12 @@ describe("Hold Expiration Email", () => {
 		auth = testAuth.auth;
 		createTestApp(auth);
 
-		// Clean up tables
+		// Clean up tables in dependency order (children first)
 		await db.delete(schema.notificationDelivery);
+		await db
+			.update(schema.serviceRequest)
+			.set({ activeBookingId: null })
+			.where(eq(schema.serviceRequest.activeBookingId, schema.serviceRequest.activeBookingId));
 		await db.delete(schema.booking);
 		await db.delete(schema.serviceRequest);
 		await db.delete(schema.appointmentSlot);
@@ -262,8 +266,12 @@ describe("Hold Expiration Email", () => {
 	});
 
 	afterEach(async () => {
-		// Clean up after each test
+		// Clean up after each test in dependency order (children first)
 		await db.delete(schema.notificationDelivery);
+		await db
+			.update(schema.serviceRequest)
+			.set({ activeBookingId: null })
+			.where(eq(schema.serviceRequest.activeBookingId, schema.serviceRequest.activeBookingId));
 		await db.delete(schema.booking);
 		await db.delete(schema.serviceRequest);
 		await db.delete(schema.appointmentSlot);

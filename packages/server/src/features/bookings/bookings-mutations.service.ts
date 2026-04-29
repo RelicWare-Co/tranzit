@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
+import { log } from "evlog";
 import { db, schema } from "../../lib/db";
-import { logger } from "../../lib/logger";
 import { throwRpcError } from "../../shared/orpc";
 import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import { sendHoldExpirationEmail } from "../notifications/notification.service";
@@ -222,10 +222,12 @@ export async function confirmExistingBooking(
 					});
 				}
 			} catch (error) {
-				logger.error(
-					{ err: error, bookingId: id },
-					"Failed to send hold expiration email",
-				);
+				log.error({
+					tag: "booking",
+					message: "Failed to send hold expiration email",
+					err: error,
+					bookingId: id,
+				});
 				// Do not throw - the confirmation failure should still be reported
 			}
 		}

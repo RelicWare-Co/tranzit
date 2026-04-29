@@ -122,7 +122,28 @@ const cleanupTestData = async (
 	slotIds: string[],
 	userIds: string[],
 ) => {
-	// Clean up in order of dependencies
+	// Clean up in order of dependencies (children first)
+	// First clear activeBookingId references
+	try {
+		await db
+			.update(schema.serviceRequest)
+			.set({ activeBookingId: null })
+			.where(eq(schema.serviceRequest.activeBookingId, schema.serviceRequest.activeBookingId));
+	} catch {
+		// Ignore
+	}
+
+	// Delete service requests that reference these bookings
+	for (const id of bookingIds) {
+		try {
+			await db
+				.delete(schema.serviceRequest)
+				.where(eq(schema.serviceRequest.activeBookingId, id));
+		} catch {
+			// Ignore
+		}
+	}
+
 	for (const id of bookingIds) {
 		try {
 			await db.delete(schema.booking).where(eq(schema.booking.id, id));

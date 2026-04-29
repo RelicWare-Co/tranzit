@@ -6,8 +6,8 @@ import {
 	inArray,
 	sql,
 } from "drizzle-orm";
+import { log } from "evlog";
 import { db, schema } from "../../lib/db";
-import { logger } from "../../lib/logger";
 import { throwRpcError } from "../../shared/orpc";
 
 /**
@@ -485,16 +485,15 @@ export async function updateServiceRequestStatus(
 		},
 	});
 
-	logger.info(
-		{
-			requestId,
-			previousStatus: currentStatus,
-			newStatus,
-			actorUserId,
-			reason,
-		},
-		"Service request status updated",
-	);
+	log.info({
+		tag: "service-request",
+		message: "Service request status updated",
+		requestId,
+		previousStatus: currentStatus,
+		newStatus,
+		actorUserId,
+		reason,
+	});
 
 	return {
 		id: requestId,

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
+import { log } from "evlog";
 import { db, schema } from "../../lib/db";
-import { logger } from "../../lib/logger";
 import { sendMail } from "../auth/auth.mailer";
 import type { TemplateContext } from "./notification-templates";
 import {
@@ -82,10 +82,14 @@ export async function sendNotification({
 		.returning();
 
 	if (!notification[0]) {
-		logger.error(
-			{ templateKey, entityType, entityId, recipient },
-			"Failed to create notification_delivery record",
-		);
+		log.error({
+			tag: "notification",
+			message: "Failed to create notification_delivery record",
+			templateKey,
+			entityType,
+			entityId,
+			recipient,
+		});
 		return;
 	}
 
@@ -108,17 +112,26 @@ export async function sendNotification({
 			})
 			.where(eq(schema.notificationDelivery.id, notificationId));
 
-		logger.info(
-			{ notificationId, templateKey, recipient, entityId },
-			"Notification sent successfully",
-		);
+		log.info({
+			tag: "notification",
+			message: "Notification sent successfully",
+			notificationId,
+			templateKey,
+			recipient,
+			entityId,
+		});
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 
-		logger.error(
-			{ notificationId, templateKey, recipient, entityId, err: error },
-			"Failed to send notification",
-		);
+		log.error({
+			tag: "notification",
+			message: "Failed to send notification",
+			notificationId,
+			templateKey,
+			recipient,
+			entityId,
+			err: error,
+		});
 
 		// Update with failure
 		await db

@@ -1,7 +1,7 @@
 import { and, eq, inArray, lte } from "drizzle-orm";
+import { log } from "evlog";
 import { z } from "zod";
 import { db, schema } from "../../lib/db";
-import { logger } from "../../lib/logger";
 import { throwCapacityConflict, throwRpcError } from "../../shared/orpc";
 import { createAuditEvent, buildBookingSummary } from "../audit/audit.service";
 import {
@@ -179,10 +179,12 @@ export async function expireStaleCitizenHolds() {
 					});
 				}
 			} catch (error) {
-				logger.error(
-					{ err: error, bookingId: booking.id },
-					"Failed to send hold expiration email",
-				);
+				log.error({
+					tag: "booking",
+					message: "Failed to send hold expiration email",
+					err: error,
+					bookingId: booking.id,
+				});
 				// Do not throw - release should still proceed
 			}
 
@@ -603,17 +605,16 @@ export async function createCitizenBookingHold(
 			.where(eq(schema.serviceRequest.id, requestId));
 
 		const message = error instanceof Error ? error.message : String(error);
-		logger.error(
-			{
-				err: error,
-				userId: user.id,
-				slotId: validatedInput.slotId,
-				procedureTypeId: validatedInput.procedureTypeId,
-				staffUserId,
-				requestId,
-			},
-			"Citizen hold creation failed",
-		);
+		log.error({
+			tag: "booking",
+			message: "Citizen hold creation failed",
+			err: error,
+			userId: user.id,
+			slotId: validatedInput.slotId,
+			procedureTypeId: validatedInput.procedureTypeId,
+			staffUserId,
+			requestId,
+		});
 
 		if (message.includes("FOREIGN KEY constraint failed")) {
 			throwRpcError(
@@ -677,10 +678,13 @@ export async function confirmCitizenBooking(userId: string, bookingId: string) {
 			});
 		}
 	} catch (error) {
-		logger.error(
-			{ err: error, bookingId, userId },
-			"Failed to send booking confirmation email",
-		);
+		log.error({
+			tag: "booking",
+			message: "Failed to send booking confirmation email",
+			err: error,
+			bookingId,
+			userId,
+		});
 		// Do not throw - confirmation succeeded, email is secondary
 	}
 
@@ -759,10 +763,13 @@ export async function cancelCitizenBooking(
 			});
 		}
 	} catch (error) {
-		logger.error(
-			{ err: error, bookingId, userId },
-			"Failed to send booking cancellation email",
-		);
+		log.error({
+			tag: "booking",
+			message: "Failed to send booking cancellation email",
+			err: error,
+			bookingId,
+			userId,
+		});
 		// Do not throw - cancellation succeeded, email is secondary
 	}
 

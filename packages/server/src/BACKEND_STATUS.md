@@ -15,7 +15,7 @@ This file complements (not replaces):
 - Runtime: Bun
 - HTTP framework: Hono
 - ORM/DB: Drizzle + libsql/sqlite
-- Structured logging: `hono-pino` + `pino` (global middleware + centralized `onError` logging)
+- Structured logging: `evlog` (global `initLogger` + `evlog/hono` middleware + centralized `onError` logging)
 - Auth provider: Better Auth
 - Primary business API transport: oRPC at `/api/rpc/*`
 - `/api/admin/*` is no longer exposed as a public HTTP surface

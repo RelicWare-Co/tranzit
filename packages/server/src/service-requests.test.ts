@@ -154,7 +154,13 @@ describe("Service Request Lifecycle", () => {
 
 		afterEach(async () => {
 			// Clean up test data in reverse order of creation
-			// First delete bookings that reference this request
+			// First clear activeBookingId references so bookings can be deleted
+			await db
+				.update(schema.serviceRequest)
+				.set({ activeBookingId: null })
+				.where(eq(schema.serviceRequest.procedureTypeId, testProcedureId));
+
+			// Delete bookings that reference this request
 			await db
 				.delete(schema.booking)
 				.where(eq(schema.booking.requestId, testRequestId));
@@ -162,17 +168,29 @@ describe("Service Request Lifecycle", () => {
 			// Delete service requests for this procedure
 			await db
 				.delete(schema.serviceRequest)
-			.where(eq(schema.serviceRequest.procedureTypeId, testProcedureId));
+				.where(eq(schema.serviceRequest.procedureTypeId, testProcedureId));
 
-		// Delete procedure
-		await db
-			.delete(schema.procedureType)
-			.where(eq(schema.procedureType.id, testProcedureId));
+			// Delete appointment slots created by createTestBooking
+			// (slots have unique random dates, so we can safely delete all open slots)
+			const slotIds = await db
+				.select({ id: schema.appointmentSlot.id })
+				.from(schema.appointmentSlot)
+				.where(eq(schema.appointmentSlot.status, "open"));
+			for (const { id } of slotIds) {
+				await db
+					.delete(schema.appointmentSlot)
+					.where(eq(schema.appointmentSlot.id, id));
+			}
 
-		// Delete users
-		await db.delete(schema.user).where(eq(schema.user.id, testUser.user.id));
-		await db.delete(schema.user).where(eq(schema.user.id, testAdmin.user.id));
-	});
+			// Delete procedure
+			await db
+				.delete(schema.procedureType)
+				.where(eq(schema.procedureType.id, testProcedureId));
+
+			// Delete users
+			await db.delete(schema.user).where(eq(schema.user.id, testUser.user.id));
+			await db.delete(schema.user).where(eq(schema.user.id, testAdmin.user.id));
+		});
 
 	describe("listServiceRequests", () => {
 		test("lists all service requests with pagination", async () => {
