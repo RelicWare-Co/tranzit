@@ -92,7 +92,7 @@ export function SeriesSection({
 			{/* Two Column Layout */}
 			<SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
 				{/* Left: Series List */}
-				<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
+				<Card className={adminUi.surface} radius="lg" p="md">
 					<Stack gap="md">
 						<SeriesTable
 							series={seriesQuery.data ?? []}
@@ -116,7 +116,7 @@ export function SeriesSection({
 					/>
 
 					{selectedSeries && (
-						<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
+						<Card className={adminUi.surface} radius="lg" p="md">
 							<Stack gap="md">
 								<Title
 									order={5}

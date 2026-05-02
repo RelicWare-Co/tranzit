@@ -292,7 +292,7 @@ export function BookingTable({
 			<Table.ScrollContainer minWidth={900}>
 				<Table
 					highlightOnHover
-					highlightOnHoverColor="var(--neutral-50)"
+					highlightOnHoverColor="var(--bg-secondary)"
 					withRowBorders
 					borderColor="var(--border-subtle)"
 					verticalSpacing="sm"
@@ -347,7 +347,7 @@ export function BookingTable({
 									key={row.id}
 									className={
 										isSelected
-											? "bg-red-50/60 cursor-pointer transition-colors"
+											? "bg-[var(--brand-100)]/40 cursor-pointer transition-colors"
 											: "cursor-pointer transition-colors"
 									}
 									onClick={() => onSelectBooking(row.original.id)}

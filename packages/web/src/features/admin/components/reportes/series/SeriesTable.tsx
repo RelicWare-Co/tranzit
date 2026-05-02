@@ -101,9 +101,9 @@ export function SeriesTable({
 			}),
 			columnHelper.accessor("notes", {
 				header: "Notas",
-				size: 300,
+				size: 200,
 				cell: (info) => (
-					<Text size="sm" c="dimmed" truncate maw={280}>
+					<Text size="sm" c="dimmed" truncate maw={200}>
 						{info.getValue() ?? (
 							<span className="text-[var(--text-secondary)]">Sin notas</span>
 						)}
@@ -155,10 +155,10 @@ export function SeriesTable({
 	}
 
 	return (
-		<Table.ScrollContainer minWidth={800}>
+		<Table.ScrollContainer minWidth={600}>
 			<Table
 				highlightOnHover
-				highlightOnHoverColor="var(--neutral-50)"
+				highlightOnHoverColor="var(--bg-secondary)"
 				withRowBorders
 				borderColor="var(--border-subtle)"
 				verticalSpacing="sm"
@@ -210,7 +210,7 @@ export function SeriesTable({
 								key={row.id}
 								className={
 									isSelected
-										? "bg-red-50/60 cursor-pointer transition-colors"
+										? "bg-[var(--brand-100)]/40 cursor-pointer transition-colors"
 										: "cursor-pointer transition-colors"
 								}
 								onClick={() => onSelectSeries(row.original.id)}

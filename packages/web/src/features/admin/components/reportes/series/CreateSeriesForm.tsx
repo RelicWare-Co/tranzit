@@ -102,11 +102,11 @@ export function CreateSeriesForm({
 
 	return (
 		<div className={adminUi.surfaceInset}>
-			<Stack gap="md">
+			<Stack gap="md" p="md">
 				{/* Header - Collapsible */}
 				<UnstyledButton
 					onClick={() => setIsOpen(!isOpen)}
-					className="flex w-full items-center justify-between rounded-lg p-2 hover:bg-[var(--bg-secondary)] transition-colors"
+					className="flex w-full items-center justify-between rounded-lg px-3 py-3 hover:bg-[var(--bg-secondary)] transition-colors"
 				>
 					<Group gap="sm">
 						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">

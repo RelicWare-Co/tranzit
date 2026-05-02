@@ -99,24 +99,60 @@ export function SeriesActionsPanel({
 	}
 
 	return (
-		<div className={adminUi.surfaceInset}>
-			<Stack gap="xs">
+		<div className={`${adminUi.surface} p-4`}>
+			<Stack gap="md">
 				{/* Header */}
-				<div className="flex items-center justify-between">
-					<Text size="sm" fw={600} className="text-[var(--text-primary)]">
-						Acciones: Serie {selectedSeries.id.slice(0, 8)}…
-					</Text>
+				<div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+					<div className="flex items-center gap-2">
+						<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-red-50 ring-1 ring-red-100">
+							<Save size={13} className="text-red-700" strokeWidth={1.75} />
+						</div>
+						<Text size="sm" fw={600} className="text-[var(--text-primary)]">
+							Acciones: Serie {selectedSeries.id.slice(0, 8)}…
+						</Text>
+					</div>
 					<Text size="xs" className="font-mono text-[var(--text-secondary)]">
 						ID: {selectedSeries.id.slice(0, 8)}…
 					</Text>
 				</div>
 
-				{/* Accordion for compact layout */}
-				<Accordion variant="separated" radius="md" defaultValue="update">
+				{/* Accordion */}
+				<Accordion
+					variant="default"
+					radius="md"
+					defaultValue="update"
+					styles={{
+						control: {
+							padding: "10px 14px",
+							backgroundColor: "var(--bg-secondary)",
+							borderRadius: "8px",
+							"&:hover": {
+								backgroundColor: "var(--bg-primary)",
+							},
+						},
+						item: {
+							border: "1px solid var(--border-subtle)",
+							borderRadius: "8px",
+							marginBottom: "6px",
+							backgroundColor: "transparent",
+							"&:last-of-type": {
+								marginBottom: 0,
+							},
+						},
+						panel: {
+							padding: "12px 14px",
+							backgroundColor: "var(--bg-primary)",
+							borderTop: "1px solid var(--border-subtle)",
+						},
+						chevron: {
+							color: "var(--text-secondary)",
+						},
+					}}
+				>
 					{/* Update */}
 					<Accordion.Item value="update">
 						<Accordion.Control>
-							<Text size="sm" fw={500}>
+							<Text size="sm" fw={500} className="text-[var(--text-primary)]">
 								Actualizar serie
 							</Text>
 						</Accordion.Control>
@@ -167,8 +203,8 @@ export function SeriesActionsPanel({
 									<Group justify="flex-start">
 										<Button
 											type="submit"
-											size="sm"
-											leftSection={<Save size={14} />}
+											size="xs"
+											leftSection={<Save size={12} />}
 											loading={isRunning === "series-update"}
 										>
 											Actualizar
@@ -182,7 +218,7 @@ export function SeriesActionsPanel({
 					{/* Update from date */}
 					<Accordion.Item value="updateFromDate">
 						<Accordion.Control>
-							<Text size="sm" fw={500}>
+							<Text size="sm" fw={500} className="text-[var(--text-primary)]">
 								Actualizar desde fecha
 							</Text>
 						</Accordion.Control>
@@ -247,8 +283,8 @@ export function SeriesActionsPanel({
 										<Button
 											type="submit"
 											variant="light"
-											size="sm"
-											leftSection={<Save size={14} />}
+											size="xs"
+											leftSection={<Save size={12} />}
 											loading={isRunning === "series-update-from-date"}
 										>
 											Aplicar desde fecha
@@ -262,7 +298,7 @@ export function SeriesActionsPanel({
 					{/* Move */}
 					<Accordion.Item value="move">
 						<Accordion.Control>
-							<Text size="sm" fw={500}>
+							<Text size="sm" fw={500} className="text-[var(--text-primary)]">
 								Mover serie
 							</Text>
 						</Accordion.Control>
@@ -332,8 +368,8 @@ export function SeriesActionsPanel({
 										<Button
 											type="submit"
 											variant="light"
-											size="sm"
-											leftSection={<ArrowDownUp size={14} />}
+											size="xs"
+											leftSection={<ArrowDownUp size={12} />}
 											loading={isRunning === "series-move"}
 										>
 											Mover serie
@@ -381,7 +417,7 @@ export function SeriesActionsPanel({
 									<Button
 										color="red"
 										variant="light"
-										size="sm"
+										size="xs"
 										loading={isRunning === "series-release"}
 										onClick={() => {
 											void runAction(
@@ -395,7 +431,7 @@ export function SeriesActionsPanel({
 												"No se pudo liberar la serie.",
 											);
 										}}
-										leftSection={<AlertTriangle size={14} />}
+										leftSection={<AlertTriangle size={12} />}
 									>
 										Liberar serie
 									</Button>
