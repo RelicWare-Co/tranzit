@@ -1,9 +1,11 @@
 import type { MiddlewareHandler } from "hono";
-import { CORS_ORIGIN } from "../lib/env";
+import { CORS_ORIGIN, TRUSTED_ORIGINS } from "../lib/env";
+
+const ALLOWED_ORIGINS = new Set([CORS_ORIGIN, ...TRUSTED_ORIGINS]);
 
 const originChecker = (origin: string | null | undefined): string | null => {
 	if (!origin) return null;
-	if (origin === CORS_ORIGIN) return origin;
+	if (ALLOWED_ORIGINS.has(origin)) return origin;
 	return null;
 };
 
@@ -35,7 +37,7 @@ export const authCorsMiddleware: MiddlewareHandler = async (c, next) => {
 	}
 
 	if (c.req.method === "OPTIONS") {
-		return c.body(null, validatedOrigin ? 204 : 403);
+		return c.body(null, 204);
 	}
 
 	await next();
@@ -55,7 +57,7 @@ export const adminCorsMiddleware: MiddlewareHandler = async (c, next) => {
 	}
 
 	if (c.req.method === "OPTIONS") {
-		return c.body(null, validatedOrigin ? 204 : 403);
+		return c.body(null, 204);
 	}
 
 	await next();

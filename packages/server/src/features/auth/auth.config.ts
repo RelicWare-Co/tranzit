@@ -2,6 +2,7 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
 import { admin as adminPlugin, emailOTP } from "better-auth/plugins";
 import { db, schema } from "../../lib/db";
+import { TRUSTED_ORIGINS } from "../../lib/env";
 import { sendVerificationOtpEmail } from "./auth.mailer";
 import { ac, admin, auditor, staff } from "./auth.permissions";
 
@@ -31,6 +32,7 @@ const otpAllowedAttempts = readPositiveInt(
 export const auth = betterAuth({
 	baseURL: process.env.BETTER_AUTH_URL || "https://tranzit.localhost",
 	secret,
+	trustedOrigins: TRUSTED_ORIGINS,
 	database: drizzleAdapter(db, {
 		provider: "sqlite",
 		schema,

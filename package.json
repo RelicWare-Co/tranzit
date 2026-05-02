@@ -5,7 +5,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.13",
     "concurrently": "^9.2.1",
-    "turbo": "^2.9.6"
+    "turbo": "^2.9.7"
   },
   "description": "Plataforma de agendamiento para SIMUT Tulúa",
   "private": true,
