@@ -1,5 +1,4 @@
-import { Card, Group, Stack, Text, Title } from "@mantine/core";
-import { FileText } from "lucide-react";
+import { Card, SimpleGrid, Stack, Title } from "@mantine/core";
 import { useMemo } from "react";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import type { ReservationInstance, ReservationSeriesFilters } from "../types";
@@ -79,87 +78,72 @@ export function SeriesSection({
 	);
 
 	return (
-		<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
-			<Stack gap="lg">
-				{/* Header */}
-				<Group justify="space-between" wrap="nowrap">
-					<Group gap="md" wrap="nowrap">
-						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
-							<FileText size={20} className="text-red-700" strokeWidth={1.75} />
-						</div>
-						<Stack gap={0}>
-							<Title
-								order={4}
-								className="text-base font-semibold text-[var(--text-primary)]"
-							>
-								Series de reserva administrativa
-							</Title>
-							<Text size="sm" className="text-[var(--text-secondary)]">
-								Creá y gestioná reservas recurrentes con reglas de recurrencia
-								guiadas.
-							</Text>
-						</Stack>
-					</Group>
-				</Group>
+		<Stack gap="lg">
+			{/* Create Form - Collapsible */}
+			<CreateSeriesForm
+				staffOptions={staffOptions}
+				isRunning={isRunning}
+				createSeries={createSeries}
+			/>
 
-				{/* Create */}
-				<CreateSeriesForm
-					staffOptions={staffOptions}
-					isRunning={isRunning}
-					createSeries={createSeries}
-				/>
+			{/* Filters */}
+			<SeriesFilters filters={seriesFilters} onChange={setSeriesFilters} />
 
-				{/* Filters */}
-				<SeriesFilters filters={seriesFilters} onChange={setSeriesFilters} />
+			{/* Two Column Layout */}
+			<SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+				{/* Left: Series List */}
+				<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
+					<Stack gap="md">
+						<SeriesTable
+							series={seriesQuery.data ?? []}
+							selectedSeriesId={selectedSeriesId}
+							onSelectSeries={setSelectedSeriesId}
+							isLoading={seriesQuery.isLoading}
+							isError={seriesQuery.isError}
+							error={seriesQuery.error}
+						/>
+					</Stack>
+				</Card>
 
-				{/* Series Table */}
-				<SeriesTable
-					series={seriesQuery.data ?? []}
-					selectedSeriesId={selectedSeriesId}
-					onSelectSeries={setSelectedSeriesId}
-					isLoading={seriesQuery.isLoading}
-					isError={seriesQuery.isError}
-					error={seriesQuery.error}
-				/>
+				{/* Right: Actions + Instances */}
+				<Stack gap="lg">
+					<SeriesActionsPanel
+						selectedSeries={selectedSeries}
+						isRunning={isRunning}
+						staffOptions={staffOptions}
+						runAction={runAction}
+						asNullableText={asNullableText}
+					/>
 
-				{/* Series Actions */}
-				<SeriesActionsPanel
-					selectedSeries={selectedSeries}
-					isRunning={isRunning}
-					staffOptions={staffOptions}
-					runAction={runAction}
-					asNullableText={asNullableText}
-				/>
+					{selectedSeries && (
+						<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
+							<Stack gap="md">
+								<Title
+									order={5}
+									className="text-sm font-semibold text-[var(--text-primary)]"
+								>
+									Instancias de la serie
+								</Title>
 
-				{/* Instances */}
-				{selectedSeries && (
-					<Card className={adminUi.callout} radius="lg" p="md" shadow="none">
-						<Stack gap="lg">
-							<Title
-								order={5}
-								className="text-sm font-semibold text-[var(--text-primary)]"
-							>
-								Instancias de la serie
-							</Title>
+								<InstanceTable
+									instances={instances}
+									selectedInstanceId={selectedInstanceId}
+									onSelectInstance={setSelectedInstanceId}
+									isLoading={seriesInstancesQuery.isLoading}
+								/>
 
-							<InstanceTable
-								instances={instances}
-								selectedInstanceId={selectedInstanceId}
-								onSelectInstance={setSelectedInstanceId}
-								isLoading={seriesInstancesQuery.isLoading}
-							/>
-
-							<InstanceActionsPanel
-								selectedInstance={selectedInstance}
-								isRunning={isRunning}
-								staffOptions={staffOptions}
-								runAction={runAction}
-								asNullableText={asNullableText}
-							/>
-						</Stack>
-					</Card>
-				)}
-			</Stack>
-		</Card>
+								<InstanceActionsPanel
+									selectedInstance={selectedInstance}
+									isRunning={isRunning}
+									staffOptions={staffOptions}
+									runAction={runAction}
+									asNullableText={asNullableText}
+								/>
+							</Stack>
+						</Card>
+					)}
+				</Stack>
+			</SimpleGrid>
+		</Stack>
 	);
 }

@@ -1,5 +1,6 @@
-import { Button, Card, Group, Loader, Stack, Text } from "@mantine/core";
-import { RefreshCw, Users } from "lucide-react";
+import { Button, Card, Group, Loader, Stack, Tabs, Text } from "@mantine/core";
+import { Calendar, FileText, RefreshCw, Users } from "lucide-react";
+import { useState } from "react";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { BookingsSection } from "./bookings";
@@ -8,6 +9,7 @@ import { SeriesSection } from "./series";
 import { useReportesData } from "./useReportesData";
 
 export function AdminReportesPage() {
+	const [activeTab, setActiveTab] = useState<string | null>("bookings");
 	const {
 		sessionQuery,
 		bookingsQuery,
@@ -92,38 +94,65 @@ export function AdminReportesPage() {
 						activeSeries={activeSeries}
 					/>
 
-					{/* Bookings */}
-					<BookingsSection
-						filtersDraft={bookingFiltersDraft}
-						setFiltersDraft={setBookingFiltersDraft}
-						_filters={bookingFilters}
-						setFilters={setBookingFilters}
-						bookingsQuery={bookingsQuery}
-						selectedBookingId={selectedBookingId}
-						setSelectedBookingId={setSelectedBookingId}
-						staffOptions={staffOptions}
-						isRunning={isRunning}
-						runAction={runAction}
-					/>
+					{/* Tabs Navigation */}
+					<Tabs
+						value={activeTab}
+						onChange={setActiveTab}
+						radius="lg"
+						variant="default"
+					>
+						<Tabs.List className="mb-4 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--border-subtle)]">
+							<Tabs.Tab
+								value="bookings"
+								leftSection={<Calendar size={16} />}
+								className="data-[active=true]:bg-white data-[active=true]:shadow-sm"
+							>
+								Citas
+							</Tabs.Tab>
+							<Tabs.Tab
+								value="series"
+								leftSection={<FileText size={16} />}
+								className="data-[active=true]:bg-white data-[active=true]:shadow-sm"
+							>
+								Series de reserva
+							</Tabs.Tab>
+						</Tabs.List>
 
-					{/* Series */}
-					<SeriesSection
-						seriesQuery={seriesQuery}
-						selectedSeriesId={selectedSeriesId}
-						setSelectedSeriesId={setSelectedSeriesId}
-						selectedInstanceId={selectedInstanceId}
-						setSelectedInstanceId={setSelectedInstanceId}
-						instances={instances}
-						seriesInstancesQuery={seriesInstancesQuery}
-						staffOptions={staffOptions}
-						isRunning={isRunning}
-						runAction={runAction}
-						createSeries={createSeries}
-						seriesFilters={seriesFilters}
-						setSeriesFilters={setSeriesFilters}
-						selectedSeries={selectedSeries}
-						asNullableText={asNullableText}
-					/>
+						<Tabs.Panel value="bookings">
+							<BookingsSection
+								filtersDraft={bookingFiltersDraft}
+								setFiltersDraft={setBookingFiltersDraft}
+								_filters={bookingFilters}
+								setFilters={setBookingFilters}
+								bookingsQuery={bookingsQuery}
+								selectedBookingId={selectedBookingId}
+								setSelectedBookingId={setSelectedBookingId}
+								staffOptions={staffOptions}
+								isRunning={isRunning}
+								runAction={runAction}
+							/>
+						</Tabs.Panel>
+
+						<Tabs.Panel value="series">
+							<SeriesSection
+								seriesQuery={seriesQuery}
+								selectedSeriesId={selectedSeriesId}
+								setSelectedSeriesId={setSelectedSeriesId}
+								selectedInstanceId={selectedInstanceId}
+								setSelectedInstanceId={setSelectedInstanceId}
+								instances={instances}
+								seriesInstancesQuery={seriesInstancesQuery}
+								staffOptions={staffOptions}
+								isRunning={isRunning}
+								runAction={runAction}
+								createSeries={createSeries}
+								seriesFilters={seriesFilters}
+								setSeriesFilters={setSeriesFilters}
+								selectedSeries={selectedSeries}
+								asNullableText={asNullableText}
+							/>
+						</Tabs.Panel>
+					</Tabs>
 
 					{/* Action Result */}
 					{actionResult ? (

@@ -1,5 +1,5 @@
-import { Card, Group, Loader, Stack, Text, Title } from "@mantine/core";
-import { AlertCircle, Calendar } from "lucide-react";
+import { Card, Stack, Text } from "@mantine/core";
+import { AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { getErrorMessage } from "#/features/admin/components/errors";
@@ -72,28 +72,6 @@ export function BookingsSection({
 	return (
 		<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
 			<Stack gap="lg">
-				{/* Header */}
-				<Group justify="space-between" wrap="nowrap">
-					<Group gap="md" wrap="nowrap">
-						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
-							<Calendar size={20} className="text-red-700" strokeWidth={1.75} />
-						</div>
-						<Stack gap={0}>
-							<Title
-								order={4}
-								className="text-base font-semibold text-[var(--text-primary)]"
-							>
-								Citas administrativas
-							</Title>
-							<Text size="sm" className="text-[var(--text-secondary)]">
-								Gestioná reservas individuales con filtros por fecha, estado y
-								funcionario.
-							</Text>
-						</Stack>
-					</Group>
-					{bookingsQuery.isLoading && <Loader size="sm" />}
-				</Group>
-
 				{/* Filters */}
 				<BookingFiltersComponent
 					filters={filtersDraft}

@@ -1,0 +1,51 @@
+{
+  "files": {
+    "src/features/admin/components/reportes/bookings/index.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 2
+        },
+        {
+          "start": 75,
+          "end": 96
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-02T04:12:32.357Z"
+    },
+    "src/features/admin/components/reportes/series/index.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 151
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-02T04:35:08.080Z"
+    },
+    "src/features/admin/components/reportes/series/CreateSeriesForm.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 221
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-02T04:33:15.440Z"
+    },
+    "src/features/admin/components/reportes/series/SeriesActionsPanel.tsx": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 408
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-02T04:36:05.170Z"
+    }
+  },
+  "turnCycles": 0,
+  "maxCycles": 3,
+  "lastUpdated": "2026-05-02T04:36:05.170Z"
+}
