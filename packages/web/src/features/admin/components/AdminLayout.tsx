@@ -46,6 +46,10 @@ export function AdminLayout() {
 		}
 	}, [isAuthenticated, isLoading, hasAdminAccess, isAdminLoginRoute, navigate]);
 
+	if (isAdminLoginRoute) {
+		return <Outlet />;
+	}
+
 	if (isLoading || (!isAuthenticated && !isAdminLoginRoute)) {
 		return (
 			<Box className={adminUi.pageBg} py={60}>
@@ -62,7 +66,7 @@ export function AdminLayout() {
 		);
 	}
 
-	if (isAuthenticated && !hasAdminAccess && !isAdminLoginRoute) {
+	if (isAuthenticated && !hasAdminAccess) {
 		return (
 			<Box className={adminUi.pageBg} pt={120} pb={16}>
 				<Container size="lg">
@@ -85,10 +89,6 @@ export function AdminLayout() {
 				</Container>
 			</Box>
 		);
-	}
-
-	if (!isAuthenticated && isAdminLoginRoute) {
-		return <Outlet />;
 	}
 
 	return (

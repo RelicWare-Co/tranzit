@@ -417,6 +417,7 @@ La app está conectada de forma funcional en admin y en un primer alcance ciudad
 
 Puntos concretos:
 - `src/routes/login.tsx` usa OTP ciudadano real.
+- `src/routes/admin/login.tsx` usa OTP interno real y debe permanecer montado durante revalidaciones de sesión del layout admin; no persistas el paso OTP con `localStorage`.
 - `src/routes/agendar.tsx` usa procedimientos + disponibilidad + hold/confirm real via backend en un wizard de pasos para reducir fricción en ciudadano.
 - `src/routes/mi-perfil.tsx` muestra citas reales del ciudadano y cancelación real.
 - `src/routes/index.tsx` y `src/routes/__root.tsx` ya tienen un lenguaje visual definido. Si editas UI, intenta preservar esa direccion y no volver a un layout generico.
