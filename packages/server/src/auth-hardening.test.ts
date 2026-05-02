@@ -63,7 +63,7 @@ function createTestAuth(overrides: Record<string, unknown> = {}) {
 			}),
 		],
 		emailAndPassword: {
-			enabled: true,
+			enabled: false,
 		},
 		session: {
 			cookieCache: { enabled: false },
@@ -235,19 +235,19 @@ describe("VAL-AUTH-003: Email linking without duplicate identity", () => {
 	});
 
 	test("OTP sign-in with existing email returns same user.id", async () => {
-		// 1. Sign up via email/password first
-		const { body: signUpBody } = await callAuth(auth, "/sign-up/email", {
-			body: {
-				name: "Test",
-				email: "existing@test.com",
-				password: "password123456",
-			},
-			headers: { Origin: "http://localhost:3000" },
+		// 1. Create user via OTP first
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "existing@test.com", type: "sign-in" },
 		});
-		expect(signUpBody.user).toBeDefined();
-		const originalUserId = signUpBody.user.id;
+		const firstOtp = otpStore["sign-in"]["existing@test.com"];
 
-		// 2. Send OTP for same email
+		const { body: firstSignInBody } = await callAuth(auth, "/sign-in/email-otp", {
+			body: { email: "existing@test.com", otp: firstOtp },
+		});
+		expect(firstSignInBody.user).toBeDefined();
+		const originalUserId = firstSignInBody.user.id;
+
+		// 2. Send OTP for same email again
 		await callAuth(auth, "/email-otp/send-verification-otp", {
 			body: { email: "existing@test.com", type: "sign-in" },
 		});
@@ -523,7 +523,7 @@ describe("VAL-AUTH-011: Privilege escalation by payload blocked", () => {
 		otpStore = setup.otpStore;
 	});
 
-	test("sign-up with role:admin in payload is rejected", async () => {
+	test("sign-up endpoint is disabled when emailAndPassword is off", async () => {
 		const { status } = await callAuth(auth, "/sign-up/email", {
 			body: {
 				name: "Hacker",
@@ -534,8 +534,7 @@ describe("VAL-AUTH-011: Privilege escalation by payload blocked", () => {
 			headers: { Origin: "http://localhost:3000" },
 		});
 
-		// The admin plugin marks `role` as input:false in its schema.
-		// parseUserInput will reject setting it via sign-up.
+		// emailAndPassword is disabled, so sign-up should not succeed (404 or 400)
 		expect(status).not.toBe(200);
 	});
 

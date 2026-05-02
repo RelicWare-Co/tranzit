@@ -56,7 +56,7 @@ function createTestAuth(overrides: Record<string, unknown> = {}) {
 			}),
 		],
 		emailAndPassword: {
-			enabled: true,
+			enabled: false,
 		},
 		session: {
 			cookieCache: { enabled: false },
@@ -394,23 +394,16 @@ describe("VAL-AUTH-009: Citizen session cannot use admin APIs", () => {
 		expect(body.code).toBe("FORBIDDEN");
 	});
 
-	test("citizen email/password session on admin endpoint returns 403", async () => {
-		// 1. Sign up a regular (non-admin) user via email/password
-		await callAuth(auth, "/sign-up/email", {
-			body: {
-				name: "Regular User",
-				email: "regular@test.com",
-				password: "password123456",
-			},
-			headers: { Origin: "http://localhost:3000" },
+	test("citizen OTP session on admin endpoint returns 403", async () => {
+		// 1. Create a regular (non-admin) user via OTP
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "regular@test.com", type: "sign-in" },
 		});
+		const otp = otpStore["sign-in"]["regular@test.com"];
 
 		// 2. Sign in to get session
-		const { response: signInRes } = await callAuth(auth, "/sign-in/email", {
-			body: {
-				email: "regular@test.com",
-				password: "password123456",
-			},
+		const { response: signInRes } = await callAuth(auth, "/sign-in/email-otp", {
+			body: { email: "regular@test.com", otp },
 		});
 		const sessionCookie = getSessionCookieFromResponse(signInRes);
 
@@ -428,31 +421,26 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 	let auth: any;
 	let app: ReturnType<typeof createTestApp>;
 	let db: Record<string, any[]>;
+	let otpStore: Record<string, Record<string, string>>;
 
 	beforeEach(() => {
 		const setup = createTestAuth();
 		auth = setup.auth;
 		db = setup.db;
+		otpStore = setup.otpStore;
 		app = createTestApp(auth);
 	});
 
 	test("admin user can access /api/auth/admin/list-users with 200", async () => {
-		// 1. Create admin user via sign-up + set-role
-		await callAuth(auth, "/sign-up/email", {
-			body: {
-				name: "Admin User",
-				email: "admin@test.com",
-				password: "adminpassword123",
-			},
-			headers: { Origin: "http://localhost:3000" },
+		// 1. Create admin user via OTP + set-role
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "admin@test.com", type: "sign-in" },
 		});
+		const otp = otpStore["sign-in"]["admin@test.com"];
 
 		// 2. Sign in as the admin user
-		const { body: signInBody } = await callAuth(auth, "/sign-in/email", {
-			body: {
-				email: "admin@test.com",
-				password: "adminpassword123",
-			},
+		const { body: signInBody } = await callAuth(auth, "/sign-in/email-otp", {
+			body: { email: "admin@test.com", otp },
 		});
 		// 3. Set the user's role to admin using the admin API.
 		// Since we don't have an admin session yet to call the endpoint,
@@ -463,12 +451,14 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 		);
 		if (userRecord) userRecord.role = "admin";
 
-		// 4. Re-sign-in to get a session that reflects the new role
-		const { response: reSignInRes } = await callAuth(auth, "/sign-in/email", {
-			body: {
-				email: "admin@test.com",
-				password: "adminpassword123",
-			},
+		// 4. Re-send OTP and re-sign-in to get a session that reflects the new role
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "admin@test.com", type: "sign-in" },
+		});
+		const freshOtp = otpStore["sign-in"]["admin@test.com"];
+
+		const { response: reSignInRes } = await callAuth(auth, "/sign-in/email-otp", {
+			body: { email: "admin@test.com", otp: freshOtp },
 		});
 		const freshAdminCookie = getSessionCookieFromResponse(reSignInRes);
 
@@ -485,23 +475,16 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 		expect(Array.isArray(body.users)).toBe(true);
 	});
 
-	test("non-admin user with email/password session gets 403 on admin endpoint", async () => {
-		// 1. Sign up a non-admin user
-		await callAuth(auth, "/sign-up/email", {
-			body: {
-				name: "Staff User",
-				email: "staff@test.com",
-				password: "staffpassword123",
-			},
-			headers: { Origin: "http://localhost:3000" },
+	test("non-admin user with OTP session gets 403 on admin endpoint", async () => {
+		// 1. Create a non-admin user via OTP
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "staff@test.com", type: "sign-in" },
 		});
+		const otp = otpStore["sign-in"]["staff@test.com"];
 
 		// 2. Sign in
-		const { response: signInRes } = await callAuth(auth, "/sign-in/email", {
-			body: {
-				email: "staff@test.com",
-				password: "staffpassword123",
-			},
+		const { response: signInRes } = await callAuth(auth, "/sign-in/email-otp", {
+			body: { email: "staff@test.com", otp },
 		});
 		const sessionCookie = getSessionCookieFromResponse(signInRes);
 
@@ -515,21 +498,14 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 	});
 
 	test("admin session can access /api/admin/* domain endpoints", async () => {
-		// 1. Create and promote admin user
-		await callAuth(auth, "/sign-up/email", {
-			body: {
-				name: "Admin2",
-				email: "admin2@test.com",
-				password: "admin2password123",
-			},
-			headers: { Origin: "http://localhost:3000" },
+		// 1. Create and promote admin user via OTP
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "admin2@test.com", type: "sign-in" },
 		});
+		const otp = otpStore["sign-in"]["admin2@test.com"];
 
-		const { body: signInBody } = await callAuth(auth, "/sign-in/email", {
-			body: {
-				email: "admin2@test.com",
-				password: "admin2password123",
-			},
+		const { body: signInBody } = await callAuth(auth, "/sign-in/email-otp", {
+			body: { email: "admin2@test.com", otp },
 		});
 		// Directly set role in the in-memory db (simulates setRole API)
 		const userRecord = db.user.find(
@@ -537,12 +513,14 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 		);
 		if (userRecord) userRecord.role = "admin";
 
-		// Re-sign-in for fresh session with admin role
-		const { response: reSignInRes } = await callAuth(auth, "/sign-in/email", {
-			body: {
-				email: "admin2@test.com",
-				password: "admin2password123",
-			},
+		// Re-send OTP and re-sign-in for fresh session with admin role
+		await callAuth(auth, "/email-otp/send-verification-otp", {
+			body: { email: "admin2@test.com", type: "sign-in" },
+		});
+		const freshOtp = otpStore["sign-in"]["admin2@test.com"];
+
+		const { response: reSignInRes } = await callAuth(auth, "/sign-in/email-otp", {
+			body: { email: "admin2@test.com", otp: freshOtp },
 		});
 		const freshCookie = getSessionCookieFromResponse(reSignInRes);
 

@@ -63,7 +63,7 @@ function createTestAuth() {
 				},
 			}),
 		],
-		emailAndPassword: { enabled: true },
+		emailAndPassword: { enabled: false },
 		session: { cookieCache: { enabled: false } },
 		advanced: { cookies: {} },
 	});
@@ -252,39 +252,67 @@ async function callApp(
 	return { response: res, body, status: res.status };
 }
 
-async function createAdminSession(auth: any, memDb: any, _otpStore: any) {
-	const signUpRes = await auth.handler(
-		new Request("http://localhost:3000/api/auth/sign-up/email", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Origin: "http://localhost:3000",
+async function createAdminSession(auth: any, memDb: any, otpStore: any) {
+	// Send OTP (creates user if not exists)
+	await auth.handler(
+		new Request(
+			"http://localhost:3000/api/auth/email-otp/send-verification-otp",
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Origin: "http://localhost:3000",
+				},
+				body: JSON.stringify({ email: "admin@test.com", type: "sign-in" }),
 			},
-			body: JSON.stringify({
-				name: "Admin",
-				email: "admin@test.com",
-				password: "admin123456",
-			}),
-		}),
+		),
 	);
-	const signUpBody = await signUpRes.json();
-	if (!signUpBody.user?.id)
-		throw new Error(`Sign-up failed: ${JSON.stringify(signUpBody)}`);
 
-	const userRecord = memDb.user.find((u: any) => u.id === signUpBody.user.id);
-	if (userRecord) userRecord.role = "admin";
+	const otp = otpStore["sign-in"]["admin@test.com"];
 
+	// Sign in with OTP to create user
 	const signInRes = await auth.handler(
-		new Request("http://localhost:3000/api/auth/sign-in/email", {
+		new Request("http://localhost:3000/api/auth/sign-in/email-otp", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				email: "admin@test.com",
-				password: "admin123456",
+				otp,
 			}),
 		}),
 	);
-	return getSessionCookieFromResponse(signInRes);
+	const signInBody = await signInRes.json();
+	if (!signInBody.user?.id)
+		throw new Error(`Sign-in failed: ${JSON.stringify(signInBody)}`);
+
+	// Set role to admin
+	const userRecord = memDb.user.find((u: any) => u.id === signInBody.user.id);
+	if (userRecord) userRecord.role = "admin";
+
+	// Re-sign in to get fresh session with admin role
+	await auth.handler(
+		new Request(
+			"http://localhost:3000/api/auth/email-otp/send-verification-otp",
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email: "admin@test.com", type: "sign-in" }),
+			},
+		),
+	);
+	const freshOtp = otpStore["sign-in"]["admin@test.com"];
+
+	const freshSignInRes = await auth.handler(
+		new Request("http://localhost:3000/api/auth/sign-in/email-otp", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				email: "admin@test.com",
+				otp: freshOtp,
+			}),
+		}),
+	);
+	return getSessionCookieFromResponse(freshSignInRes);
 }
 
 // ---------------------------------------------------------------------------
@@ -1002,10 +1030,12 @@ describe("VAL-CAP-004: Reassign booking to different staff", () => {
 describe("Booking endpoints require admin authentication", () => {
 	let auth: any;
 	let app: any;
+	let otpStore: Record<string, Record<string, string>>;
 
 	beforeEach(async () => {
 		const authSetup = createTestAuth();
 		auth = authSetup.auth;
+		otpStore = authSetup.otpStore;
 		app = createTestApp(auth);
 	});
 
@@ -1021,29 +1051,30 @@ describe("Booking endpoints require admin authentication", () => {
 	});
 
 	test("with non-admin session returns 403 FORBIDDEN", async () => {
-		// Create a non-admin user
+		// Create a non-admin user via OTP
 		await auth.handler(
-			new Request("http://localhost:3000/api/auth/sign-up/email", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Origin: "http://localhost:3000",
+			new Request(
+				"http://localhost:3000/api/auth/email-otp/send-verification-otp",
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						email: "citizen@test.com",
+						type: "sign-in",
+					}),
 				},
-				body: JSON.stringify({
-					name: "Citizen",
-					email: "citizen@test.com",
-					password: "citizen123456",
-				}),
-			}),
+			),
 		);
 
+		const citizenOtp = otpStore["sign-in"]["citizen@test.com"];
+
 		const signInRes = await auth.handler(
-			new Request("http://localhost:3000/api/auth/sign-in/email", {
+			new Request("http://localhost:3000/api/auth/sign-in/email-otp", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					email: "citizen@test.com",
-					password: "citizen123456",
+					otp: citizenOtp,
 				}),
 			}),
 		);

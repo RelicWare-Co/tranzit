@@ -64,7 +64,7 @@ function createTestAuth() {
 				},
 			}),
 		],
-		emailAndPassword: { enabled: true },
+		emailAndPassword: { enabled: false },
 		session: { cookieCache: { enabled: false } },
 		advanced: { cookies: {} },
 	});

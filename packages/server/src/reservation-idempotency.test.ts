@@ -71,7 +71,7 @@ function createTestAuth() {
 				},
 			}),
 		],
-		emailAndPassword: { enabled: true },
+		emailAndPassword: { enabled: false },
 		session: { cookieCache: { enabled: false } },
 		advanced: { cookies: {} },
 	});
@@ -864,10 +864,12 @@ describe("VAL-ADM-011: Concurrency on last slot allows only one winner", () => {
 describe("Admin reservation endpoints require admin authentication", () => {
 	let auth: any;
 	let app: any;
+	let otpStore: Record<string, Record<string, string>>;
 
 	beforeEach(async () => {
 		const authSetup = createTestAuth();
 		auth = authSetup.auth;
+		otpStore = authSetup.otpStore;
 		app = createTestApp(auth);
 	});
 
@@ -883,28 +885,30 @@ describe("Admin reservation endpoints require admin authentication", () => {
 	});
 
 	test("with non-admin session returns 403 FORBIDDEN", async () => {
+		// Create non-admin user via OTP
 		await auth.handler(
-			new Request("http://localhost:3000/api/auth/sign-up/email", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Origin: "http://localhost:3000",
+			new Request(
+				"http://localhost:3000/api/auth/email-otp/send-verification-otp",
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						email: "citizen@test.com",
+						type: "sign-in",
+					}),
 				},
-				body: JSON.stringify({
-					name: "Citizen",
-					email: "citizen@test.com",
-					password: "citizen123456",
-				}),
-			}),
+			),
 		);
 
+		const citizenOtp = otpStore["sign-in"]["citizen@test.com"];
+
 		const signInRes = await auth.handler(
-			new Request("http://localhost:3000/api/auth/sign-in/email", {
+			new Request("http://localhost:3000/api/auth/sign-in/email-otp", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					email: "citizen@test.com",
-					password: "citizen123456",
+					otp: citizenOtp,
 				}),
 			}),
 		);

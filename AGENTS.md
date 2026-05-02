@@ -400,16 +400,15 @@ Backend hoy:
 
 Frontend hoy:
 - el flujo ciudadano (`/login` y `/agendar`) usa OTP por correo (`sendVerificationOtp` + `signIn.emailOtp`)
-- el flujo interno admin mantiene login por email/password en `/admin/login`
+- el flujo interno admin usa OTP por correo en `/admin/login` (email/password fue deshabilitado)
 
 Direccion correcta del producto:
-- ciudadanos deberian entrar por OTP por correo, sin password,
+- tanto ciudadanos como admin/staff entran exclusivamente por OTP por correo, sin password,
 - la "cuenta" debe ser transparente,
-- si mas adelante se conserva password auth, deberia quedar claramente separada para staff/admin.
+- no hay auth por password en ningun flujo.
 
 Recomendacion para agentes futuros:
-- no expandas el flujo ciudadano password-based como si fuera final,
-- cuando implementes el flujo real, alinea la UI con OTP,
+- no reintroduzcas email/password sin una razon de negocio fuerte,
 - si necesitas dos experiencias de auth, separa ciudadano vs interno de forma explicita.
 
 ## Estado real de frontend

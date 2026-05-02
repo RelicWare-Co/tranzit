@@ -10,7 +10,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { memoryAdapter } from "@better-auth/memory-adapter";
 import { betterAuth } from "better-auth";
-import { admin } from "better-auth/plugins";
+import { admin, emailOTP } from "better-auth/plugins";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, test } from "vitest";
 
@@ -30,19 +30,32 @@ function createEmptyDb(): Record<string, any[]> {
 
 function createTestAuth() {
 	const db = createEmptyDb();
+	const otpStore: Record<string, Record<string, string>> = {};
 
 	const auth = betterAuth({
 		baseURL: "http://localhost:3000",
 		secret: "test-secret-that-is-at-least-32-chars-long-xxxxxxxxxxxx",
 		database: memoryAdapter(db) as any,
 		rateLimit: { enabled: false },
-		plugins: [admin()],
-		emailAndPassword: { enabled: true },
+		plugins: [
+			admin(),
+			emailOTP({
+				otpLength: 6,
+				expiresIn: 300,
+				allowedAttempts: 3,
+				storeOTP: "hashed",
+				async sendVerificationOTP({ email, otp, type }) {
+					if (!otpStore[type]) otpStore[type] = {};
+					otpStore[type][email] = otp;
+				},
+			}),
+		],
+		emailAndPassword: { enabled: false },
 		session: { cookieCache: { enabled: false } },
 		advanced: { cookies: {} },
 	});
 
-	return { auth, db };
+	return { auth, db, otpStore };
 }
 
 /** Build a Request for an endpoint. */
@@ -331,53 +344,72 @@ describe("Staff API Auth Guards", () => {
 	let auth: any;
 	let app: ReturnType<typeof createTestApp>;
 	let db: Record<string, any[]>;
+	let otpStore: Record<string, Record<string, string>>;
 	let adminEmail: string;
-	let adminPassword: string;
 	let userEmail: string;
-	let userPassword: string;
 
 	beforeEach(() => {
 		const setup = createTestAuth();
 		auth = setup.auth;
 		db = setup.db;
+		otpStore = setup.otpStore;
 		app = createTestApp(auth);
 
 		// Generate unique emails for each test run
 		const ts = Date.now();
 		adminEmail = `admin${ts}@test.com`;
-		adminPassword = "adminpassword123";
 		userEmail = `user${ts}@test.com`;
-		userPassword = "userpassword123";
 	});
 
-	/** Sign up and sign in a user, returning the session cookie. */
+	/** Create a user via OTP and sign in, returning the session cookie. */
 	async function signInUser(
 		email: string,
-		password: string,
-		isAdmin = false,
+		_isAdmin = false,
 	): Promise<string> {
-		// Sign up
-		const signUpReq = makeRequest("/api/auth/sign-up/email", {
+		// Send OTP (creates user if not exists)
+		const sendOtpReq = makeRequest("/api/auth/email-otp/send-verification-otp", {
 			method: "POST",
-			body: { name: email.split("@")[0], email, password },
+			body: { email, type: "sign-in" },
 			headers: { Origin: "http://localhost:3000" },
 		});
-		await app.fetch(signUpReq);
+		await app.fetch(sendOtpReq);
 
-		// If admin, set the role directly in db
-		if (isAdmin) {
+		const otp = otpStore["sign-in"][email];
+
+		// Sign in with OTP to create user
+		const signInReq = makeRequest("/api/auth/sign-in/email-otp", {
+			method: "POST",
+			body: { email, otp },
+		});
+		const signInRes = await app.fetch(signInReq);
+		const signInBody = await signInRes.json();
+
+		// If admin, set the role directly in db, then re-authenticate for fresh session
+		if (_isAdmin) {
 			const userRecord = db.user.find((u: any) => u.email === email);
 			if (userRecord) {
 				userRecord.role = "admin";
 			}
-		}
 
-		// Sign in
-		const signInReq = makeRequest("/api/auth/sign-in/email", {
-			method: "POST",
-			body: { email, password },
-		});
-		const signInRes = await app.fetch(signInReq);
+			// Re-send OTP and re-sign in to get session with admin role
+			const reSendOtpReq = makeRequest(
+				"/api/auth/email-otp/send-verification-otp",
+				{
+					method: "POST",
+					body: { email, type: "sign-in" },
+					headers: { Origin: "http://localhost:3000" },
+				},
+			);
+			await app.fetch(reSendOtpReq);
+			const freshOtp = otpStore["sign-in"][email];
+
+			const reSignInReq = makeRequest("/api/auth/sign-in/email-otp", {
+				method: "POST",
+				body: { email, otp: freshOtp },
+			});
+			const reSignInRes = await app.fetch(reSignInReq);
+			return getSessionCookie(reSignInRes);
+		}
 
 		return getSessionCookie(signInRes);
 	}
@@ -392,7 +424,7 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	test("POST /staff with non-admin session returns 403", async () => {
-		const cookie = await signInUser(userEmail, userPassword, false);
+		const cookie = await signInUser(userEmail, false);
 
 		const { status, body } = await callApp(app, "/api/admin/staff", {
 			method: "POST",
@@ -404,7 +436,7 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	test("POST /staff with admin session succeeds", async () => {
-		const cookie = await signInUser(adminEmail, adminPassword, true);
+		const cookie = await signInUser(adminEmail, true);
 
 		const { status, body } = await callApp(app, "/api/admin/staff", {
 			method: "POST",
@@ -421,14 +453,14 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	test("GET /staff with non-admin session returns 403", async () => {
-		const cookie = await signInUser(userEmail, userPassword, false);
+		const cookie = await signInUser(userEmail, false);
 
 		const { status } = await callApp(app, "/api/admin/staff", { cookie });
 		expect(status).toBe(403);
 	});
 
 	test("GET /staff with admin session succeeds", async () => {
-		const cookie = await signInUser(adminEmail, adminPassword, true);
+		const cookie = await signInUser(adminEmail, true);
 
 		const { status, body } = await callApp(app, "/api/admin/staff", { cookie });
 		expect(status).toBe(200);
@@ -441,7 +473,7 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	test("GET /staff/:userId with non-admin session returns 403", async () => {
-		const cookie = await signInUser(userEmail, userPassword, false);
+		const cookie = await signInUser(userEmail, false);
 
 		const { status } = await callApp(app, "/api/admin/staff/some-user", {
 			cookie,
@@ -458,7 +490,7 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	test("PATCH /staff/:userId with non-admin session returns 403", async () => {
-		const cookie = await signInUser(userEmail, userPassword, false);
+		const cookie = await signInUser(userEmail, false);
 
 		const { status } = await callApp(app, "/api/admin/staff/some-user", {
 			method: "PATCH",
@@ -476,7 +508,7 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	test("DELETE /staff/:userId with non-admin session returns 403", async () => {
-		const cookie = await signInUser(userEmail, userPassword, false);
+		const cookie = await signInUser(userEmail, false);
 
 		const { status } = await callApp(app, "/api/admin/staff/some-user", {
 			method: "DELETE",
@@ -499,7 +531,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("POST /staff/:userId/date-overrides with non-admin session returns 403", async () => {
-			const cookie = await signInUser(userEmail, userPassword, false);
+			const cookie = await signInUser(userEmail, false);
 
 			const { status } = await callApp(
 				app,
@@ -510,7 +542,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("POST /staff/:userId/date-overrides with admin session succeeds", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status, body } = await callApp(
 				app,
@@ -530,7 +562,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("GET /staff/:userId/date-overrides with non-admin session returns 403", async () => {
-			const cookie = await signInUser(userEmail, userPassword, false);
+			const cookie = await signInUser(userEmail, false);
 
 			const { status } = await callApp(
 				app,
@@ -550,7 +582,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("DELETE /staff/:userId/date-overrides/:overrideId with non-admin session returns 403", async () => {
-			const cookie = await signInUser(userEmail, userPassword, false);
+			const cookie = await signInUser(userEmail, false);
 
 			const { status } = await callApp(
 				app,
@@ -571,7 +603,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("GET /staff/:userId/effective-availability with non-admin session returns 403", async () => {
-			const cookie = await signInUser(userEmail, userPassword, false);
+			const cookie = await signInUser(userEmail, false);
 
 			const { status } = await callApp(
 				app,
@@ -582,7 +614,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("GET /staff/:userId/effective-availability with admin session succeeds", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status, body } = await callApp(
 				app,
@@ -597,7 +629,7 @@ describe("Staff API Auth Guards", () => {
 
 	describe("Staff Validation (without DB)", () => {
 		test("POST /staff validates userId required", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status, body } = await callApp(app, "/api/admin/staff", {
 				method: "POST",
@@ -609,7 +641,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("POST /staff/:userId/date-overrides validates overrideDate required", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status, body } = await callApp(
 				app,
@@ -621,7 +653,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("POST /staff/:userId/date-overrides validates invalid time window", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status, body } = await callApp(
 				app,
@@ -641,7 +673,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("POST /staff/:userId/date-overrides rejects isAvailable=false with time windows", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status, body } = await callApp(
 				app,
@@ -662,7 +694,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("PATCH /staff/:userId validates capacity > 0", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status, body } = await callApp(
 				app,
@@ -678,7 +710,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("GET /staff/:userId/effective-availability requires date parameter", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status, body } = await callApp(
 				app,
@@ -690,7 +722,7 @@ describe("Staff API Auth Guards", () => {
 		});
 
 		test("GET /staff/:userId returns 404 for non-existent profile", async () => {
-			const cookie = await signInUser(adminEmail, adminPassword, true);
+			const cookie = await signInUser(adminEmail, true);
 
 			const { status } = await callApp(app, "/api/admin/staff/nonexistent", {
 				cookie,

@@ -3,7 +3,7 @@ import {
 	Button,
 	Card,
 	Container,
-	PasswordInput,
+	PinInput,
 	Stack,
 	TextInput,
 	Title,
@@ -11,24 +11,45 @@ import {
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, Building2, Lock, ShieldCheck } from "lucide-react";
+import { AlertCircle, Building2, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "#/shared/components/ui";
 import { useAuth } from "#/features/auth/components/AuthContext";
 import { orpc } from "#/shared/lib/orpc-client";
 
 
+type OtpStep = "email" | "verify";
+
+function getErrorMessage(error: unknown, fallback: string): string {
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
+	if (
+		error &&
+		typeof error === "object" &&
+		"message" in error &&
+		typeof (error as { message?: unknown }).message === "string"
+	) {
+		return (error as { message: string }).message;
+	}
+	return fallback;
+}
+
 function AdminLoginPage() {
 	const navigate = useNavigate();
 	const {
 		hasRole,
-		login,
+		sendVerificationOtp,
+		signInEmailOtp,
 		isAuthenticated,
 		isLoading: authLoading,
 		refreshUser,
 	} = useAuth();
 	const [error, setError] = useState("");
-	const [loading, setLoading] = useState(false);
+	const [step, setStep] = useState<OtpStep>("email");
+	const [sentEmail, setSentEmail] = useState("");
+	const [otpCode, setOtpCode] = useState("");
+	const [feedback, setFeedback] = useState<string | null>(null);
 	const isAdminRole = hasRole("admin");
 	const shouldCheckOnboarding = !authLoading && isAuthenticated && !isAdminRole;
 	const onboardingStatusQuery = useQuery(
@@ -64,32 +85,76 @@ function AdminLoginPage() {
 	const form = useForm({
 		initialValues: {
 			email: "",
-			password: "",
 		},
 		validate: {
 			email: (value) =>
-				/^\S+@\S+$/.test(value) ? null : "Correo electrónico inválido",
-			password: (value) =>
-				value.length < 1 ? "La contraseña es requerida" : null,
+				/^\S+@\S+\.\S+$/.test(value)
+					? null
+					: "Ingresa un correo electrónico válido",
 		},
 	});
 
-	const handleSubmit = form.onSubmit(async (values) => {
-		setError("");
-		setLoading(true);
-
-		try {
-			await login(values.email, values.password);
-		} catch (err) {
+	const sendOtpMutation = useMutation({
+		mutationFn: async ({ email }: { email: string }) => {
+			await sendVerificationOtp(email, "sign-in");
+		},
+		onSuccess: (_, variables) => {
+			setSentEmail(variables.email);
+			setStep("verify");
+			setOtpCode("");
+			setError("");
+			setFeedback("Te enviamos un código OTP de 6 dígitos a tu correo.");
+		},
+		onError: (mutationError) => {
 			setError(
-				err instanceof Error && err.message
-					? err.message
-					: "Credenciales inválidas. Verifica tu correo y contraseña.",
+				getErrorMessage(
+					mutationError,
+					"No se pudo enviar el código OTP. Intenta de nuevo.",
+				),
 			);
-		} finally {
-			setLoading(false);
-		}
+		},
 	});
+
+	const verifyOtpMutation = useMutation({
+		mutationFn: async (payload: { email: string; otp: string }) => {
+			await signInEmailOtp(payload.email, payload.otp);
+		},
+		onSuccess: () => {
+			setError("");
+			setFeedback(null);
+			// Navigation handled by useEffect when auth state updates
+		},
+		onError: (mutationError) => {
+			setError(
+				getErrorMessage(
+					mutationError,
+					"Código inválido o expirado. Solicita uno nuevo.",
+				),
+			);
+			setOtpCode("");
+		},
+	});
+
+	const handleSendOtp = form.onSubmit(async (values) => {
+		setError("");
+		setFeedback(null);
+		await sendOtpMutation.mutateAsync({
+			email: values.email.trim().toLowerCase(),
+		});
+	});
+
+	const handleVerifyOtp = async () => {
+		if (otpCode.length !== 6) {
+			setError("El código OTP debe tener 6 dígitos.");
+			return;
+		}
+		setError("");
+		setFeedback(null);
+		await verifyOtpMutation.mutateAsync({
+			email: sentEmail,
+			otp: otpCode,
+		});
+	};
 
 	const handleOnboard = async () => {
 		setError("");
@@ -216,7 +281,7 @@ function AdminLoginPage() {
 							</p>
 							<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
 								No hay administradores en el sistema. Tu cuenta puede ser
-								elevada a administrador principal.
+								eleva a administrador principal.
 							</p>
 						</div>
 					</div>
@@ -248,7 +313,7 @@ function AdminLoginPage() {
 									</Title>
 									<p className="font-['Public_Sans'] text-sm leading-relaxed text-[var(--neutral-500)]">
 										No hay administradores en el sistema. Tu cuenta puede ser
-										elevada a administrador principal.
+										eleva a administrador principal.
 									</p>
 									<Badge variant="success">Primer administrador</Badge>
 								</Stack>
@@ -300,7 +365,7 @@ function AdminLoginPage() {
 		);
 	}
 
-	// Login form (default state)
+	// OTP Login form
 	return (
 		<div className="flex min-h-[100dvh]">
 			{/* Left panel - dark branding */}
@@ -331,14 +396,14 @@ function AdminLoginPage() {
 						</p>
 						<div className="pt-4 border-t border-[var(--neutral-700)]">
 							<p className="font-['Public_Sans'] text-xs text-[var(--neutral-500)]">
-								Usá credenciales internas emitidas por la entidad.
+								Ingresá con el código OTP enviado a tu correo institucional.
 							</p>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			{/* Right panel - login form */}
+			{/* Right panel - OTP login form */}
 			<div className="flex flex-1 items-center justify-center bg-[var(--bg-primary)] px-4">
 				<Container size="xs" className="w-full max-w-md">
 					<Card className="rounded-xl border border-[var(--neutral-200)] bg-white p-8 sm:p-10 shadow-sm">
@@ -359,7 +424,9 @@ function AdminLoginPage() {
 									Acceso administrativo
 								</Title>
 								<p className="font-['Public_Sans'] text-sm leading-relaxed text-[var(--neutral-500)]">
-									Ingresá tus credenciales internas para abrir el backoffice.
+									{step === "email"
+										? "Ingresá tu correo institucional para recibir un código de acceso."
+										: `Ingresá el código de 6 dígitos enviado a ${sentEmail}`}
 								</p>
 							</Stack>
 
@@ -377,41 +444,115 @@ function AdminLoginPage() {
 								</div>
 							) : null}
 
-							<form onSubmit={handleSubmit}>
-								<Stack gap="lg">
-									<TextInput
-										label="Correo electrónico"
-										placeholder="admin@simut.local"
-										required
-										{...form.getInputProps("email")}
-										styles={inputStyles}
-										size="md"
-										autoComplete="email"
-									/>
+							{feedback ? (
+								<div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+									<div className="flex items-start gap-3">
+										<Mail
+											size={16}
+											className="text-green-600 mt-0.5 flex-shrink-0"
+										/>
+										<p className="font-['Public_Sans'] text-sm text-green-700">
+											{feedback}
+										</p>
+									</div>
+								</div>
+							) : null}
 
-									<PasswordInput
-										label="Contraseña"
-										placeholder="••••••••"
-										required
-										{...form.getInputProps("password")}
-										styles={inputStyles}
-										size="md"
-										autoComplete="current-password"
-									/>
+							{step === "email" ? (
+								<form onSubmit={handleSendOtp}>
+									<Stack gap="lg">
+										<TextInput
+											label="Correo electrónico"
+											placeholder="admin@simut.local"
+											required
+											{...form.getInputProps("email")}
+											styles={inputStyles}
+											size="md"
+											autoComplete="email"
+										/>
+
+										<Button
+											type="submit"
+											fullWidth
+											size="md"
+											color="red"
+											loading={sendOtpMutation.isPending}
+											radius="md"
+											className="font-['Sora'] font-semibold"
+										>
+											Enviar código OTP
+										</Button>
+									</Stack>
+								</form>
+							) : (
+								<Stack gap="lg">
+									<div>
+										<label
+											htmlFor="otp-code"
+											className="block font-['Sora'] text-sm font-semibold text-[var(--neutral-700)] mb-2"
+										>
+											Código de verificación
+										</label>
+										<PinInput
+											length={6}
+											value={otpCode}
+											onChange={setOtpCode}
+											disabled={verifyOtpMutation.isPending}
+											type="number"
+											inputMode="numeric"
+											oneTimeCode
+											gap="md"
+											size="lg"
+											style={{ justifyContent: "center" }}
+										/>
+									</div>
+
+									<div className="flex gap-3">
+										<Button
+											variant="default"
+											size="md"
+											onClick={() => {
+												setStep("email");
+												setSentEmail("");
+												setOtpCode("");
+												setError("");
+												setFeedback(null);
+											}}
+											fullWidth
+											radius="md"
+										>
+											Cambiar correo
+										</Button>
+										<Button
+											variant="default"
+											size="md"
+											onClick={() => {
+												setError("");
+												setFeedback(null);
+												void sendOtpMutation.mutateAsync({ email: sentEmail });
+											}}
+											loading={sendOtpMutation.isPending}
+											fullWidth
+											radius="md"
+										>
+											Reenviar
+										</Button>
+									</div>
 
 									<Button
-										type="submit"
 										fullWidth
 										size="md"
 										color="red"
-										loading={loading}
+										onClick={handleVerifyOtp}
+										disabled={otpCode.length !== 6}
+										loading={verifyOtpMutation.isPending}
 										radius="md"
 										className="font-['Sora'] font-semibold"
 									>
-										Iniciar sesión
+										Validar e ingresar
 									</Button>
 								</Stack>
-							</form>
+							)}
 
 							<div className="pt-2">
 								<p className="font-['Public_Sans'] text-center text-sm text-[var(--neutral-500)]">

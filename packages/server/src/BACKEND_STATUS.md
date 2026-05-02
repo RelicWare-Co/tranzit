@@ -1,6 +1,6 @@
 # Backend Status (Current Implementation)
 
-Last updated: 2026-04-18
+Last updated: 2026-05-01
 
 This document describes what the backend **really has implemented today**.
 Use it as an operational map before adding or changing backend behavior.
@@ -48,6 +48,7 @@ This file complements (not replaces):
 
 ### OTP protections
 - Better Auth email OTP plugin is enabled (`admin()` + `emailOTP()`).
+- `emailAndPassword` is **disabled**; all authentication (citizen and admin/staff) is exclusively via OTP.
 - OTP behavior is configurable by env:
   - `AUTH_OTP_LENGTH`
   - `AUTH_OTP_EXPIRES_IN`
