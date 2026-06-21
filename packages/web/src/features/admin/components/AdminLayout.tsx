@@ -1,5 +1,5 @@
-import { Box, Container, Stack, Text } from "@mantine/core";
-import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
+import { Box, Container, Stack } from "@mantine/core";
+import { Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { useAuth } from "#/features/auth/components/AuthContext";
@@ -42,7 +42,7 @@ export function AdminLayout() {
 			!hasAdminAccess &&
 			!isAdminLoginRoute
 		) {
-			navigate({ to: "/" });
+			navigate({ to: "/admin/login" });
 		}
 	}, [isAuthenticated, isLoading, hasAdminAccess, isAdminLoginRoute, navigate]);
 
@@ -66,24 +66,15 @@ export function AdminLayout() {
 		);
 	}
 
-	if (isAuthenticated && !hasAdminAccess) {
+	if (isAuthenticated && !hasAdminAccess && !isAdminLoginRoute) {
 		return (
-			<Box className={adminUi.pageBg} pt={120} pb={16}>
+			<Box className={adminUi.pageBg} py={60}>
 				<Container size="lg">
-					<Box className={`${adminUi.surface} p-12 md:p-16`}>
-						<Stack align="center" gap="lg">
-							<Text className="text-center text-lg font-semibold text-[var(--error-600)]">
-								Acceso denegado
-							</Text>
-							<Text className="max-w-md text-center text-[var(--text-secondary)] leading-relaxed">
-								No tenés permisos para acceder al panel administrativo.
-							</Text>
-							<Link
-								to="/"
-								className="font-semibold text-[var(--text-primary)] underline decoration-[var(--border-default)] underline-offset-4 transition hover:decoration-[var(--accent-default)]/80"
-							>
-								Volver al inicio
-							</Link>
+					<Box className={`${adminUi.surface} p-14 md:p-16`}>
+						<Stack align="center" gap="md">
+							<Box className="h-16 w-16 animate-pulse rounded-full bg-[var(--bg-tertiary)]" />
+							<Box className="h-6 w-48 max-w-full animate-pulse rounded-lg bg-[var(--bg-tertiary)]" />
+							<Box className="h-4 w-64 max-w-full animate-pulse rounded bg-[var(--bg-secondary)]" />
 						</Stack>
 					</Box>
 				</Container>

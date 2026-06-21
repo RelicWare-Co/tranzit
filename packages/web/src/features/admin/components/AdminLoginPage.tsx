@@ -51,36 +51,32 @@ function AdminLoginPage() {
 	const [otpCode, setOtpCode] = useState("");
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const isAdminRole = hasRole("admin");
-	const shouldCheckOnboarding = !authLoading && isAuthenticated && !isAdminRole;
+	const shouldFetchOnboarding = !authLoading && !isAdminRole;
 	const onboardingStatusQuery = useQuery(
 		orpc.admin.onboarding.status.queryOptions({
-			enabled: shouldCheckOnboarding,
+			enabled: shouldFetchOnboarding,
 			retry: false,
 		}),
 	);
 	const onboardingMutation = useMutation(
 		orpc.admin.onboarding.bootstrap.mutationOptions(),
 	);
+	const isFirstSetup = onboardingStatusQuery.data?.adminExists === false;
+	const showOnboarding =
+		isAuthenticated &&
+		!isAdminRole &&
+		(onboardingStatusQuery.data?.adminExists === false ||
+			onboardingStatusQuery.isError);
+	const showAccessDenied =
+		isAuthenticated &&
+		!isAdminRole &&
+		onboardingStatusQuery.data?.adminExists === true;
 
 	useEffect(() => {
 		if (!authLoading && isAuthenticated && isAdminRole) {
 			navigate({ to: "/admin" });
-			return;
 		}
-		if (
-			shouldCheckOnboarding &&
-			onboardingStatusQuery.data?.adminExists === true
-		) {
-			navigate({ to: "/admin" });
-		}
-	}, [
-		authLoading,
-		isAuthenticated,
-		isAdminRole,
-		navigate,
-		onboardingStatusQuery.data?.adminExists,
-		shouldCheckOnboarding,
-	]);
+	}, [authLoading, isAuthenticated, isAdminRole, navigate]);
 
 	const form = useForm({
 		initialValues: {
@@ -167,10 +163,6 @@ function AdminLoginPage() {
 		}
 	};
 
-	const skipOnboarding = () => {
-		navigate({ to: "/admin" });
-	};
-
 	const inputStyles = {
 		input: {
 			backgroundColor: "white",
@@ -199,7 +191,7 @@ function AdminLoginPage() {
 	};
 
 	// Loading state
-	if (shouldCheckOnboarding && onboardingStatusQuery.isPending) {
+	if (shouldFetchOnboarding && onboardingStatusQuery.isPending) {
 		return (
 			<div className="flex min-h-[100dvh]">
 				{/* Left panel - branding */}
@@ -249,12 +241,8 @@ function AdminLoginPage() {
 		);
 	}
 
-	// Onboarding state
-	if (
-		shouldCheckOnboarding &&
-		(onboardingStatusQuery.data?.adminExists === false ||
-			onboardingStatusQuery.isError)
-	) {
+	// Onboarding state (authenticated, no admin exists yet)
+	if (showOnboarding) {
 		return (
 			<div className="flex min-h-[100dvh]">
 				{/* Left panel - branding */}
@@ -281,7 +269,7 @@ function AdminLoginPage() {
 							</p>
 							<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
 								No hay administradores en el sistema. Tu cuenta puede ser
-								eleva a administrador principal.
+								elevada a administrador principal.
 							</p>
 						</div>
 					</div>
@@ -313,7 +301,7 @@ function AdminLoginPage() {
 									</Title>
 									<p className="font-['Public_Sans'] text-sm leading-relaxed text-[var(--neutral-500)]">
 										No hay administradores en el sistema. Tu cuenta puede ser
-										eleva a administrador principal.
+										elevada a administrador principal.
 									</p>
 									<Badge variant="success">Primer administrador</Badge>
 								</Stack>
@@ -332,31 +320,90 @@ function AdminLoginPage() {
 									</div>
 								) : null}
 
-								<Stack gap="sm">
-									<Button
-										fullWidth
-										size="md"
-										loading={onboardingMutation.isPending}
-										onClick={handleOnboard}
-										color="red"
-										radius="md"
-										className="font-['Sora'] font-semibold"
+								<Button
+									fullWidth
+									size="md"
+									loading={onboardingMutation.isPending}
+									onClick={handleOnboard}
+									color="red"
+									radius="md"
+									className="font-['Sora'] font-semibold"
+								>
+									Activar como administrador
+								</Button>
+							</Stack>
+						</Card>
+					</Container>
+				</div>
+			</div>
+		);
+	}
+
+	// Access denied (authenticated, admin already exists, user lacks role)
+	if (showAccessDenied) {
+		return (
+			<div className="flex min-h-[100dvh]">
+				<div className="relative hidden w-[40%] min-w-[320px] bg-[var(--neutral-900)] p-10 lg:flex">
+					<div className="flex flex-col justify-between h-full">
+						<div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-600)]">
+									<Building2 size={20} className="text-white" strokeWidth={2} />
+								</div>
+								<div>
+									<p className="font-['Sora'] text-sm font-bold text-white tracking-tight">
+										SIMUT Tuluá
+									</p>
+									<p className="font-['Public_Sans'] text-xs text-[var(--neutral-400)]">
+										Sistema de Gestión
+									</p>
+								</div>
+							</div>
+						</div>
+						<div className="space-y-4">
+							<p className="font-['Sora'] text-2xl font-semibold text-white tracking-tight">
+								Acceso restringido
+							</p>
+							<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
+								El panel administrativo solo está disponible para personal
+								autorizado.
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<div className="flex flex-1 items-center justify-center bg-[var(--bg-primary)] px-4">
+					<Container size="xs" className="w-full max-w-md">
+						<Card className="rounded-xl border border-[var(--neutral-200)] bg-white p-8 sm:p-10 shadow-sm">
+							<Stack gap="xl" align="center">
+								<Stack gap="sm" align="center">
+									<div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+										<AlertCircle
+											size={24}
+											className="text-red-600"
+											strokeWidth={2}
+										/>
+									</div>
+									<Title
+										order={2}
+										className="font-['Sora'] text-2xl font-semibold tracking-tight text-[var(--neutral-900)] text-center"
 									>
-										Activar como administrador
-									</Button>
-									<Button
-										fullWidth
-										size="md"
-										variant="subtle"
-										color="gray"
-										onClick={skipOnboarding}
-										loading={onboardingMutation.isPending}
-										radius="md"
-										className="font-['Sora']"
-									>
-										Saltar por ahora
-									</Button>
+										Acceso denegado
+									</Title>
+									<p className="font-['Public_Sans'] text-sm leading-relaxed text-[var(--neutral-500)] text-center">
+										No tenés permisos para acceder al panel administrativo.
+										Contactá a un administrador si necesitás acceso.
+									</p>
 								</Stack>
+
+								<Anchor
+									component={Link}
+									to="/"
+									fw={600}
+									className="font-['Public_Sans'] text-sm text-[var(--neutral-800)] hover:text-[var(--brand-600)] transition-colors"
+								>
+									Volver al portal ciudadano
+								</Anchor>
 							</Stack>
 						</Card>
 					</Container>
@@ -388,15 +435,18 @@ function AdminLoginPage() {
 					</div>
 					<div className="space-y-4">
 						<p className="font-['Sora'] text-2xl font-semibold text-white tracking-tight">
-							Backoffice operativo
+							{isFirstSetup ? "Primera configuración" : "Backoffice operativo"}
 						</p>
 						<p className="font-['Public_Sans'] text-sm text-[var(--neutral-400)] leading-relaxed max-w-sm">
-							Acceso restringido para personal autorizado. Las acciones quedan
-							sujetas a auditoría del sistema.
+							{isFirstSetup
+								? "No hay administradores registrados. Ingresá con tu correo para activar la cuenta del primer administrador."
+								: "Acceso restringido para personal autorizado. Las acciones quedan sujetas a auditoría del sistema."}
 						</p>
 						<div className="pt-4 border-t border-[var(--neutral-700)]">
 							<p className="font-['Public_Sans'] text-xs text-[var(--neutral-500)]">
-								Ingresá con el código OTP enviado a tu correo institucional.
+								{isFirstSetup
+									? "Recibirás un código OTP para verificar tu identidad."
+									: "Ingresá con el código OTP enviado a tu correo institucional."}
 							</p>
 						</div>
 					</div>
@@ -421,11 +471,18 @@ function AdminLoginPage() {
 									order={2}
 									className="font-['Sora'] text-2xl font-semibold tracking-tight text-[var(--neutral-900)]"
 								>
-									Acceso administrativo
+									{isFirstSetup
+										? "Configurar primer administrador"
+										: "Acceso administrativo"}
 								</Title>
+								{isFirstSetup ? (
+									<Badge variant="success">Primera configuración</Badge>
+								) : null}
 								<p className="font-['Public_Sans'] text-sm leading-relaxed text-[var(--neutral-500)]">
 									{step === "email"
-										? "Ingresá tu correo institucional para recibir un código de acceso."
+										? isFirstSetup
+											? "Ingresá tu correo para recibir un código y activar la cuenta del primer administrador."
+											: "Ingresá tu correo institucional para recibir un código de acceso."
 										: `Ingresá el código de 6 dígitos enviado a ${sentEmail}`}
 								</p>
 							</Stack>
