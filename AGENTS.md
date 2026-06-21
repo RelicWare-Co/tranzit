@@ -1,564 +1,121 @@
 <!-- intent-skills:start -->
-## Skill Loading
+## Skill loading
 
-Before substantial work:
-- Skill check: run `bunx @tanstack/intent@latest list`, or use skills already listed in context.
-- Skill guidance: if one local skill clearly matches the task, run `bunx @tanstack/intent@latest load <package>#<skill>` and follow the returned `SKILL.md`.
-- Monorepos: when working across packages, run the skill check from the workspace root and prefer the local skill for the package being changed.
-- Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
+Before substantial work, run `bunx @tanstack/intent@latest list`. If a local
+skill directly applies, load it with `bunx @tanstack/intent@latest load
+<package>#<skill>` and follow its instructions. Run this from the workspace
+root for monorepo changes.
 <!-- intent-skills:end -->
 
-# AGENTS.md
+# Guía para agentes
 
-## Proposito
+## Producto y principios
 
-Este repositorio implementa una plataforma de agendamiento para SIMUT Tulua.
+Tranzit es una plataforma de agendamiento para SIMUT Tuluá. Reemplaza un flujo
+manual por correo con portal ciudadano, autenticación OTP, trámites
+configurables, requisitos físicos, agenda, reservas temporales, operación
+interna y auditoría.
 
-El objetivo del producto es reemplazar un proceso manual por correo por un sistema con:
-- portal ciudadano,
-- autenticacion ligera por OTP,
-- formularios dinamicos por tramite,
-- requisitos y plantillas descargables para entrega fisica,
-- agenda configurable,
-- reservas temporales de cupos,
-- confirmacion de citas,
-- asignacion operativa a auxiliares,
-- backoffice administrativo,
-- auditoria y notificaciones.
+Prioridades:
 
-La regla general del proyecto es simple: resolver bien el flujo real sin sobreingenieria.
-
-Principios que debes preservar:
-- backend como fuente de verdad para disponibilidad, capacidad, expiraciones y permisos,
-- configurabilidad antes que hardcodes,
-- trazabilidad de acciones criticas,
-- UX clara para ciudadano,
-- esquema pequeno pero con invariantes fuertes.
+- El backend es la fuente de verdad para disponibilidad, capacidad,
+  expiraciones y permisos.
+- Configurar antes que hardcodear; no construir lógica crítica sobre mocks.
+- Mantener trazabilidad de operaciones críticas y una UX clara para ciudadanía.
+- Resolver el flujo real sin sobreingeniería. No añadir pagos, OCR, app nativa,
+  multisedes ni integraciones gubernamentales sin una decisión explícita.
 
 ## Fuentes de verdad
 
-Antes de tocar el dominio o el esquema, lee estos archivos:
+Antes de cambiar dominio, esquema o backend, lee:
+
 - `packages/server/src/db/SCHEMA.md`
 - `packages/server/src/db/schema.ts`
 - `packages/server/src/BACKEND_STATUS.md`
 
-Notas importantes:
-- `packages/server/src/db/SCHEMA.md` explica por que el modelo esta simplificado como esta y que invariantes deben respetarse.
-- `packages/server/src/BACKEND_STATUS.md` describe las rutas y servicios backend realmente implementados hoy.
-- `README.md` sigue siendo casi boilerplate de TanStack/Vite. No lo tomes como documentacion funcional del proyecto.
-- Este `AGENTS.md`, `packages/server/src/db/SCHEMA.md` y `packages/server/src/BACKEND_STATUS.md` son mas confiables que el `README.md`.
+`README.md` no es documentación funcional canónica. Para trabajo frontend,
+lee también `.impeccable.md` antes de diseñar o modificar UI.
 
-## Gobernanza documental obligatoria (todos los agentes)
+## Estado operativo
 
-Estas reglas son obligatorias para cualquier agente que trabaje en este repo:
+- La API pública usa oRPC bajo `/api/rpc/*`; no reintroduzcas `/api/admin/*`.
+- Ciudadanía y personal interno usan OTP por correo. No reintroduzcas
+  autenticación por contraseña.
+- Admin y el ciclo ciudadano básico están conectados al backend. Consulta
+  `BACKEND_STATUS.md` para contratos y cobertura real; no infieras endpoints
+  por la interfaz.
+- El ciclo avanzado de `service_request` y las pruebas end-to-end ciudadanas
+  siguen incompletos.
 
-- si cambias comportamiento, estado funcional, prioridades, decisiones de arquitectura o flujo de producto, actualiza `AGENTS.md` en el mismo cambio,
-- si el cambio afecta dominio/esquema, actualiza `packages/server/src/db/SCHEMA.md` en el mismo cambio,
-- si el cambio afecta rutas, contratos o comportamiento backend, actualiza `packages/server/src/BACKEND_STATUS.md` en el mismo cambio,
-- si un cambio deja obsoleto algun `.md` enlazado desde este archivo, tambien debes actualizar ese documento en el mismo cambio,
-- no cierres una tarea dejando drift entre codigo y documentacion.
-- si estas haciendo tareas de frontend o disenando UI, debes leer obligatoriamente `.impeccable.md` en la raiz del proyecto antes de comenzar para respetar el contexto de diseno.
+## Dominio: reglas no negociables
 
-Lista minima de `.md` enlazados que debes mantener sincronizados cuando aplique:
-- `AGENTS.md`,
-- `packages/server/src/db/SCHEMA.md`,
-- `packages/server/src/BACKEND_STATUS.md`,
-- `README.md` (si el cambio hace necesario corregirlo o alinearlo para evitar contradicciones graves).
+La agenda es el centro del producto:
 
-## Estado actual del proyecto
+- No permitir doble reserva ni sobrecupo por auxiliar.
+- Un hold debe expirar; disponibilidad visible y real deben coincidir.
+- Las reservas administrativas también consumen capacidad.
+- Los overrides de calendario prevalecen sobre el horario base.
+- Las operaciones relevantes deben quedar auditables.
 
-No asumas que el sistema ya esta completo. Hoy el repo esta en una fase intermedia:
+Invariantes principales:
 
-- El frontend ya tiene landing, login, perfil y una experiencia visual de agendamiento.
-- El backend ya tiene auth, esquema del dominio y una capa administrativa funcional.
-- Ya existen endpoints reales para schedule, staff, bookings y reservation-series, con capacidad y reasignacion en backend.
-- El backend expone la capa administrativa por oRPC en `/api/rpc/*`; `/api/admin/*` ya no se expone como superficie publica.
-- Ya existe una capa ciudadana inicial por oRPC para procedimientos, disponibilidad y ciclo base de reserva (hold/confirm/cancel/mis citas).
-- El flujo ciudadano opera en modo documental fisico: descarga de plantillas y entrega presencial.
-- Todavia faltan APIs ciudadanas completas para ciclo de vida avanzado de `service_request`.
+- `booking` unifica hold ciudadano, cita confirmada y reserva administrativa.
+- `service_request.activeBookingId` apunta a la reserva vigente.
+- `booking.isActive` determina si la reserva sigue vigente y consumiendo
+  capacidad; desactívala al expirar, cancelar, atender o reemplazar.
+- Solo puede existir una reserva ciudadana activa por `service_request`.
+- Persistir `procedureSnapshot` antes de confirmar o consolidar un flujo y
+  respetar las versiones de configuración.
+- `booking_series` es la fuente de recurrencias administrativas; no reemplazar
+  esa relación por claves de texto libres.
 
-Hoy hay piezas ya conectadas y otras aun parciales:
-- `src/routes/login.tsx` ya usa OTP por correo para flujo ciudadano.
-- `src/routes/agendar.tsx` ya consume backend real para trámites, disponibilidad y reserva/confirmación, con flujo guiado por pasos (trámite -> requisitos -> horario -> datos).
-- `src/routes/mi-perfil.tsx` ya consume citas reales del ciudadano desde backend.
-- Sigue pendiente robustecer el ciclo completo de `service_request` y pruebas E2E ciudadanas.
+El detalle y las razones de diseño viven en `SCHEMA.md`.
 
-Conclusion practica:
-- no construyas logica importante encima de mocks,
-- si vas a implementar negocio real, conecta el dominio y reemplaza los placeholders,
-- no des por hecho que el flujo actual de login representa la solucion final para ciudadanos.
+## Estructura del código
 
-## Stack actual
+Monorepo Bun con `packages/web` (React, Vite, TanStack Router, Mantine) y
+`packages/server` (Bun, Hono, Better Auth, Drizzle, libsql).
 
-Frontend:
-- React 19
-- Vite
-- TanStack Router con file-based routing
-- Mantine 9
-- Geist Sans
-- Tailwind Vite plugin presente, pero la UI actual usa sobre todo Mantine + estilos inline + `src/styles.css`
+- En `packages/web/src/routes`, deja solo archivos de ruta de TanStack Router.
+  Las páginas y componentes pertenecen a `features/<dominio>`.
+- `shared` contiene primitivas UI, clientes, utilidades y tipos reutilizables;
+  no importa desde `features` ni `routes`.
+- En backend, cada dominio vive en `features/<dominio>` con router, servicios y
+  tipos. `shared` es transversal; `lib` contiene solo infraestructura;
+  `middleware` contiene middleware de Hono.
+- Usa aliases absolutos en frontend. No edites manualmente
+  `packages/web/src/routeTree.gen.ts`.
 
-Backend:
-- Bun
-- Hono
-- Better Auth
-- Drizzle ORM
-- libsql / Turso / SQLite local
-- Nodemailer
+## Cambios y documentación
 
-Calidad:
-- Biome para lint/format/check
-- Vitest disponible, pero hoy casi no hay pruebas de dominio
-- `bunx tsc --noEmit` en `packages/server/` es una verificacion importante
+Actualiza la documentación en el mismo cambio:
 
-## Estructura del monorepo
+- Cambios de comportamiento, prioridades, arquitectura o flujo de producto:
+  este archivo.
+- Cambios de dominio o esquema: `packages/server/src/db/SCHEMA.md`.
+- Cambios de rutas, contratos o comportamiento backend:
+  `packages/server/src/BACKEND_STATUS.md`.
+- Corrige cualquier documento enlazado que el cambio vuelva contradictorio.
 
-Este proyecto usa Bun workspaces. La estructura es:
+Para cambios de esquema: modifica `schema.ts` y `SCHEMA.md`, ejecuta
+`bun run db:generate`, revisa el SQL, ejecuta `bun run db:migrate` y valida con
+`cd packages/server && bunx tsc --noEmit`. No resetees la base local por
+defecto; resuelve el baseline de migraciones con cuidado.
 
-```
-tranzit/
-├── package.json          # Root workspace config
-├── packages/
-│   ├── web/              # Frontend (React + Vite)
-│   └── server/           # Backend (Bun + Hono)
-├── .env                  # Variables de entorno (no versionar)
-├── AGENTS.md             # Este archivo
-└── bun.lock              # Lockfile compartido
-```
+## Verificación y convenciones
 
-Frontend (`packages/web/`):
-- `vite.config.ts`: proxy local para `/api/auth` y `/api/rpc`
-- `src/app/main.tsx`: monta Mantine, AuthProvider y RouterProvider
-- `src/shared/lib/auth-client.ts`: cliente Better Auth del frontend
-- `src/lib/AuthContext.tsx`: wrapper de sesion y login/logout para React
-- `src/routes/`: rutas actuales (file-based routing)
-- `src/routeTree.gen.ts`: archivo generado por TanStack Router
-
-Backend (`packages/server/`):
-- `src/index.ts`: entrypoint de runtime (exporta `fetch` del app)
-- `src/app.ts`: composicion principal de middlewares y rutas Hono
-- `src/features/auth/auth.config.ts`: configuracion Better Auth
-- `src/features/auth/auth.mailer.ts`: envio de OTP por correo
-- `src/lib/db.ts`: inicializacion de cliente libsql + Drizzle
-- `src/db/schema.ts`: schema Drizzle
-- `src/db/SCHEMA.md`: explicacion del modelo e invariantes
-- `src/BACKEND_STATUS.md`: inventario funcional real del backend
-
-Migraciones:
-- migraciones canonicas: `packages/server/drizzle/000*.sql`
-- journal canonico: `packages/server/drizzle/meta/_journal.json`
-- snapshots: `packages/server/drizzle/meta/*.json`
-
-Locales no trackeados:
-- `.env`
-- `packages/server/sqlite.db`
-- `packages/server/*.db-shm`
-- `packages/server/*.db-wal`
-
-## Convenciones de estructura de archivos
-
-**NO** crees archivos donde se te ocurra. Sigue estas reglas fuertes:
-
-### Frontend (`packages/web/src/`)
-
-```
-src/
-├── app/                    # Entry point y setup global
-│   ├── main.tsx           # Punto de entrada
-│   └── ...                # Router, providers globales
-├── routes/                # TANSTACK ROUTER FILE-BASED
-│   ├── __root.tsx         # Layout raiz
-│   ├── index.tsx          # Landing
-│   ├── login.tsx          # Login ciudadano
-│   ├── agendar.tsx        # Wizard de citas
-│   ├── mi-perfil.tsx      # Perfil ciudadano
-│   └── admin/             # Rutas administrativas
-│       ├── route.tsx      # Layout admin
-│       ├── index.tsx      # Dashboard
-│       ├── login.tsx      # Login admin
-│       ├── citas.tsx      # Route file (1 line, importa page)
-│       ├── tramites.tsx   # Route file
-│       └── ...            # Otras rutas admin
-├── features/              # DOMINIO / FEATURES
-│   ├── auth/
-│   │   └── components/
-│   │       └── AuthContext.tsx
-│   ├── admin/
-│   │   └── components/    # Componentes admin compartidos
-│   │       ├── -AdminLayout.tsx
-│   │       ├── -AdminPageHeader.tsx
-│   │       ├── citas/     # Pages y componentes de citas
-│   │       ├── tramites/  # Pages y componentes de tramites
-│   │       └── ...        # Un directorio por submodulo admin
-│   ├── citizen/
-│   │   └── components/    # Componentes del portal ciudadano
-│   ├── bookings/
-│   └── schedule/
-└── shared/                # CODIGO COMPARTIDO
-    ├── components/ui/     # UI primitives (Button, Card, Input, etc)
-    ├── lib/              # Clientes, utilidades, schemas
-    │   ├── auth-client.ts
-    │   ├── orpc-client.ts
-    │   ├── query-client.ts
-    │   └── schemas/       # Zod schemas compartidos
-    ├── styles/            # CSS global, tokens, globals
-    └── types/             # Tipos globales del frontend
-```
-
-**Reglas para frontend:**
-- **Rutas** (`routes/`): SOLO archivos de ruta de TanStack Router. Cada ruta debe ser un barrel de 1-3 lineas que importa el componente page desde `features/`.
-- **Features** (`features/`): Un directorio por dominio de negocio. Los componentes pages van en subdirectorios (ej: `features/admin/components/citas/`).
-- **Shared** (`shared/`): UI primitives, clientes HTTP, utilidades puras, tipos globales. Nunca importa desde `features/` ni `routes/`.
-- **Imports**: Usa aliases absolutos (`#/shared/...`, `#/features/...`). Evita imports relativos (`../../`).
-
-### Backend (`packages/server/src/`)
-
-```
-src/
-├── app/
-│   ├── index.ts           # Entry point
-│   └── app.ts             # Composicion Hono
-├── features/              # DOMINIO / FEATURES
-│   ├── auth/
-│   │   ├── router.ts      # Router oRPC
-│   │   ├── config.ts      # Better Auth config
-│   │   └── mailer.ts      # Servicio de correo
-│   ├── bookings/
-│   │   ├── router.ts      # Router oRPC
-│   │   ├── *.service.ts   # Servicios de dominio
-│   │   └── types.ts       # Tipos del dominio
-│   ├── schedule/
-│   ├── staff/
-│   ├── reservations/
-│   ├── citizen/
-│   ├── audit/
-│   └── notifications/
-├── db/
-│   ├── schema.ts          # Drizzle schema
-│   └── SCHEMA.md          # Documentacion del modelo
-├── middleware/            # Middleware cross-cutting
-│   ├── auth.ts
-│   ├── cors.ts
-│   └── session.ts
-├── shared/                # CODIGO COMPARTIDO
-│   ├── orpc/             # Router oRPC global, context, guards
-│   ├── types/            # Tipos compartidos
-│   └── schemas/          # Schemas Zod compartidos
-└── lib/                   # INFRAESTRUCTURA
-    ├── db.ts             # Cliente libsql + Drizzle
-    ├── env.ts            # Variables de entorno
-    └── logger.ts         # Logger
-```
-
-**Reglas para backend:**
-- **Features** (`features/`): Un directorio por dominio. Cada feature contiene su router oRPC, servicios, y tipos. NO crees carpetas genericas como `services/` o `controllers/`.
-- **Shared** (`shared/`): Codigo compartido entre features (guards oRPC, utilidades, tipos globales). Nunca importa desde `features/`.
-- **Lib** (`lib/`): Infraestructura pura (DB, env, logger). No contiene logica de negocio.
-- **Middleware** (`middleware/`): Middleware de Hono cross-cutting.
-
-**Regla de oro**: Si no sabes donde poner un archivo, preguntate:
-1. ¿Es una ruta de TanStack Router? → `routes/`
-2. ¿Es logica de un dominio especifico? → `features/<dominio>/`
-3. ¿Es compartido entre multiples dominios? → `shared/`
-4. ¿Es infraestructura/infra? → `lib/`
-
-## Comandos utiles
-
-Desde la raiz del proyecto (usa `bun run` o `bunx`):
+Comandos habituales desde la raíz:
 
 ```bash
-# Desarrollo
-bun run dev              # Frontend en http://localhost:3000
-bun run dev:server        # Backend en http://localhost:3001
-bun run maildev           # Maildev en http://localhost:1080
-
-# Build y preview
-bun run build             # Build frontend
-bun run preview           # Preview del build
-
-# Base de datos
-bun run db:generate       # Generar migraciones Drizzle
-bun run db:migrate         # Aplicar migraciones
-
-# Calidad
-bun run test              # Tests
-bun run lint              # Lint con Biome
-bun run format            # Format con Biome
-bun run check             # Check completo
+bun run dev
+bun run dev:server
+bun run test
+bun run lint
+bun run check
+bun run db:generate
+bun run db:migrate
 ```
 
-Desde un package especifico:
-```bash
-bun run --filter=@tranzit/web dev
-bun run --filter=@tranzit/server dev
-cd packages/server && bunx tsc --noEmit
-```
-
-## Variables de entorno y entorno local
-
-La configuracion de ejemplo esta en `.env.example`.
-
-Puntos importantes:
-- el backend carga `../.env` desde `packages/server/`, o sea, el `.env` de la raiz es la fuente principal usada por el codigo versionado.
-- `packages/server/.env` puede existir localmente, pero el codigo actual no depende de ese archivo como fuente principal.
-- `TURSO_DATABASE_URL=file:./sqlite.db` desde `packages/server/` apunta a `packages/server/sqlite.db`.
-- el frontend corre en `http://localhost:3000`.
-- el backend corre en `http://localhost:3001`.
-- `vite.config.ts` hace proxy para `/api/auth` y `/api/rpc`.
-
-Ojo con esto:
-- `packages/server/src/features/auth/auth.config.ts` usa `BETTER_AUTH_URL` con default `http://localhost:3000`.
-- `packages/server/src/lib/env.ts` usa `CORS_ORIGIN` con default `http://localhost:3000`.
-- por eso conviene mantener `CORS_ORIGIN=http://localhost:3000` en `.env`.
-
-Si agregas endpoints de dominio fuera de `/api/auth` y `/api/rpc`:
-- agrega proxy en `vite.config.ts`, o
-- usa URL explicita al backend desde el cliente.
-
-## Contexto funcional que no esta codificado completo en el repo
-
-Este es el comportamiento esperado del producto, aunque aun no este todo implementado:
-
-Ciudadano:
-- entra al portal,
-- elige tramite,
-- llena formulario inicial dinamico,
-- valida correo por OTP,
-- continua autenticado sin password,
-- completa requisitos,
-- descarga formatos/plantillas y lleva documentos en fisico,
-- ve agenda en tiempo real,
-- toma una reserva temporal,
-- confirma la cita,
-- puede ver estado, instrucciones y eventualmente cancelar o reprogramar.
-
-Backoffice:
-- gestiona tramites,
-- gestiona formularios y requisitos,
-- define horarios base y excepciones por fecha,
-- administra auxiliares y capacidad,
-- crea reservas administrativas recurrentes,
-- reasigna citas,
-- consulta auditoria y trazabilidad.
-
-No metas complejidad que el producto no pidio todavia:
-- no pagos,
-- no OCR,
-- no app movil nativa,
-- no integraciones gubernamentales automaticas,
-- no multisedes,
-- no workflow documental avanzado.
-
-## Regla de oro del dominio
-
-La agenda es el centro del sistema. No conviertas esto en "solo un formulario con calendario".
-
-Reglas operativas que debes proteger:
-- no doble reserva del mismo cupo,
-- no sobrecupo por auxiliar,
-- hold temporal con expiracion,
-- la disponibilidad visible debe ser consistente con la real,
-- reservas administrativas consumen capacidad,
-- cambios operativos deben poder auditarse,
-- overrides de calendario deben prevalecer sobre horario base.
-
-## Modelo de dominio actual
-
-Lee primero `packages/server/src/db/SCHEMA.md`.
-
-Resumen corto del modelo actual:
-
-- `procedure_type` concentra definicion configurable del tramite en JSON.
-- `service_request` representa el flujo del ciudadano.
-- `schedule_template` y `calendar_override` definen la agenda base y sus excepciones.
-- `appointment_slot` materializa slots reservables.
-- `booking` unifica hold temporal, cita confirmada y reserva administrativa.
-- `booking_series` guarda la regla de recurrencia de reservas administrativas.
-- `staff_profile` y `staff_date_override` modelan auxiliares y excepciones operativas.
-- `audit_event` y `notification_delivery` cubren trazabilidad y correo.
-
-## Invariantes del esquema que no debes romper
-
-Lee tambien `packages/server/src/db/SCHEMA.md` para el detalle. Los puntos mas delicados son estos:
-
-- `booking` sigue siendo una tabla unica para hold ciudadano, cita y reserva administrativa. No la partas en varias tablas sin una razon muy fuerte.
-- `service_request.activeBookingId` debe apuntar a la reserva/cita vigente.
-- `booking.isActive` define si la fila sigue consumiendo capacidad o sigue siendo la reserva vigente.
-- solo puede existir una `booking` ciudadana activa por `service_request`.
-- si una reserva/cita deja de ser vigente por expiracion, cancelacion, atencion o reprogramacion, marca `isActive = false`.
-- `procedure_type.configVersion` y `service_request.procedureConfigVersion` existen para anclar la configuracion efectiva.
-- antes de confirmar o consolidar flujos importantes, persiste `service_request.procedureSnapshot`.
-- `booking_series` es la fuente para recurrencias administrativas; no uses `seriesKey` como string libre.
-- `staff_date_override.availableStartTime` y `availableEndTime` existen para disponibilidad parcial de un auxiliar en una fecha puntual.
-
-## Estado real de auth
-
-Backend hoy:
-- Better Auth con plugins `admin()` y `emailOTP()`
-- OTP configurable por env
-- envio de correo via `packages/server/src/features/auth/auth.mailer.ts`
-
-Frontend hoy:
-- el flujo ciudadano (`/login` y `/agendar`) usa OTP por correo (`sendVerificationOtp` + `signIn.emailOtp`)
-- el flujo interno admin usa OTP por correo en `/admin/login` (email/password fue deshabilitado)
-
-Direccion correcta del producto:
-- tanto ciudadanos como admin/staff entran exclusivamente por OTP por correo, sin password,
-- la "cuenta" debe ser transparente,
-- no hay auth por password en ningun flujo.
-
-Recomendacion para agentes futuros:
-- no reintroduzcas email/password sin una razon de negocio fuerte,
-- si necesitas dos experiencias de auth, separa ciudadano vs interno de forma explicita.
-
-## Estado real de frontend
-
-La app está conectada de forma funcional en admin y en un primer alcance ciudadano.
-
-Puntos concretos:
-- `src/routes/login.tsx` usa OTP ciudadano real.
-- `src/routes/admin/login.tsx` usa OTP interno real y debe permanecer montado durante revalidaciones de sesión del layout admin; no persistas el paso OTP con `localStorage`.
-- Entrada a `/admin` sin administradores: `AdminLayout` redirige a `/admin/login`, que consulta `admin.onboarding.status` y guía OTP + bootstrap del primer admin (`admin.onboarding.bootstrap`). Usuarios autenticados sin rol admin van a login (onboarding o acceso denegado según `adminExists`), no al portal ciudadano.
-- `src/routes/agendar.tsx` usa procedimientos + disponibilidad + hold/confirm real via backend en un wizard de pasos para reducir fricción en ciudadano.
-- `src/routes/mi-perfil.tsx` muestra citas reales del ciudadano y cancelación real.
-- `src/routes/index.tsx` y `src/routes/__root.tsx` ya tienen un lenguaje visual definido. Si editas UI, intenta preservar esa direccion y no volver a un layout generico.
-
-Si vas a implementar algo real:
-- evita meter mas estado local hardcodeado,
-- extrae componentes o integra APIs segun haga falta,
-- no edites `src/routeTree.gen.ts` manualmente.
-
-## Estado real de backend
-
-Hoy el backend ya expone:
-- `GET /`, `/api/auth/*` (Better Auth + OTP),
-- `/api/rpc/*` como superficie principal para:
-  - admin (session, onboarding, schedule, staff, bookings, reservation-series y reservations),
-  - citizen (procedures list, slots range, bookings hold/confirm/cancel/mine).
-
-Nota:
-- `/api/admin/*` ya no se expone como API publica ni como capa interna del runtime; la capa administrativa corre en handlers oRPC nativos.
-
-Ajustes operativos recientes en citizen:
-- `citizen.slots.range` valida `dateFrom` como fecha calendario real (no solo regex `YYYY-MM-DD`).
-- `citizen.bookings.hold` recorta y valida identidad requerida (`applicantName`, `applicantDocument`) para rechazar valores solo con espacios.
-
-El detalle endpoint por endpoint vive en `packages/server/src/BACKEND_STATUS.md`.
-
-Lo que todavia no esta completo:
-- APIs ciudadanas avanzadas de `service_request` (beyond hold/confirm base),
-- robustecer validaciones operativas de requisitos físicos en flujo ciudadano,
-- instrumentacion de auditoria/notificaciones mas completa para flujo ciudadano.
-
-Si vas a construir esa parte:
-- manten la logica critica en backend,
-- no pongas la autoridad de disponibilidad en frontend,
-- diseña APIs alrededor del dominio, no solo CRUD generico.
-
-Cuando cambies rutas o servicios backend:
-- actualiza `packages/server/src/BACKEND_STATUS.md` en el mismo cambio.
-
-### Brecha de conexion frontend-backend (estado operativo)
-
-Admin conectado hoy en frontend:
-- onboarding (`admin.onboarding.status`, `admin.onboarding.bootstrap`),
-- staff basico (`list/create/update/remove`),
-- bookings base (`list/create/reassignmentsPreview/reassignmentsApply`),
-- procedures (`list/get/create/update/remove`),
-- schedule slots list (`admin.schedule.slots.list`).
-- validaciones de formularios admin alineadas en frontend con backend para casos críticos:
-  - creación de trámite con `trim`/slug sanitizado,
-  - creación de encargado con `trim`/email normalizado,
-  - reasignación masiva limitada a 100 items por operación (límite backend).
-
-Admin avanzado conectado con UI funcional premium en frontend:
-- `src/routes/admin/configuracion.tsx` y `src/routes/admin/configuracion/-AdminConfiguracionPage.tsx`:
-  - `admin.schedule.templates.*` con formularios validados y diseño premium,
-  - `admin.schedule.overrides.*` con validaciones en tiempo real,
-  - `admin.schedule.slots.generate` con feedback visual,
-  - `admin.staff.get` con selector mejorado,
-  - `admin.staff.dateOverrides.*` con validaciones de horarios (HH:MM),
-  - `admin.staff.effectiveAvailability` con visualización mejorada.
-  - Características UX: notificaciones toast, confirmaciones modales, estados empty elegantes,
-    skeletons de carga, badges de estado coloridos, tooltips en acciones, validaciones con @mantine/form.
-- `src/routes/admin/reportes.tsx` y `src/routes/admin/reportes/-AdminReportesPage.tsx`:
-  - `session.get` con display de usuario mejorado,
-  - `admin.bookings.get/capacity/confirm/release/reassign/reassignPreview/availabilityCheck`
-    con filtros avanzados y panel de acciones contextual,
-  - `admin.reservationSeries.*` con creación validada y gestión completa,
-  - `admin.reservations.*` para instancias individuales.
-  - Características UX: filtros de citas con badges de estado, selección visual de items,
-    formularios de series con validación RRULE, confirmaciones antes de acciones destructivas,
-    estados de carga con skeletons, empty states ilustrativos.
-- `src/routes/admin/auditoria.tsx` y `src/routes/admin/auditoria/-AdminAuditoriaPage.tsx`:
-  - `admin.audit.list` con filtros por tipo de entidad, actor, acción y rango de fechas,
-  - visualización de eventos de auditoría en tabla con paginación,
-  - viewer colapsable de payload JSON para cada entrada,
-  - badges de estado por tipo de acción y actor.
-
-Ciudadano conectado hoy en frontend:
-- `src/routes/login.tsx`:
-  - OTP real (`/api/auth/email-otp/send-verification-otp` + `signIn.emailOtp`).
-- `src/routes/agendar.tsx`:
-  - UI guiada por pasos (trámite, requisitos, horario y datos personales),
-  - `citizen.procedures.list`,
-  - `citizen.slots.range`,
-  - `citizen.bookings.hold`,
-  - `citizen.bookings.confirm`,
-  - `citizen.bookings.cancel`.
-- `src/routes/mi-perfil.tsx`:
-  - `citizen.bookings.mine`,
-  - `citizen.bookings.cancel`.
-
-Lo que aun falta para darlo por conectado de verdad:
-- estandarizar manejo de concurrencia optimista (`If-Match`) e idempotency keys en acciones de series/instancias,
-- cubrir estas superficies con pruebas de frontend y pruebas de integracion.
-
-Siguientes pasos operativos prioritarios:
-1. aplicar manejo consistente de concurrencia/idempotencia en todas las mutaciones criticas de reservas/series,
-2. agregar pruebas automatizadas sobre admin conectado (frontend + integracion) para evitar regresiones.
-
-Brecha ciudadana que sigue pendiente:
-- API de ciclo de vida avanzado de `service_request` (estados y snapshots mas ricos),
-- robustecer flujo ciudadano de requisitos fisicos con más validaciones operativas,
-- robustecer pruebas automáticas para el flujo ciudadano conectado end-to-end.
-
-## Workflow para cambios de schema
-
-Cuando cambies el schema:
-
-1. Actualiza `packages/server/src/db/schema.ts`.
-2. Actualiza `packages/server/src/db/SCHEMA.md`.
-3. Genera migracion con `bun run db:generate`.
-4. Revisa el SQL generado.
-5. Corre `bun run db:migrate`.
-6. Corre `cd packages/server && bunx tsc --noEmit`.
-
-No dejes cambios de schema sin documentar.
-
-No asumas que Drizzle siempre genera SQL 100% portable para SQLite/libsql. Si algo falla:
-- revisa primero el SQL generado,
-- valida sobre una copia local de la BD,
-- corrige la migracion de forma explicita si hace falta.
-
-No resetees la base local por defecto.
-Si el problema es de baseline local en `__drizzle_migrations`, arreglalo con cuidado en vez de borrar datos sin necesidad.
-
-## Convenciones de codigo
-
-- Usa commits con Conventional Commits.
-- No commits `.env`, `packages/server/.env` ni `packages/server/sqlite.db`.
-- Prefiere cambios pequenos y verificables.
-- Mantén la solucion simple y operable.
-- Si agregas reglas nuevas del dominio, documentalas aqui o en `packages/server/src/db/SCHEMA.md`.
-- Si una decision afecta producto y no solo implementacion, deja el contexto por escrito.
-
-## Si no sabes por donde empezar
-
-Orden recomendado para cualquier cambio grande:
-- lee `AGENTS.md`,
-- lee `packages/server/src/db/SCHEMA.md`,
-- inspecciona `packages/server/src/db/schema.ts`,
-- revisa si el frontend actual es mock o real para esa pieza,
-- decide si el cambio pertenece a UI, API, schema o a los cuatro,
-- verifica al final con `bunx tsc --noEmit`, `bun run db:migrate` si aplica, y al menos un chequeo rapido de la ruta afectada.
+Para backend, ejecuta `cd packages/server && bunx tsc --noEmit` cuando el cambio
+lo afecte. Mantén los cambios pequeños y verificables. Usa Conventional Commits
+y nunca confirmes `.env`, `packages/server/.env` ni bases SQLite locales.

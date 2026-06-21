@@ -1,3 +1,0 @@
-Response: {"code":"FORBIDDEN","message":"Admin privileges required for this operation"}
-Status: 403 FORBIDDEN - PASS
-Citizen OTP session cannot access admin APIs - correctly rejected
