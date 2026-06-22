@@ -27,7 +27,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FormActionButton,
   FormActions,
@@ -54,6 +54,12 @@ interface AddProcedureModalProps {
   }) => Promise<void>;
 }
 
+const TAB_FIELD_ORDER = [
+  { tab: "general", fields: ["name", "slug", "description", "instructions"] },
+  { tab: "requirements", fields: [] as string[] },
+  { tab: "form", fields: [] as string[] },
+] as const;
+
 const FIELD_TYPE_OPTIONS: { value: FormFieldDef["type"]; label: string }[] = [
   { value: "text", label: "Texto" },
   { value: "number", label: "Número" },
@@ -72,6 +78,9 @@ export function AddProcedureModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
+  const [, forceRender] = useState(0);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const slugInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm({
     mode: "uncontrolled",
@@ -119,6 +128,7 @@ export function AddProcedureModal({
     },
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset form when modal opens
   useEffect(() => {
     if (opened) {
       form.reset();
@@ -126,19 +136,35 @@ export function AddProcedureModal({
       setSlugManuallyEdited(false);
       setActiveTab("general");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened]);
 
-  // Auto-generar slug desde nombre
-  useEffect(() => {
-    const name = form.getValues().name;
-    if (!slugManuallyEdited && name.trim()) {
-      const generated = generateSlugFromName(name);
-      if (generated !== form.getValues().slug) {
-        form.setFieldValue("slug", generated);
+  const focusField = (field: string) => {
+    requestAnimationFrame(() => {
+      if (field === "name") {
+        nameInputRef.current?.focus();
+        return;
+      }
+      if (field === "slug") {
+        slugInputRef.current?.focus();
+        return;
+      }
+      const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+        `[data-procedure-field="${field}"]`,
+      );
+      input?.focus();
+    });
+  };
+
+  const handleInvalidSubmit = (errors: typeof form.errors) => {
+    for (const { tab, fields } of TAB_FIELD_ORDER) {
+      const firstField = fields.find((field) => errors[field]);
+      if (firstField) {
+        setActiveTab(tab);
+        focusField(firstField);
+        return;
       }
     }
-  }, [form.getValues().name, slugManuallyEdited]);
+  };
 
   const handleClose = () => {
     if (isSubmitting) return;
@@ -242,13 +268,24 @@ export function AddProcedureModal({
     }
   };
 
+  const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const name = event.currentTarget.value;
+    form.setFieldValue("name", name);
+    if (!slugManuallyEdited) {
+      form.setFieldValue("slug", generateSlugFromName(name));
+    }
+    forceRender((value) => value + 1);
+  };
+
   const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const sanitized = sanitizeSlug(e.currentTarget.value);
     form.setFieldValue("slug", sanitized);
     setSlugManuallyEdited(true);
+    forceRender((value) => value + 1);
   };
 
   const values = form.getValues();
+  const nameInputProps = form.getInputProps("name");
 
   return (
     <PremiumModal
@@ -258,7 +295,7 @@ export function AddProcedureModal({
       subtitle="Configura un nuevo tipo de trámite para la agenda ciudadana"
       size="xl"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
+      <form onSubmit={form.onSubmit(handleSubmit, handleInvalidSubmit)}>
         <Stack gap="lg">
           {submitError && (
             <Alert
@@ -324,7 +361,13 @@ export function AddProcedureModal({
                         size="md"
                         disabled={isSubmitting}
                         key={form.key("name")}
-                        {...form.getInputProps("name")}
+                        ref={nameInputRef}
+                        {...nameInputProps}
+                        onChange={(event) => {
+                          nameInputProps.onChange?.(event);
+                          handleNameChange(event);
+                        }}
+                        data-procedure-field="name"
                         className={cx(
                           "transition-all duration-200",
                           form.getValues().name &&
@@ -353,10 +396,12 @@ export function AddProcedureModal({
                           radius="md"
                           size="md"
                           disabled={isSubmitting}
+                          ref={slugInputRef}
                           value={values.slug}
                           onChange={handleSlugChange}
                           onBlur={() => form.validateField("slug")}
                           error={form.errors.slug}
+                          data-procedure-field="slug"
                           leftSection={
                             <Link2 size={14} className="text-zinc-400" />
                           }
@@ -389,6 +434,7 @@ export function AddProcedureModal({
                                 generateSlugFromName(values.name),
                               );
                               setSlugManuallyEdited(false);
+                              forceRender((value) => value + 1);
                             }}
                             className="mt-1 text-xs text-zinc-500 hover:text-zinc-700 underline"
                           >
@@ -410,6 +456,7 @@ export function AddProcedureModal({
                         maxRows={5}
                         disabled={isSubmitting}
                         key={form.key("description")}
+                        data-procedure-field="description"
                         {...form.getInputProps("description")}
                         className={cx(
                           "transition-all duration-200",
@@ -465,6 +512,7 @@ export function AddProcedureModal({
                       maxRows={8}
                       disabled={isSubmitting}
                       key={form.key("instructions")}
+                      data-procedure-field="instructions"
                       {...form.getInputProps("instructions")}
                       styles={{
                         input: {
@@ -836,6 +884,7 @@ export function AddProcedureModal({
           <FormActions align="right">
             <FormActionButton
               variant="secondary"
+              type="button"
               onClick={handleClose}
               disabled={isSubmitting}
             >
@@ -843,6 +892,7 @@ export function AddProcedureModal({
             </FormActionButton>
             <FormActionButton
               variant="primary"
+              type="submit"
               isLoading={isSubmitting}
               leftSection={<FileText size={16} strokeWidth={1.5} />}
             >

@@ -36,6 +36,12 @@ Antes de cambiar dominio, esquema o backend, lee:
 `README.md` no es documentación funcional canónica. Para trabajo frontend,
 lee también `.impeccable.md` antes de diseñar o modificar UI.
 
+Para cualquier cambio que use componentes, hooks o formularios de Mantine,
+consulta primero el índice oficial https://mantine.dev/llms.txt y abre la página
+LLM específica del componente. Usa únicamente APIs compatibles con la versión
+instalada en `packages/web/package.json`; no deduzcas APIs de versiones
+anteriores de Mantine.
+
 ## Estado operativo
 
 - La API pública usa oRPC bajo `/api/rpc/*`; no reintroduzcas `/api/admin/*`.
