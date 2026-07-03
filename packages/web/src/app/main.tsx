@@ -1,4 +1,6 @@
 import "@fontsource/geist-sans";
+import "@fontsource/public-sans";
+import "@fontsource/sora";
 import { createTheme, MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClientProvider } from "@tanstack/react-query";

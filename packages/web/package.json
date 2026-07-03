@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@fontsource/geist-sans": "^5.2.5",
+    "@fontsource/public-sans": "^5.2.7",
+    "@fontsource/sora": "^5.2.8",
     "@mantine/carousel": "9.1.1",
     "@mantine/charts": "9.1.1",
     "@mantine/code-highlight": "9.1.1",
