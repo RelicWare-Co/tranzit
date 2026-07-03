@@ -65,8 +65,7 @@ export function StaffCard({
 								variant="light"
 								size="xs"
 								leftSection={<CheckCircle2 size={10} strokeWidth={2.5} />}
-								styles={{ root: { textTransform: "none", fontWeight: 600 } }}
-							>
+								>
 								Activo
 							</Badge>
 						) : (
@@ -75,8 +74,7 @@ export function StaffCard({
 								variant="light"
 								size="xs"
 								leftSection={<UserX size={10} strokeWidth={2.5} />}
-								styles={{ root: { textTransform: "none", fontWeight: 600 } }}
-							>
+								>
 								Inactivo
 							</Badge>
 						)}
@@ -89,8 +87,7 @@ export function StaffCard({
 							color="red"
 							variant="light"
 							size="xs"
-							styles={{ root: { textTransform: "none", fontWeight: 600 } }}
-						>
+							>
 							Recibe citas
 						</Badge>
 					) : (
@@ -98,8 +95,7 @@ export function StaffCard({
 							color="gray"
 							variant="light"
 							size="xs"
-							styles={{ root: { textTransform: "none", fontWeight: 600 } }}
-						>
+							>
 							No asignable
 						</Badge>
 					)}

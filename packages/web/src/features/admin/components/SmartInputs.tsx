@@ -83,13 +83,6 @@ export function SmartTextInput({
 				)}
 				radius="lg"
 				size="md"
-				styles={{
-					input: {
-						"&:focus": {
-							boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-						},
-					},
-				}}
 			/>
 			{showCounter && maxLength && (
 				<div className="flex justify-end">
@@ -147,13 +140,6 @@ export function SmartNumberInput({
 				className={cx("transition-all duration-200", className)}
 				radius="lg"
 				size="md"
-				styles={{
-					input: {
-						"&:focus": {
-							boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-						},
-					},
-				}}
 			/>
 			{helper && <span className="text-xs text-zinc-500">{helper}</span>}
 		</div>

@@ -268,7 +268,6 @@ export function OverrideSection({
 						withTableBorder
 						withColumnBorders
 						className="border-zinc-200"
-						styles={{ thead: { backgroundColor: "#f9fafb" } }}
 					>
 						<Table.Thead>
 							<Table.Tr>

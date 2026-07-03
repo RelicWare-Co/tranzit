@@ -282,7 +282,6 @@ export function StaffAvailabilitySection({
 								withTableBorder
 								withColumnBorders
 								className="border-zinc-200"
-								styles={{ thead: { backgroundColor: "#f8fafc" } }}
 							>
 								<Table.Thead>
 									<Table.Tr>

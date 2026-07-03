@@ -1,7 +1,7 @@
 import "@fontsource/geist-sans";
 import "@fontsource/public-sans";
 import "@fontsource/sora";
-import { createTheme, MantineProvider } from "@mantine/core";
+import { Badge, createTheme, MantineProvider, Modal, Table } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
@@ -20,6 +20,38 @@ const theme = createTheme({
 	fontFamily: "Geist, system-ui, sans-serif",
 	headings: {
 		fontFamily: "Geist, system-ui, sans-serif",
+	},
+	components: {
+		Badge: Badge.extend({
+			styles: {
+				root: {
+					textTransform: "none",
+					fontWeight: 600,
+				},
+			},
+		}),
+		Modal: Modal.extend({
+			styles: {
+				content: {
+					border: "1px solid var(--neutral-200)",
+					boxShadow: "0 16px 48px -12px rgba(0, 0, 0, 0.18)",
+					borderRadius: "16px",
+				},
+				header: {
+					borderBottom: "1px solid var(--neutral-200)",
+					paddingBottom: "14px",
+					marginBottom: "4px",
+				},
+				body: { paddingTop: "12px" },
+			},
+		}),
+		Table: Table.extend({
+			styles: {
+				thead: {
+					backgroundColor: "var(--bg-secondary)",
+				},
+			},
+		}),
 	},
 });
 

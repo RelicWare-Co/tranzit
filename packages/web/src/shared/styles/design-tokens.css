@@ -235,6 +235,16 @@ html {
 	outline-offset: 2px;
 }
 
+/* Mantine input focus ring — replaces repeated inline styles prop */
+.mantine-TextInput-input:focus,
+.mantine-NumberInput-input:focus,
+.mantine-Textarea-input:focus,
+.mantine-PasswordInput-input:focus,
+.mantine-Select-input:focus,
+.mantine-ComboboxInput-input:focus {
+	box-shadow: 0 0 0 3px rgba(9, 9, 11, 0.08);
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
 	width: 8px;

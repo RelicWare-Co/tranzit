@@ -342,12 +342,6 @@ function RecentAppointments() {
 										color={statusInfo.color}
 										variant="light"
 										size="sm"
-										styles={{
-											root: {
-												textTransform: "none",
-												fontWeight: 600,
-											},
-										}}
 									>
 										{statusInfo.label}
 									</Badge>

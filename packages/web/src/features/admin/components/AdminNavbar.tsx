@@ -89,8 +89,6 @@ export function AdminNavbar() {
 							size="sm"
 							styles={{
 								root: {
-									textTransform: "none",
-									fontWeight: 700,
 									fontSize: 9,
 									paddingInline: 6,
 									height: 18,

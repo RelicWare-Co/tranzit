@@ -182,13 +182,6 @@ export function AddStaffModal({
 									"transition-all duration-200",
 									values.name && !errors.name && "border-emerald-500/50",
 								)}
-								styles={{
-									input: {
-										"&:focus": {
-											boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-										},
-									},
-								}}
 							/>
 						</FormField>
 
@@ -215,13 +208,6 @@ export function AddStaffModal({
 									"transition-all duration-200",
 									values.email && !errors.email && "border-emerald-500/50",
 								)}
-								styles={{
-									input: {
-										"&:focus": {
-											boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-										},
-									},
-								}}
 							/>
 						</FormField>
 					</Stack>
@@ -258,13 +244,6 @@ export function AddStaffModal({
 								"transition-all duration-200",
 								values.capacity && !errors.capacity && "border-emerald-500/50",
 							)}
-							styles={{
-								input: {
-									"&:focus": {
-										boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-									},
-								},
-							}}
 						/>
 					</FormField>
 				</FormSection>

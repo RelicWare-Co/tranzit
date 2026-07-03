@@ -1,11 +1,12 @@
 import { Modal, type ModalProps } from "@mantine/core";
 import { cx } from "#/shared/lib/cx";
 
-interface PremiumModalProps extends Omit<ModalProps, "title"> {
+interface PremiumModalProps extends Omit<ModalProps, "title" | "styles"> {
 	title: string;
 	subtitle?: string;
 	size?: "sm" | "md" | "lg" | "xl";
 	children: React.ReactNode;
+	styles?: Partial<Record<string, React.CSSProperties>>;
 }
 
 const sizeMap = {

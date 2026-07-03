@@ -355,13 +355,6 @@ export function TramitesPage() {
 							radius="md"
 							size="sm"
 							className="flex-1 min-w-[240px]"
-							styles={{
-								input: {
-									"&:focus": {
-										boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-									},
-								},
-							}}
 						/>
 						<Group gap="xs">
 							{(["all", "active", "inactive"] as const).map((status) => (

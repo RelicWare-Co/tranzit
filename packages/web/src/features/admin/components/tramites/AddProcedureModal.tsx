@@ -374,13 +374,6 @@ export function AddProcedureModal({
                             !form.errors.name &&
                             "border-emerald-500/50",
                         )}
-                        styles={{
-                          input: {
-                            "&:focus": {
-                              boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-                            },
-                          },
-                        }}
                       />
                     </FormField>
 
@@ -415,12 +408,7 @@ export function AddProcedureModal({
                             input: {
                               fontFamily: "monospace",
                               fontSize: "0.875rem",
-                              "&:focus": {
-                                boxShadow:
-                                  "0 0 0 3px rgba(9, 9, 11, 0.08)",
-                              },
-                            },
-                          }}
+                          }}}
                         />
                       </div>
                       {slugManuallyEdited &&
@@ -464,13 +452,6 @@ export function AddProcedureModal({
                             !form.errors.description &&
                             "border-emerald-500/50",
                         )}
-                        styles={{
-                          input: {
-                            "&:focus": {
-                              boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-                            },
-                          },
-                        }}
                       />
                       <div className="flex justify-end">
                         <span
@@ -514,13 +495,6 @@ export function AddProcedureModal({
                       key={form.key("instructions")}
                       data-procedure-field="instructions"
                       {...form.getInputProps("instructions")}
-                      styles={{
-                        input: {
-                          "&:focus": {
-                            boxShadow: "0 0 0 3px rgba(9, 9, 11, 0.08)",
-                          },
-                        },
-                      }}
                     />
                   </FormField>
                 </FormSection>

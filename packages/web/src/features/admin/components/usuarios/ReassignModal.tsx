@@ -16,7 +16,6 @@ import {
 	type ReassignBookingsFormValues,
 	reassignBookingsSchema,
 } from "#/shared/lib/schemas/reassign";
-import { adminModalStyles } from "#/features/admin/components/admin-ui";
 import { getErrorMessage } from "#/features/admin/components/errors";
 import type { AdminBooking, StaffProfile } from "./types";
 
@@ -116,7 +115,6 @@ export function ReassignModal({
 			}
 			size="md"
 			radius="lg"
-			styles={adminModalStyles}
 		>
 			<form onSubmit={handleSubmit}>
 				<Stack gap="md">
