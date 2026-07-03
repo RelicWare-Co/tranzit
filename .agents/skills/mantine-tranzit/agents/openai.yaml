@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantine Tranzit"
+  short_description: "Mantine UI patterns for Tranzit"
+  default_prompt: "Use $mantine-tranzit to implement this UI change with Mantine conventions."
