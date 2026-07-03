@@ -1,5 +1,4 @@
 import {
-	Anchor,
 	Button,
 	Card,
 	Container,
@@ -396,14 +395,12 @@ function AdminLoginPage() {
 									</p>
 								</Stack>
 
-								<Anchor
-									component={Link}
+								<Link
 									to="/"
-									fw={600}
-									className="font-['Public_Sans'] text-sm text-[var(--neutral-800)] hover:text-[var(--brand-600)] transition-colors"
+									className="font-['Public_Sans'] text-base font-semibold text-[var(--brand-600)] hover:text-[var(--brand-700)] transition-colors"
 								>
 									Volver al portal ciudadano
-								</Anchor>
+								</Link>
 							</Stack>
 						</Card>
 					</Container>
@@ -613,14 +610,12 @@ function AdminLoginPage() {
 
 							<div className="pt-2">
 								<p className="font-['Public_Sans'] text-center text-sm text-[var(--neutral-500)]">
-									<Anchor
-										component={Link}
+									<Link
 										to="/"
-										fw={600}
-										className="text-[var(--neutral-800)] hover:text-[var(--brand-600)] transition-colors"
+										className="font-semibold text-base text-[var(--brand-600)] hover:text-[var(--brand-700)] transition-colors"
 									>
 										Volver al portal ciudadano
-									</Anchor>
+									</Link>
 								</p>
 							</div>
 						</Stack>

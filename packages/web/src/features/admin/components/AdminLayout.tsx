@@ -11,6 +11,7 @@ export function AdminLayout() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const isAdminLoginRoute = location.pathname === "/admin/login";
+	const isAdminRoute = location.pathname.startsWith("/admin");
 	const isCitasRoute = location.pathname.startsWith("/admin/citas");
 
 	const activeSection = useMemo(() => {
@@ -30,21 +31,22 @@ export function AdminLayout() {
 	}, [hasRole]);
 
 	useEffect(() => {
-		if (!isLoading && !isAuthenticated && !isAdminLoginRoute) {
+		if (!isLoading && !isAuthenticated && isAdminRoute && !isAdminLoginRoute) {
 			navigate({ to: "/admin/login" });
 		}
-	}, [isAuthenticated, isLoading, isAdminLoginRoute, navigate]);
+	}, [isAuthenticated, isLoading, isAdminLoginRoute, isAdminRoute, navigate]);
 
 	useEffect(() => {
 		if (
 			!isLoading &&
 			isAuthenticated &&
 			!hasAdminAccess &&
+			isAdminRoute &&
 			!isAdminLoginRoute
 		) {
 			navigate({ to: "/admin/login" });
 		}
-	}, [isAuthenticated, isLoading, hasAdminAccess, isAdminLoginRoute, navigate]);
+	}, [isAuthenticated, isLoading, hasAdminAccess, isAdminLoginRoute, isAdminRoute, navigate]);
 
 	if (isAdminLoginRoute) {
 		return <Outlet />;
