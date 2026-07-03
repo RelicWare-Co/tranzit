@@ -5,9 +5,9 @@
     "": {
       "name": "tranzit",
       "devDependencies": {
-        "@biomejs/biome": "latest",
-        "concurrently": "latest",
-        "turbo": "latest",
+        "@biomejs/biome": "2.5.2",
+        "concurrently": "^10.0.3",
+        "turbo": "^2.10.2",
       },
     },
     "packages/server": {

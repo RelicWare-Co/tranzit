@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "packageManager": "bun@1.2.0",
   "devDependencies": {
-    "@biomejs/biome": "2.4.13",
-    "concurrently": "^9.2.1",
-    "turbo": "^2.9.7"
+    "@biomejs/biome": "2.5.2",
+    "concurrently": "^10.0.3",
+    "turbo": "^2.10.2"
   },
   "description": "Plataforma de agendamiento para SIMUT Tulúa",
   "private": true,
