@@ -120,26 +120,47 @@ function getProcedureRequirements(procedure: CitizenProcedure | null) {
 	const rawSchema = procedure.documentSchema;
 	if (!rawSchema || typeof rawSchema !== "object") return [];
 
-	const requirements = (rawSchema as { requirements?: unknown }).requirements;
+	const rawObj = rawSchema as Record<string, unknown>;
+	const requirements = Array.isArray(rawObj.requirements)
+		? rawObj.requirements
+		: Array.isArray(rawObj.required)
+			? rawObj.required
+			: [];
+
 	if (!Array.isArray(requirements)) return [];
 
 	return requirements
 		.map((rawRequirement, index): ProcedureRequirement | null => {
 			if (!rawRequirement || typeof rawRequirement !== "object") return null;
 			const req = rawRequirement as Record<string, unknown>;
+
+			const keyCandidates = [req.key, req.id, req.slug];
+			const keyStr = keyCandidates.find(
+				(c) => typeof c === "string" && c.trim().length > 0,
+			);
 			const key =
-				typeof req.key === "string" && req.key.trim().length > 0
-					? req.key.trim()
-					: `requirement-${index + 1}`;
+				typeof keyStr === "string" ? keyStr.trim() : `requirement-${index + 1}`;
+
+			const labelCandidates = [req.name, req.label, req.title];
+			const labelStr = labelCandidates.find(
+				(c) => typeof c === "string" && c.trim().length > 0,
+			);
 			const label =
-				typeof req.label === "string" && req.label.trim().length > 0
-					? req.label.trim()
+				typeof labelStr === "string"
+					? labelStr.trim()
 					: `Requisito ${index + 1}`;
+
+			const instructionCandidates = [
+				req.description,
+				req.instructions,
+				req.details,
+			];
+			const instructionStr = instructionCandidates.find(
+				(c) => typeof c === "string" && c.trim().length > 0,
+			);
 			const instructions =
-				typeof req.instructions === "string" &&
-				req.instructions.trim().length > 0
-					? req.instructions.trim()
-					: null;
+				typeof instructionStr === "string" ? instructionStr.trim() : null;
+
 			const downloadUrlCandidates = [
 				req.downloadUrl,
 				req.download_url,
@@ -153,10 +174,15 @@ function getProcedureRequirements(procedure: CitizenProcedure | null) {
 						typeof candidate === "string" && candidate.trim().length > 0,
 				) ?? null;
 
+			const isRequired =
+				typeof req.isRequired === "boolean"
+					? req.isRequired
+					: req.required !== false;
+
 			return {
 				key,
 				label,
-				isRequired: req.required !== false,
+				isRequired,
 				instructions,
 				downloadUrl:
 					typeof downloadUrl === "string" ? downloadUrl.trim() : null,
@@ -579,6 +605,16 @@ function AgendarPage() {
 			<div className={classes.stepContent}>
 				<h2 className={classes.stepHeading}>Requisitos del trámite</h2>
 
+				{selectedProcedure.instructions && (
+					<Alert
+						variant="info"
+						title="Indicaciones generales"
+						className={classes.alertContainer}
+					>
+						{selectedProcedure.instructions}
+					</Alert>
+				)}
+
 				<Card variant="inset" padding="lg" className={classes.requirementsCard}>
 					{procedureRequirements.length > 0 ? (
 						<div className={classes.requirementsList}>
@@ -589,7 +625,14 @@ function AgendarPage() {
 											<FileText size={20} />
 										</div>
 										<div className={classes.requirementContent}>
-											<h4 className={classes.requirementTitle}>{req.label}</h4>
+											<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+												<h4 className={classes.requirementTitle}>{req.label}</h4>
+												{req.isRequired && (
+													<Badge variant="warning" size="sm">
+														Obligatorio
+													</Badge>
+												)}
+											</div>
 											{req.instructions && (
 												<p className={classes.requirementInstructions}>
 													{req.instructions}
@@ -613,7 +656,7 @@ function AgendarPage() {
 						</div>
 					) : (
 						<p className={classes.noRequirements}>
-							No hay plantillas requeridas para este trámite.
+							No hay requisitos específicos documentales registrados para este trámite.
 						</p>
 					)}
 

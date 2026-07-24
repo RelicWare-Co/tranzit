@@ -334,10 +334,10 @@ async function seedProcedureTypes() {
         ],
       },
       documentSchema: {
-        required: [
-          { key: "licenciaAnterior", label: "Licencia anterior" },
-          { key: "reciboPago", label: "Recibo de pago" },
-          { key: "certificadoMedico", label: "Certificado médico" },
+        requirements: [
+          { id: "licenciaAnterior", key: "licenciaAnterior", name: "Licencia anterior", description: "Presentar la licencia de conducción anterior en físico.", isRequired: true, order: 0 },
+          { id: "reciboPago", key: "reciboPago", name: "Recibo de pago", description: "Comprobante de pago de los derechos del trámite.", isRequired: true, order: 1 },
+          { id: "certificadoMedico", key: "certificadoMedico", name: "Certificado médico", description: "Certificado de aptitud física, mental y de coordinación motriz expedido por CRC habilitado.", isRequired: true, order: 2 },
         ],
       },
       policySchema: {
@@ -389,12 +389,12 @@ async function seedProcedureTypes() {
         ],
       },
       documentSchema: {
-        required: [
-          { key: "tarjetaPropiedad", label: "Tarjeta de propiedad" },
-          { key: "soat", label: "SOAT vigente" },
-          { key: "formularioTraspaso", label: "Formulario de traspaso" },
-          { key: "cedulaVendedor", label: "Cédula del vendedor" },
-          { key: "cedulaComprador", label: "Cédula del comprador" },
+        requirements: [
+          { id: "tarjetaPropiedad", key: "tarjetaPropiedad", name: "Tarjeta de propiedad", description: "Licencia de tránsito del vehículo original.", isRequired: true, order: 0 },
+          { id: "soat", key: "soat", name: "SOAT vigente", description: "Póliza de seguro obligatorio al día cargada en el RUNT.", isRequired: true, order: 1 },
+          { id: "formularioTraspaso", key: "formularioTraspaso", name: "Formulario de traspaso", description: "Formulario único nacional debidamente diligenciado con improntas adheridas.", isRequired: true, order: 2 },
+          { id: "cedulaVendedor", key: "cedulaVendedor", name: "Cédula del vendedor", description: "Fotocopia legible del documento de identidad del propietario actual.", isRequired: true, order: 3 },
+          { id: "cedulaComprador", key: "cedulaComprador", name: "Cédula del comprador", description: "Fotocopia legible del documento de identidad del comprador.", isRequired: true, order: 4 },
         ],
       },
       policySchema: {
@@ -434,10 +434,10 @@ async function seedProcedureTypes() {
         ],
       },
       documentSchema: {
-        required: [
-          { key: "facturaCompra", label: "Factura de compra" },
-          { key: "soat", label: "SOAT" },
-          { key: "revisionTecnomecanica", label: "Revisión técnico-mecánica" },
+        requirements: [
+          { id: "facturaCompra", key: "facturaCompra", name: "Factura de compra", description: "Factura comercial de compra emitida por concesionario o fabricante.", isRequired: true, order: 0 },
+          { id: "soat", key: "soat", name: "SOAT", description: "Seguro obligatorio de accidentes de tránsito vigente.", isRequired: true, order: 1 },
+          { id: "revisionTecnomecanica", key: "revisionTecnomecanica", name: "Revisión técnico-mecánica", description: "Certificado de revisión técnico-mecánica y de emisiones contaminantes si aplica.", isRequired: true, order: 2 },
         ],
       },
       policySchema: {

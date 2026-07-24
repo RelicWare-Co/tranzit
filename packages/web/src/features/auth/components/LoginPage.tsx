@@ -208,7 +208,7 @@ function LoginPage() {
 				display: "flex",
 				alignItems: "center",
 				justifyContent: "center",
-				padding: "var(--space-6)",
+				padding: "calc(var(--space-20) + var(--space-4)) var(--space-6) var(--space-8)",
 				background: `linear-gradient(135deg, var(--bg-primary) 0%, var(--brand-50) 50%, var(--bg-secondary) 100%)`,
 			}}
 		>
