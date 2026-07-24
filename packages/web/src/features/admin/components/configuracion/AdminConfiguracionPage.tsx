@@ -1,18 +1,18 @@
-import { Alert, Button, Stack, Text } from "@mantine/core";
+import { Alert, Button, Tabs, Text } from "@mantine/core";
 import {
 	AlertCircle,
-	CalendarX,
-	Clock,
-	Hash,
+	CalendarClock,
+	CalendarOff,
 	RefreshCw,
-	User,
+	Sparkles,
+	UsersRound,
 } from "lucide-react";
 import { useState } from "react";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { getErrorMessage } from "#/features/admin/components/errors";
 import { useConfigSnapshot } from "#/features/admin/components/hooks/useConfigSnapshot";
 import { useStaffOverrides } from "#/features/admin/components/hooks/useStaffOverrides";
-import { SectionCard } from "#/features/admin/components/ui/SectionCard";
+import classes from "./Configuracion.module.css";
 import { OverrideSection } from "./sections/OverrideSection";
 import { SlotGenerationSection } from "./sections/SlotGenerationSection";
 import { StaffAvailabilitySection } from "./sections/StaffAvailabilitySection";
@@ -27,88 +27,110 @@ export function AdminConfiguracionPage() {
 	const staffOverrides = useStaffOverrides(selectedStaffUserId);
 
 	const refreshAll = async () => {
-		await snapshot.refresh();
-		await staffOverrides.refresh();
+		await Promise.all([snapshot.refresh(), staffOverrides.refresh()]);
 	};
 
 	return (
-		<Stack gap="xl" className="max-w-[1600px] mx-auto pb-12">
-			<AdminPageHeader
-				title="Configuración operativa"
-				description="Gestiona templates de agenda, excepciones de calendario y disponibilidad de funcionarios"
-				actions={
-					<Button
-						leftSection={<RefreshCw size={16} />}
-						onClick={() => void refreshAll()}
-						variant="light"
-						className="transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-					>
-						Refrescar
-					</Button>
-				}
-			/>
+		<div className={classes.page}>
+			<div className={classes.pageStack}>
+				<AdminPageHeader
+					title="Configuración operativa"
+					description="Administra las reglas que definen cómo se construye y opera la agenda de SIMUT."
+					actions={
+						<Button
+							leftSection={<RefreshCw size={16} />}
+							onClick={() => void refreshAll()}
+							variant="default"
+							loading={snapshot.isFetching}
+						>
+							Actualizar datos
+						</Button>
+					}
+				/>
 
-			{snapshot.isError && (
-				<Alert
-					color="red"
-					icon={<AlertCircle size={18} />}
-					className="rounded-xl border border-red-200"
+				{snapshot.isError ? (
+					<Alert color="red" icon={<AlertCircle size={18} />} radius="md">
+						<Text fw={600}>
+							{getErrorMessage(
+								snapshot.error,
+								"No se pudo cargar la configuración",
+							)}
+						</Text>
+					</Alert>
+				) : null}
+
+				<Tabs
+					defaultValue="templates"
+					className={classes.settingsShell}
+					classNames={{
+						list: classes.tabsList,
+						tab: classes.tab,
+						panel: classes.tabPanel,
+					}}
 				>
-					<Text className="font-medium">
-						{getErrorMessage(
-							snapshot.error,
-							"No se pudo cargar la configuración",
-						)}
-					</Text>
-				</Alert>
-			)}
+					<Tabs.List aria-label="Áreas de configuración">
+						<Tabs.Tab
+							value="templates"
+							leftSection={
+								<CalendarClock className={classes.tabIcon} size={17} />
+							}
+						>
+							Agenda semanal
+						</Tabs.Tab>
+						<Tabs.Tab
+							value="overrides"
+							leftSection={
+								<CalendarOff className={classes.tabIcon} size={17} />
+							}
+						>
+							Excepciones
+						</Tabs.Tab>
+						<Tabs.Tab
+							value="slots"
+							leftSection={<Sparkles className={classes.tabIcon} size={17} />}
+						>
+							Generar disponibilidad
+						</Tabs.Tab>
+						<Tabs.Tab
+							value="staff"
+							leftSection={<UsersRound className={classes.tabIcon} size={17} />}
+						>
+							Funcionarios
+						</Tabs.Tab>
+					</Tabs.List>
 
-			<SectionCard
-				title="Templates de agenda"
-				subtitle="Define horarios base por día de la semana"
-				icon={Clock}
-			>
-				<TemplateSection
-					templates={snapshot.data?.templates ?? []}
-					isLoading={snapshot.isLoading}
-					onRefresh={refreshAll}
-				/>
-			</SectionCard>
+					<Tabs.Panel value="templates">
+						<TemplateSection
+							templates={snapshot.data?.templates ?? []}
+							isLoading={snapshot.isLoading}
+							onRefresh={refreshAll}
+						/>
+					</Tabs.Panel>
 
-			<SectionCard
-				title="Excepciones de calendario"
-				subtitle="Define días especiales que anulan los templates"
-				icon={CalendarX}
-			>
-				<OverrideSection
-					overrides={snapshot.data?.overrides ?? []}
-					isLoading={snapshot.isLoading}
-					onRefresh={refreshAll}
-				/>
-			</SectionCard>
+					<Tabs.Panel value="overrides">
+						<OverrideSection
+							overrides={snapshot.data?.overrides ?? []}
+							isLoading={snapshot.isLoading}
+							onRefresh={refreshAll}
+						/>
+					</Tabs.Panel>
 
-			<SectionCard
-				title="Generación de slots"
-				subtitle="Crea slots disponibles para reservas en un rango de fechas"
-				icon={Hash}
-			>
-				<SlotGenerationSection onRefresh={refreshAll} />
-			</SectionCard>
+					<Tabs.Panel value="slots">
+						<SlotGenerationSection onRefresh={refreshAll} />
+					</Tabs.Panel>
 
-			<SectionCard
-				title="Disponibilidad por funcionario"
-				subtitle="Gestiona excepciones individuales y consulta disponibilidad efectiva"
-				icon={User}
-			>
-				<StaffAvailabilitySection
-					staff={snapshot.data?.staff ?? []}
-					staffOverrides={staffOverrides.data ?? []}
-					isLoadingOverrides={staffOverrides.isLoading}
-					selectedStaffUserId={selectedStaffUserId}
-					onSelectStaff={setSelectedStaffUserId}
-					onRefresh={refreshAll}
-				/>
-			</SectionCard>
-		</Stack>
+					<Tabs.Panel value="staff">
+						<StaffAvailabilitySection
+							staff={snapshot.data?.staff ?? []}
+							staffOverrides={staffOverrides.data ?? []}
+							isLoadingOverrides={staffOverrides.isLoading}
+							selectedStaffUserId={selectedStaffUserId}
+							onSelectStaff={setSelectedStaffUserId}
+							onRefresh={refreshAll}
+						/>
+					</Tabs.Panel>
+				</Tabs>
+			</div>
+		</div>
 	);
 }
