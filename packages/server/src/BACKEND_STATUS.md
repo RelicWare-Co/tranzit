@@ -346,6 +346,12 @@ Verification commands used as baseline:
 - `cd server && bunx tsc --noEmit`
 - `cd server && bun test --timeout 30000`
 
+Note on test database isolation:
+- Tests automatically use a separate database file (`sqlite.test.db`) controlled by `src/lib/db.ts` and `vitest.config.ts`.
+- `TURSO_TEST_DATABASE_URL` can select another local test file; the selected file and its SQLite sidecars are reset before the suite.
+- Test startup rejects any test database path that matches `sqlite.db` or the configured local development database.
+- Running tests will NOT alter or delete local development data in `sqlite.db`.
+
 ## 6) Maintenance rule for future agents
 
 When adding/changing backend behavior:

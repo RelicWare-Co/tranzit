@@ -9,7 +9,7 @@
  * Run with: cd server && bun test src/bookings-capacity.test.ts
  *
  * These tests import and test the actual capacity.ts functions.
- * They use the production database (sqlite.db) with unique test data.
+ * They use the isolated test database (sqlite.test.db).
  * Each test uses unique identifiers to avoid conflicts.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */

@@ -18,7 +18,7 @@
  *
  * Run with: cd server && bun test src/reservation-idempotency.test.ts
  *
- * These tests use the production database (sqlite.db) with unique test data.
+ * These tests use the isolated test database (sqlite.test.db).
  * Each test uses unique identifiers to avoid conflicts.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
