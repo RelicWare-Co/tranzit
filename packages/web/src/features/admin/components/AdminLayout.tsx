@@ -10,8 +10,6 @@ export function AdminLayout() {
 	const { isAuthenticated, isLoading, hasRole } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
-	const isAdminLoginRoute = location.pathname === "/admin/login";
-	const isAdminRoute = location.pathname.startsWith("/admin");
 	const isCitasRoute = location.pathname.startsWith("/admin/citas");
 
 	const activeSection = useMemo(() => {
@@ -31,28 +29,19 @@ export function AdminLayout() {
 	}, [hasRole]);
 
 	useEffect(() => {
-		if (!isLoading && !isAuthenticated && isAdminRoute && !isAdminLoginRoute) {
-			navigate({ to: "/admin/login" });
+		if (isLoading) return;
+
+		if (!isAuthenticated) {
+			navigate({ to: "/login", replace: true });
+			return;
 		}
-	}, [isAuthenticated, isLoading, isAdminLoginRoute, isAdminRoute, navigate]);
 
-	useEffect(() => {
-		if (
-			!isLoading &&
-			isAuthenticated &&
-			!hasAdminAccess &&
-			isAdminRoute &&
-			!isAdminLoginRoute
-		) {
-			navigate({ to: "/admin/login" });
+		if (!hasAdminAccess) {
+			navigate({ to: "/mi-perfil", replace: true });
 		}
-	}, [isAuthenticated, isLoading, hasAdminAccess, isAdminLoginRoute, isAdminRoute, navigate]);
+	}, [isAuthenticated, isLoading, hasAdminAccess, navigate]);
 
-	if (isAdminLoginRoute) {
-		return <Outlet />;
-	}
-
-	if (isLoading || (!isAuthenticated && !isAdminLoginRoute)) {
+	if (isLoading) {
 		return (
 			<Box className={adminUi.pageBg} py={60}>
 				<Container size="lg">
@@ -68,21 +57,7 @@ export function AdminLayout() {
 		);
 	}
 
-	if (isAuthenticated && !hasAdminAccess && !isAdminLoginRoute) {
-		return (
-			<Box className={adminUi.pageBg} py={60}>
-				<Container size="lg">
-					<Box className={`${adminUi.surface} p-14 md:p-16`}>
-						<Stack align="center" gap="md">
-							<Box className="h-16 w-16 animate-pulse rounded-full bg-[var(--bg-tertiary)]" />
-							<Box className="h-6 w-48 max-w-full animate-pulse rounded-lg bg-[var(--bg-tertiary)]" />
-							<Box className="h-4 w-64 max-w-full animate-pulse rounded bg-[var(--bg-secondary)]" />
-						</Stack>
-					</Box>
-				</Container>
-			</Box>
-		);
-	}
+	if (!isAuthenticated || !hasAdminAccess) return null;
 
 	return (
 		<Box

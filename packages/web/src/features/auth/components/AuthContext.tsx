@@ -1,6 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useMemo } from "react";
-
 import { type AuthUser, authClient } from "#/shared/lib/auth-client";
+import { orpc } from "#/shared/lib/orpc-client";
 
 type PermissionMap = Record<string, string[]>;
 type AdminRole = "admin" | "staff" | "auditor";
@@ -29,6 +30,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+	const queryClient = useQueryClient();
 	const { data: session, isPending, refetch } = authClient.useSession();
 
 	const login = useCallback(
@@ -77,7 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		}
 
 		await refetch();
-	}, [refetch]);
+		queryClient.removeQueries({
+			queryKey: orpc.admin.onboarding.status.queryOptions().queryKey,
+			exact: true,
+		});
+	}, [queryClient, refetch]);
 
 	const refreshUser = useCallback(async () => {
 		await refetch();
