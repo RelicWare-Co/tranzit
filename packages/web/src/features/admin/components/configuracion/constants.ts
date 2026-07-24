@@ -78,7 +78,10 @@ export function validateScheduleTimeFields(
 ): Partial<Record<keyof ScheduleTimeFields, string>> {
 	const errors: Partial<Record<keyof ScheduleTimeFields, string>> = {};
 
-	const morningStartError = validateTime(values.morningStart, "Hora inicio mañana");
+	const morningStartError = validateTime(
+		values.morningStart,
+		"Hora inicio mañana",
+	);
 	if (morningStartError) errors.morningStart = morningStartError;
 
 	const morningEndError = validateTime(values.morningEnd, "Hora fin mañana");

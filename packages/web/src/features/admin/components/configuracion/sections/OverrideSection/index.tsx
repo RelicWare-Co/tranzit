@@ -1,25 +1,25 @@
 import {
+	ActionIcon,
 	Badge,
 	Button,
+	Checkbox,
 	Grid,
 	Group,
 	NumberInput,
 	Paper,
 	Table,
 	TextInput,
-	Checkbox,
 	Tooltip,
-	ActionIcon,
 } from "@mantine/core";
 import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { CalendarX, Edit3, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { validateTime } from "#/features/admin/components/configuracion/constants";
+import { useConfigMutations } from "#/features/admin/components/hooks/useConfigMutations";
+import type { CalendarOverride } from "#/features/admin/components/hooks/useConfigSnapshot";
 import { EmptyState } from "#/features/admin/components/ui/EmptyState";
 import { TableSkeleton } from "#/features/admin/components/ui/TableSkeleton";
-import { validateTime } from "#/features/admin/components/configuracion/constants";
-import type { CalendarOverride } from "#/features/admin/components/hooks/useConfigSnapshot";
-import { useConfigMutations } from "#/features/admin/components/hooks/useConfigMutations";
 
 interface OverrideSectionProps {
 	overrides: CalendarOverride[];
@@ -156,9 +156,7 @@ export function OverrideSection({
 									: null
 							}
 							onChange={(value) => {
-								const formatted = value
-									? value.toString().split("T")[0]
-									: "";
+								const formatted = value ? value.toString().split("T")[0] : "";
 								form.setFieldValue("overrideDate", formatted);
 							}}
 						/>
@@ -264,11 +262,7 @@ export function OverrideSection({
 					Excepciones configuradas
 				</h3>
 				<Table.ScrollContainer minWidth={780}>
-					<Table
-						withTableBorder
-						withColumnBorders
-						className="border-zinc-200"
-					>
+					<Table withTableBorder withColumnBorders className="border-zinc-200">
 						<Table.Thead>
 							<Table.Tr>
 								<Table.Th className="text-xs font-semibold text-zinc-600">
@@ -325,19 +319,11 @@ export function OverrideSection({
 										</Table.Td>
 										<Table.Td>
 											{override.isClosed ? (
-												<Badge
-													color="red"
-													variant="light"
-													radius="sm"
-												>
+												<Badge color="red" variant="light" radius="sm">
 													Cerrado
 												</Badge>
 											) : (
-												<Badge
-													color="emerald"
-													variant="light"
-													radius="sm"
-												>
+												<Badge color="emerald" variant="light" radius="sm">
 													Abierto
 												</Badge>
 											)}

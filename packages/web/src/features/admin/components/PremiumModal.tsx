@@ -46,8 +46,7 @@ export function PremiumModal({
 				},
 				content: {
 					border: "1px solid rgba(24, 24, 27, 0.08)",
-					boxShadow:
-						"0 20px 40px -12px rgba(9, 9, 11, 0.25)",
+					boxShadow: "0 20px 40px -12px rgba(9, 9, 11, 0.25)",
 					borderRadius: "12px",
 					maxHeight: "calc(100dvh - 32px)",
 					overflow: "hidden",

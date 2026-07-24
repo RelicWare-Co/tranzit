@@ -22,8 +22,8 @@ import {
 	validateScheduleTimeFields,
 	weekdayLabels,
 } from "#/features/admin/components/configuracion/constants";
-import type { ScheduleTemplate } from "#/features/admin/components/hooks/useConfigSnapshot";
 import { getErrorMessage } from "#/features/admin/components/errors";
+import type { ScheduleTemplate } from "#/features/admin/components/hooks/useConfigSnapshot";
 
 type TemplatePayload = {
 	weekday: number;
@@ -44,7 +44,10 @@ interface ScheduleTemplateModalProps {
 	mode: "create" | "edit";
 	template?: ScheduleTemplate;
 	onCreate: (payload: TemplatePayload) => Promise<void>;
-	onUpdate: (id: string, payload: Omit<TemplatePayload, "weekday">) => Promise<void>;
+	onUpdate: (
+		id: string,
+		payload: Omit<TemplatePayload, "weekday">,
+	) => Promise<void>;
 }
 
 const EMPTY_VALUES = {
@@ -277,9 +280,7 @@ export function ScheduleTemplateModal({
 								clearable
 								disabled={isSubmitting}
 								value={form.values.morningStart}
-								onChange={(value) =>
-									form.setFieldValue("morningStart", value)
-								}
+								onChange={(value) => form.setFieldValue("morningStart", value)}
 								error={form.errors.morningStart}
 								{...TIME_PICKER_LABELS}
 							/>
@@ -320,9 +321,7 @@ export function ScheduleTemplateModal({
 								clearable
 								disabled={isSubmitting}
 								value={form.values.afternoonEnd}
-								onChange={(value) =>
-									form.setFieldValue("afternoonEnd", value)
-								}
+								onChange={(value) => form.setFieldValue("afternoonEnd", value)}
 								error={form.errors.afternoonEnd}
 								{...TIME_PICKER_LABELS}
 							/>

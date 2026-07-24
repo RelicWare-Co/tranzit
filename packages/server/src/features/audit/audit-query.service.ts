@@ -1,10 +1,10 @@
 import {
 	and,
-	type SQL,
 	desc as drizzleDesc,
 	eq,
 	gte,
 	lte,
+	type SQL,
 	sql,
 } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
@@ -100,11 +100,7 @@ export async function listAuditEvents(
 
 	// Validate pagination
 	if (limit < 1 || limit > 200) {
-		throwRpcError(
-			"INVALID_PAGINATION",
-			422,
-			"limit must be between 1 and 200",
-		);
+		throwRpcError("INVALID_PAGINATION", 422, "limit must be between 1 and 200");
 	}
 
 	if (offset < 0) {

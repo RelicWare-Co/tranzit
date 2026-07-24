@@ -16,7 +16,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import { consumeCapacity, releaseCapacity } from "./features/bookings/capacity-consume.service";
+import {
+	consumeCapacity,
+	releaseCapacity,
+} from "./features/bookings/capacity-consume.service";
 import {
 	expireStaleCitizenHolds,
 	listCitizenProcedures,
@@ -139,11 +142,41 @@ async function setupExpiredHold() {
 		isAssignable: true,
 		defaultDailyCapacity: 10,
 		weeklyAvailability: {
-			1: { enabled: true, morningStart: "08:00", morningEnd: "12:00", afternoonStart: "14:00", afternoonEnd: "18:00" },
-			2: { enabled: true, morningStart: "08:00", morningEnd: "12:00", afternoonStart: "14:00", afternoonEnd: "18:00" },
-			3: { enabled: true, morningStart: "08:00", morningEnd: "12:00", afternoonStart: "14:00", afternoonEnd: "18:00" },
-			4: { enabled: true, morningStart: "08:00", morningEnd: "12:00", afternoonStart: "14:00", afternoonEnd: "18:00" },
-			5: { enabled: true, morningStart: "08:00", morningEnd: "12:00", afternoonStart: "14:00", afternoonEnd: "18:00" },
+			1: {
+				enabled: true,
+				morningStart: "08:00",
+				morningEnd: "12:00",
+				afternoonStart: "14:00",
+				afternoonEnd: "18:00",
+			},
+			2: {
+				enabled: true,
+				morningStart: "08:00",
+				morningEnd: "12:00",
+				afternoonStart: "14:00",
+				afternoonEnd: "18:00",
+			},
+			3: {
+				enabled: true,
+				morningStart: "08:00",
+				morningEnd: "12:00",
+				afternoonStart: "14:00",
+				afternoonEnd: "18:00",
+			},
+			4: {
+				enabled: true,
+				morningStart: "08:00",
+				morningEnd: "12:00",
+				afternoonStart: "14:00",
+				afternoonEnd: "18:00",
+			},
+			5: {
+				enabled: true,
+				morningStart: "08:00",
+				morningEnd: "12:00",
+				afternoonStart: "14:00",
+				afternoonEnd: "18:00",
+			},
 		},
 		createdAt: new Date(),
 		updatedAt: new Date(),
@@ -256,7 +289,12 @@ describe("Hold Expiration Email", () => {
 		await db
 			.update(schema.serviceRequest)
 			.set({ activeBookingId: null })
-			.where(eq(schema.serviceRequest.activeBookingId, schema.serviceRequest.activeBookingId));
+			.where(
+				eq(
+					schema.serviceRequest.activeBookingId,
+					schema.serviceRequest.activeBookingId,
+				),
+			);
 		await db.delete(schema.booking);
 		await db.delete(schema.serviceRequest);
 		await db.delete(schema.appointmentSlot);
@@ -271,7 +309,12 @@ describe("Hold Expiration Email", () => {
 		await db
 			.update(schema.serviceRequest)
 			.set({ activeBookingId: null })
-			.where(eq(schema.serviceRequest.activeBookingId, schema.serviceRequest.activeBookingId));
+			.where(
+				eq(
+					schema.serviceRequest.activeBookingId,
+					schema.serviceRequest.activeBookingId,
+				),
+			);
 		await db.delete(schema.booking);
 		await db.delete(schema.serviceRequest);
 		await db.delete(schema.appointmentSlot);

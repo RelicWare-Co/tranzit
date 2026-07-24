@@ -26,10 +26,10 @@ import {
 	Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { orpcClient } from "#/shared/lib/orpc-client";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { getErrorMessage } from "#/features/admin/components/errors";
+import { orpcClient } from "#/shared/lib/orpc-client";
 import { AddProcedureModal } from "./AddProcedureModal";
 import { EditProcedureModal } from "./EditProcedureModal";
 import type { ProcedureType } from "./types";
@@ -47,10 +47,15 @@ export function TramitesPage() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [sortKey, setSortKey] = useState<SortKey>("name");
 	const [sortDir, setSortDir] = useState<SortDir>("asc");
-	const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-	const [addModalOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
-	const [editModalOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
-	const [editingProcedure, setEditingProcedure] = useState<ProcedureType | null>(null);
+	const [statusFilter, setStatusFilter] = useState<
+		"all" | "active" | "inactive"
+	>("all");
+	const [addModalOpened, { open: openAdd, close: closeAdd }] =
+		useDisclosure(false);
+	const [editModalOpened, { open: openEdit, close: closeEdit }] =
+		useDisclosure(false);
+	const [editingProcedure, setEditingProcedure] =
+		useState<ProcedureType | null>(null);
 
 	const loadProcedures = useCallback(async () => {
 		setError(null);
@@ -64,7 +69,9 @@ export function TramitesPage() {
 		void loadProcedures()
 			.catch((loadError) => {
 				if (!mounted) return;
-				setError(getErrorMessage(loadError, "No se pudieron cargar los trámites."));
+				setError(
+					getErrorMessage(loadError, "No se pudieron cargar los trámites."),
+				);
 			})
 			.finally(() => {
 				if (mounted) setIsLoading(false);
@@ -157,13 +164,18 @@ export function TramitesPage() {
 			await loadProcedures();
 			setNotice("Trámite actualizado correctamente.");
 		} catch (updateError) {
-			setError(getErrorMessage(updateError, "No se pudo actualizar el trámite."));
+			setError(
+				getErrorMessage(updateError, "No se pudo actualizar el trámite."),
+			);
 		} finally {
 			setIsMutatingId(null);
 		}
 	};
 
-	const handleToggleActive = (procedure: ProcedureType, nextActive: boolean) => {
+	const handleToggleActive = (
+		procedure: ProcedureType,
+		nextActive: boolean,
+	) => {
 		void (async () => {
 			setIsMutatingId(procedure.id);
 			setError(null);
@@ -254,7 +266,8 @@ export function TramitesPage() {
 	};
 
 	const SortIndicator = ({ column }: { column: SortKey }) => {
-		if (sortKey !== column) return <span className="text-zinc-300 ml-1">↕</span>;
+		if (sortKey !== column)
+			return <span className="text-zinc-300 ml-1">↕</span>;
 		return (
 			<span className="text-zinc-700 ml-1 font-bold">
 				{sortDir === "asc" ? "↑" : "↓"}
@@ -375,12 +388,7 @@ export function TramitesPage() {
 						</Group>
 					</Group>
 
-					<Card
-						className={adminUi.surface}
-						radius="lg"
-						p={0}
-						shadow="none"
-					>
+					<Card className={adminUi.surface} radius="lg" p={0} shadow="none">
 						<Table.ScrollContainer minWidth={600}>
 							<Table verticalSpacing="sm" highlightOnHover>
 								<Table.Thead>
@@ -422,9 +430,7 @@ export function TramitesPage() {
 										return (
 											<Table.Tr
 												key={procedure.id}
-												className={
-													!procedure.isActive ? "opacity-60" : ""
-												}
+												className={!procedure.isActive ? "opacity-60" : ""}
 											>
 												<Table.Td>
 													<Group gap="sm" wrap="nowrap">
@@ -482,9 +488,7 @@ export function TramitesPage() {
 												<Table.Td>
 													<Text size="sm" className="text-zinc-600">
 														{docCount}{" "}
-														{docCount === 1
-															? "requisito"
-															: "requisitos"}
+														{docCount === 1 ? "requisito" : "requisitos"}
 													</Text>
 												</Table.Td>
 												<Table.Td>
@@ -530,9 +534,7 @@ export function TramitesPage() {
 																	)
 																}
 															>
-																{procedure.isActive
-																	? "Desactivar"
-																	: "Activar"}
+																{procedure.isActive ? "Desactivar" : "Activar"}
 															</Menu.Item>
 															<Menu.Divider />
 															<Menu.Item

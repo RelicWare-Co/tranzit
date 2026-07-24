@@ -8,7 +8,9 @@ interface SlotGenerationSectionProps {
 	onRefresh: () => Promise<void>;
 }
 
-export function SlotGenerationSection({ onRefresh }: SlotGenerationSectionProps) {
+export function SlotGenerationSection({
+	onRefresh,
+}: SlotGenerationSectionProps) {
 	const mutations = useConfigMutations({ onSuccess: onRefresh });
 
 	const form = useForm({

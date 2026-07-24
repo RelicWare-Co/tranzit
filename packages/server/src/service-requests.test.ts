@@ -16,8 +16,8 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
-	listServiceRequests,
 	getServiceRequest,
+	listServiceRequests,
 	updateServiceRequestStatus,
 } from "./features/service-requests/service-requests.service";
 import { db, schema } from "./lib/db";
@@ -152,51 +152,59 @@ describe("Service Request Lifecycle", () => {
 		);
 	});
 
-		afterEach(async () => {
-			// Clean up test data in reverse order of creation
-			// First clear activeBookingId references so bookings can be deleted
+	afterEach(async () => {
+		// Clean up test data in reverse order of creation
+		// First clear activeBookingId references so bookings can be deleted
+		await db
+			.update(schema.serviceRequest)
+			.set({ activeBookingId: null })
+			.where(eq(schema.serviceRequest.procedureTypeId, testProcedureId));
+
+		// Delete bookings that reference this request
+		await db
+			.delete(schema.booking)
+			.where(eq(schema.booking.requestId, testRequestId));
+
+		// Delete service requests for this procedure
+		await db
+			.delete(schema.serviceRequest)
+			.where(eq(schema.serviceRequest.procedureTypeId, testProcedureId));
+
+		// Delete appointment slots created by createTestBooking
+		// (slots have unique random dates, so we can safely delete all open slots)
+		const slotIds = await db
+			.select({ id: schema.appointmentSlot.id })
+			.from(schema.appointmentSlot)
+			.where(eq(schema.appointmentSlot.status, "open"));
+		for (const { id } of slotIds) {
 			await db
-				.update(schema.serviceRequest)
-				.set({ activeBookingId: null })
-				.where(eq(schema.serviceRequest.procedureTypeId, testProcedureId));
+				.delete(schema.appointmentSlot)
+				.where(eq(schema.appointmentSlot.id, id));
+		}
 
-			// Delete bookings that reference this request
-			await db
-				.delete(schema.booking)
-				.where(eq(schema.booking.requestId, testRequestId));
+		// Delete procedure
+		await db
+			.delete(schema.procedureType)
+			.where(eq(schema.procedureType.id, testProcedureId));
 
-			// Delete service requests for this procedure
-			await db
-				.delete(schema.serviceRequest)
-				.where(eq(schema.serviceRequest.procedureTypeId, testProcedureId));
-
-			// Delete appointment slots created by createTestBooking
-			// (slots have unique random dates, so we can safely delete all open slots)
-			const slotIds = await db
-				.select({ id: schema.appointmentSlot.id })
-				.from(schema.appointmentSlot)
-				.where(eq(schema.appointmentSlot.status, "open"));
-			for (const { id } of slotIds) {
-				await db
-					.delete(schema.appointmentSlot)
-					.where(eq(schema.appointmentSlot.id, id));
-			}
-
-			// Delete procedure
-			await db
-				.delete(schema.procedureType)
-				.where(eq(schema.procedureType.id, testProcedureId));
-
-			// Delete users
-			await db.delete(schema.user).where(eq(schema.user.id, testUser.user.id));
-			await db.delete(schema.user).where(eq(schema.user.id, testAdmin.user.id));
-		});
+		// Delete users
+		await db.delete(schema.user).where(eq(schema.user.id, testUser.user.id));
+		await db.delete(schema.user).where(eq(schema.user.id, testAdmin.user.id));
+	});
 
 	describe("listServiceRequests", () => {
 		test("lists all service requests with pagination", async () => {
 			// Create additional requests
-			await createTestServiceRequest(testUser.user.id, testProcedureId, "booking_held");
-			await createTestServiceRequest(testUser.user.id, testProcedureId, "confirmed");
+			await createTestServiceRequest(
+				testUser.user.id,
+				testProcedureId,
+				"booking_held",
+			);
+			await createTestServiceRequest(
+				testUser.user.id,
+				testProcedureId,
+				"confirmed",
+			);
 
 			const result = await listServiceRequests({
 				limit: 10,
@@ -213,8 +221,16 @@ describe("Service Request Lifecycle", () => {
 
 		test("filters by status", async () => {
 			// Create requests with different statuses
-			await createTestServiceRequest(testUser.user.id, testProcedureId, "booking_held");
-			await createTestServiceRequest(testUser.user.id, testProcedureId, "confirmed");
+			await createTestServiceRequest(
+				testUser.user.id,
+				testProcedureId,
+				"booking_held",
+			);
+			await createTestServiceRequest(
+				testUser.user.id,
+				testProcedureId,
+				"confirmed",
+			);
 
 			const result = await listServiceRequests({
 				status: ["draft"],
@@ -228,8 +244,16 @@ describe("Service Request Lifecycle", () => {
 		});
 
 		test("filters by multiple statuses", async () => {
-			await createTestServiceRequest(testUser.user.id, testProcedureId, "booking_held");
-			await createTestServiceRequest(testUser.user.id, testProcedureId, "confirmed");
+			await createTestServiceRequest(
+				testUser.user.id,
+				testProcedureId,
+				"booking_held",
+			);
+			await createTestServiceRequest(
+				testUser.user.id,
+				testProcedureId,
+				"confirmed",
+			);
 
 			const result = await listServiceRequests({
 				status: ["draft", "booking_held"],
@@ -246,7 +270,11 @@ describe("Service Request Lifecycle", () => {
 
 		test("filters by procedureTypeId", async () => {
 			const otherProcedureId = await createTestProcedure();
-			await createTestServiceRequest(testUser.user.id, otherProcedureId, "draft");
+			await createTestServiceRequest(
+				testUser.user.id,
+				otherProcedureId,
+				"draft",
+			);
 
 			const result = await listServiceRequests({
 				procedureTypeId: testProcedureId,
@@ -286,7 +314,11 @@ describe("Service Request Lifecycle", () => {
 		test("pagination works correctly", async () => {
 			// Create more requests
 			for (let i = 0; i < 5; i++) {
-				await createTestServiceRequest(testUser.user.id, testProcedureId, "draft");
+				await createTestServiceRequest(
+					testUser.user.id,
+					testProcedureId,
+					"draft",
+				);
 			}
 
 			const page1 = await listServiceRequests({
@@ -337,7 +369,10 @@ describe("Service Request Lifecycle", () => {
 			const result = await getServiceRequest(requestId);
 
 			expect(result.id).toBe(requestId);
-			expect(result.procedureSnapshot).toEqual({ name: "Test Procedure", version: 1 });
+			expect(result.procedureSnapshot).toEqual({
+				name: "Test Procedure",
+				version: 1,
+			});
 			expect(result.eligibilityResult).toEqual({ passed: true });
 			expect(result.draftData).toEqual({ applicantName: "Test User" });
 		});

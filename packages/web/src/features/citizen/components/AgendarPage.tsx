@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronRight, Clock, FileText, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "#/features/auth/components/AuthContext";
 import {
 	Alert,
 	Badge,
@@ -11,10 +12,8 @@ import {
 	CardContent,
 	Input,
 } from "#/shared/components/ui";
-import { useAuth } from "#/features/auth/components/AuthContext";
 import { orpcClient } from "#/shared/lib/orpc-client";
 import classes from "./agendar.module.css";
-
 
 type CitizenProcedure = Awaited<
 	ReturnType<typeof orpcClient.citizen.procedures.list>
@@ -625,8 +624,16 @@ function AgendarPage() {
 											<FileText size={20} />
 										</div>
 										<div className={classes.requirementContent}>
-											<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-												<h4 className={classes.requirementTitle}>{req.label}</h4>
+											<div
+												style={{
+													display: "flex",
+													alignItems: "center",
+													gap: "8px",
+												}}
+											>
+												<h4 className={classes.requirementTitle}>
+													{req.label}
+												</h4>
 												{req.isRequired && (
 													<Badge variant="warning" size="sm">
 														Obligatorio
@@ -656,7 +663,8 @@ function AgendarPage() {
 						</div>
 					) : (
 						<p className={classes.noRequirements}>
-							No hay requisitos específicos documentales registrados para este trámite.
+							No hay requisitos específicos documentales registrados para este
+							trámite.
 						</p>
 					)}
 

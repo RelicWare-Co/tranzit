@@ -1,8 +1,8 @@
 import { notifications } from "@mantine/notifications";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { useCallback } from "react";
-import { orpcClient } from "#/shared/lib/orpc-client";
 import { getErrorMessage } from "#/features/admin/components/errors";
+import { orpcClient } from "#/shared/lib/orpc-client";
 
 interface UseConfigMutationsOptions {
 	onSuccess?: () => void | Promise<void>;
@@ -36,7 +36,9 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 
 	// Template mutations
 	const createTemplate = useCallback(
-		async (payload: Parameters<typeof orpcClient.admin.schedule.templates.create>[0]) => {
+		async (
+			payload: Parameters<typeof orpcClient.admin.schedule.templates.create>[0],
+		) => {
 			try {
 				await orpcClient.admin.schedule.templates.create(payload);
 				await handleSuccess(
@@ -44,7 +46,11 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 					"Nueva configuración de agenda guardada",
 				);
 			} catch (error) {
-				handleError(error, "Error al guardar", "No se pudo guardar el template");
+				handleError(
+					error,
+					"Error al guardar",
+					"No se pudo guardar el template",
+				);
 				throw error;
 			}
 		},
@@ -54,7 +60,10 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 	const updateTemplate = useCallback(
 		async (
 			id: string,
-			payload: Omit<Parameters<typeof orpcClient.admin.schedule.templates.update>[0], "id">,
+			payload: Omit<
+				Parameters<typeof orpcClient.admin.schedule.templates.update>[0],
+				"id"
+			>,
 		) => {
 			try {
 				await orpcClient.admin.schedule.templates.update({ id, ...payload });
@@ -63,7 +72,11 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 					"La configuración del día ha sido actualizada correctamente",
 				);
 			} catch (error) {
-				handleError(error, "Error al guardar", "No se pudo actualizar el template");
+				handleError(
+					error,
+					"Error al guardar",
+					"No se pudo actualizar el template",
+				);
 				throw error;
 			}
 		},
@@ -74,9 +87,16 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 		async (id: string) => {
 			try {
 				await orpcClient.admin.schedule.templates.remove({ id });
-				await handleSuccess("Template eliminado", "La configuración ha sido eliminada");
+				await handleSuccess(
+					"Template eliminado",
+					"La configuración ha sido eliminada",
+				);
 			} catch (error) {
-				handleError(error, "Error al eliminar", "No se pudo eliminar el template");
+				handleError(
+					error,
+					"Error al eliminar",
+					"No se pudo eliminar el template",
+				);
 				throw error;
 			}
 		},
@@ -85,7 +105,9 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 
 	// Override mutations
 	const createOverride = useCallback(
-		async (payload: Parameters<typeof orpcClient.admin.schedule.overrides.create>[0]) => {
+		async (
+			payload: Parameters<typeof orpcClient.admin.schedule.overrides.create>[0],
+		) => {
 			try {
 				await orpcClient.admin.schedule.overrides.create(payload);
 				await handleSuccess(
@@ -93,7 +115,11 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 					"Nueva excepción de calendario guardada",
 				);
 			} catch (error) {
-				handleError(error, "Error al guardar", "No se pudo guardar el override");
+				handleError(
+					error,
+					"Error al guardar",
+					"No se pudo guardar el override",
+				);
 				throw error;
 			}
 		},
@@ -103,7 +129,10 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 	const updateOverride = useCallback(
 		async (
 			id: string,
-			payload: Omit<Parameters<typeof orpcClient.admin.schedule.overrides.update>[0], "id">,
+			payload: Omit<
+				Parameters<typeof orpcClient.admin.schedule.overrides.update>[0],
+				"id"
+			>,
 		) => {
 			try {
 				await orpcClient.admin.schedule.overrides.update({ id, ...payload });
@@ -112,7 +141,11 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 					"La excepción de calendario ha sido actualizada",
 				);
 			} catch (error) {
-				handleError(error, "Error al guardar", "No se pudo actualizar el override");
+				handleError(
+					error,
+					"Error al guardar",
+					"No se pudo actualizar el override",
+				);
 				throw error;
 			}
 		},
@@ -128,7 +161,11 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 					"La excepción de calendario ha sido eliminada",
 				);
 			} catch (error) {
-				handleError(error, "Error al eliminar", "No se pudo eliminar el override");
+				handleError(
+					error,
+					"Error al eliminar",
+					"No se pudo eliminar el override",
+				);
 				throw error;
 			}
 		},
@@ -137,9 +174,12 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 
 	// Slot generation
 	const generateSlots = useCallback(
-		async (payload: Parameters<typeof orpcClient.admin.schedule.slots.generate>[0]) => {
+		async (
+			payload: Parameters<typeof orpcClient.admin.schedule.slots.generate>[0],
+		) => {
 			try {
-				const response = await orpcClient.admin.schedule.slots.generate(payload);
+				const response =
+					await orpcClient.admin.schedule.slots.generate(payload);
 				const result = response as { generated?: number; errors?: string[] };
 				await handleSuccess(
 					"Slots generados",
@@ -147,7 +187,11 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 				);
 				return result;
 			} catch (error) {
-				handleError(error, "Error al generar", "No se pudieron generar los slots");
+				handleError(
+					error,
+					"Error al generar",
+					"No se pudieron generar los slots",
+				);
 				throw error;
 			}
 		},
@@ -168,13 +212,20 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 			},
 		) => {
 			try {
-				await orpcClient.admin.staff.dateOverrides.create({ userId, ...payload });
+				await orpcClient.admin.staff.dateOverrides.create({
+					userId,
+					...payload,
+				});
 				await handleSuccess(
 					"Disponibilidad creada",
 					"Nueva excepción de funcionario guardada",
 				);
 			} catch (error) {
-				handleError(error, "Error al guardar", "No se pudo guardar la disponibilidad");
+				handleError(
+					error,
+					"Error al guardar",
+					"No se pudo guardar la disponibilidad",
+				);
 				throw error;
 			}
 		},
@@ -228,7 +279,11 @@ export function useConfigMutations(options?: UseConfigMutationsOptions) {
 					"La excepción del funcionario ha sido eliminada",
 				);
 			} catch (error) {
-				handleError(error, "Error al eliminar", "No se pudo eliminar el override");
+				handleError(
+					error,
+					"Error al eliminar",
+					"No se pudo eliminar el override",
+				);
 				throw error;
 			}
 		},

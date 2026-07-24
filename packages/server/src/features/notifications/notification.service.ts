@@ -201,7 +201,11 @@ export async function sendHoldExpirationEmail(params: {
 	});
 }
 
-type OtpPurpose = "sign-in" | "email-verification" | "forget-password" | "change-email";
+type OtpPurpose =
+	| "sign-in"
+	| "email-verification"
+	| "forget-password"
+	| "change-email";
 
 const otpPurposeToTemplateKey: Record<OtpPurpose, NotificationTemplateKey> = {
 	"sign-in": "otp-sign-in",

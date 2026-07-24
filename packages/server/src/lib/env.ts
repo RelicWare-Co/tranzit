@@ -1,4 +1,5 @@
-export const CORS_ORIGIN = process.env.CORS_ORIGIN || "https://tranzit.localhost";
+export const CORS_ORIGIN =
+	process.env.CORS_ORIGIN || "https://tranzit.localhost";
 
 export const TRUSTED_ORIGINS = process.env.TRUSTED_ORIGINS
 	? process.env.TRUSTED_ORIGINS.split(",").map((o) => o.trim())

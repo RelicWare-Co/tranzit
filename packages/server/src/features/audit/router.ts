@@ -2,8 +2,8 @@ import {
 	getAuditEvent,
 	listAuditEvents,
 } from "../../features/audit/audit-query.service";
-import { rpc } from "../../shared/orpc/context";
 import { requireAdminAccess, throwRpcError } from "../../shared/orpc";
+import { rpc } from "../../shared/orpc/context";
 
 export function createAuditRouter() {
 	return {

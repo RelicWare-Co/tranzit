@@ -1,15 +1,22 @@
 import { Alert, Button, Stack, Text } from "@mantine/core";
-import { AlertCircle, CalendarX, Clock, Hash, RefreshCw, User } from "lucide-react";
+import {
+	AlertCircle,
+	CalendarX,
+	Clock,
+	Hash,
+	RefreshCw,
+	User,
+} from "lucide-react";
 import { useState } from "react";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { getErrorMessage } from "#/features/admin/components/errors";
-import { SectionCard } from "#/features/admin/components/ui/SectionCard";
 import { useConfigSnapshot } from "#/features/admin/components/hooks/useConfigSnapshot";
 import { useStaffOverrides } from "#/features/admin/components/hooks/useStaffOverrides";
-import { TemplateSection } from "./sections/TemplateSection";
+import { SectionCard } from "#/features/admin/components/ui/SectionCard";
 import { OverrideSection } from "./sections/OverrideSection";
 import { SlotGenerationSection } from "./sections/SlotGenerationSection";
 import { StaffAvailabilitySection } from "./sections/StaffAvailabilitySection";
+import { TemplateSection } from "./sections/TemplateSection";
 
 export function AdminConfiguracionPage() {
 	const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(

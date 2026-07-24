@@ -457,9 +457,13 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 		});
 		const freshOtp = otpStore["sign-in"]["admin@test.com"];
 
-		const { response: reSignInRes } = await callAuth(auth, "/sign-in/email-otp", {
-			body: { email: "admin@test.com", otp: freshOtp },
-		});
+		const { response: reSignInRes } = await callAuth(
+			auth,
+			"/sign-in/email-otp",
+			{
+				body: { email: "admin@test.com", otp: freshOtp },
+			},
+		);
 		const freshAdminCookie = getSessionCookieFromResponse(reSignInRes);
 
 		// 5. Access admin endpoint with admin session
@@ -519,9 +523,13 @@ describe("VAL-AUTH-010: Admin session enables admin APIs for authorized role onl
 		});
 		const freshOtp = otpStore["sign-in"]["admin2@test.com"];
 
-		const { response: reSignInRes } = await callAuth(auth, "/sign-in/email-otp", {
-			body: { email: "admin2@test.com", otp: freshOtp },
-		});
+		const { response: reSignInRes } = await callAuth(
+			auth,
+			"/sign-in/email-otp",
+			{
+				body: { email: "admin2@test.com", otp: freshOtp },
+			},
+		);
 		const freshCookie = getSessionCookieFromResponse(reSignInRes);
 
 		// 2. Access /api/admin/stub

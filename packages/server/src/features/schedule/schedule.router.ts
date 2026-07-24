@@ -16,8 +16,8 @@ import {
 	removeScheduleTemplate,
 	updateScheduleTemplate,
 } from "../../features/schedule/schedule-templates-admin.service";
-import { rpc } from "../../shared/orpc/context";
 import { extractClientInfo, requireAdminAccess } from "../../shared/orpc";
+import { rpc } from "../../shared/orpc/context";
 
 export function createScheduleRouter() {
 	return {

@@ -21,7 +21,10 @@ import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { checkCapacity } from "./features/bookings/capacity-check.service";
-import { consumeCapacity, releaseCapacity } from "./features/bookings/capacity-consume.service";
+import {
+	consumeCapacity,
+	releaseCapacity,
+} from "./features/bookings/capacity-consume.service";
 import {
 	executeBulkReassignments,
 	previewReassignment,
@@ -1064,7 +1067,10 @@ describe("Bulk reassignment operations", () => {
 		const result = await executeBulkReassignments(
 			[
 				{ bookingId: result1.bookingId, targetStaffUserId: staffUserId2 },
-				{ bookingId: "non-existent-booking-id", targetStaffUserId: staffUserId2 },
+				{
+					bookingId: "non-existent-booking-id",
+					targetStaffUserId: staffUserId2,
+				},
 			],
 			"atomic",
 		);

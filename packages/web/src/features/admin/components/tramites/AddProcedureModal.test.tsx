@@ -1,8 +1,8 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { AddProcedureModal } from "./AddProcedureModal";
 import { renderWithProviders } from "#/test/render";
+import { AddProcedureModal } from "./AddProcedureModal";
 
 describe("AddProcedureModal", () => {
 	const defaultProps = {
@@ -84,7 +84,9 @@ describe("AddProcedureModal", () => {
 		const slugInput = screen.getByPlaceholderText("renovacion-licencia");
 		fireEvent.change(slugInput, { target: { value: "slug-manual" } });
 
-		await user.clear(screen.getByPlaceholderText("Ingresa el nombre del trámite"));
+		await user.clear(
+			screen.getByPlaceholderText("Ingresa el nombre del trámite"),
+		);
 		await user.type(
 			screen.getByPlaceholderText("Ingresa el nombre del trámite"),
 			"Nombre cambiado",
@@ -94,18 +96,12 @@ describe("AddProcedureModal", () => {
 	});
 
 	it("shows API error and keeps the modal open", async () => {
-		const onCreate = vi
-			.fn()
-			.mockRejectedValue(new Error("Slug duplicado"));
+		const onCreate = vi.fn().mockRejectedValue(new Error("Slug duplicado"));
 		const onClose = vi.fn();
 		const user = userEvent.setup();
 
 		renderWithProviders(
-			<AddProcedureModal
-				opened={true}
-				onClose={onClose}
-				onCreate={onCreate}
-			/>,
+			<AddProcedureModal opened={true} onClose={onClose} onCreate={onCreate} />,
 		);
 
 		await user.type(

@@ -1,12 +1,25 @@
-import { Alert, Box, Button, Collapse, Divider, Group, Loader, Paper, Stack, Table, Text, Title } from "@mantine/core";
+import {
+	Alert,
+	Box,
+	Button,
+	Collapse,
+	Divider,
+	Group,
+	Loader,
+	Paper,
+	Stack,
+	Table,
+	Text,
+	Title,
+} from "@mantine/core";
 import { AlertCircle } from "lucide-react";
 import { Fragment } from "react";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { getErrorMessage } from "#/features/admin/components/errors";
-import { JsonPayloadViewer } from "./JsonPayloadViewer";
-import { ActorBadge } from "./ActorBadge";
 import { ActionBadge } from "./ActionBadge";
+import { ActorBadge } from "./ActorBadge";
 import { EntityCell } from "./EntityCell";
+import { JsonPayloadViewer } from "./JsonPayloadViewer";
 
 interface AuditEntry {
 	id: string;
@@ -73,7 +86,10 @@ export function AuditTable({
 				icon={<AlertCircle size={16} />}
 				radius="md"
 			>
-				{getErrorMessage(error, "No se pudieron cargar los registros de auditoría")}
+				{getErrorMessage(
+					error,
+					"No se pudieron cargar los registros de auditoría",
+				)}
 			</Alert>
 		);
 	}
@@ -104,18 +120,10 @@ export function AuditTable({
 
 	return (
 		<Table.ScrollContainer minWidth={1100}>
-			<Table
-				striped
-				withTableBorder
-				withColumnBorders
-				fz="sm"
-				highlightOnHover
-			>
+			<Table striped withTableBorder withColumnBorders fz="sm" highlightOnHover>
 				<Table.Thead>
 					<Table.Tr>
-						<Table.Th className={adminUi.tableHeader}>
-							Fecha y hora
-						</Table.Th>
+						<Table.Th className={adminUi.tableHeader}>Fecha y hora</Table.Th>
 						<Table.Th className={adminUi.tableHeader}>Actor</Table.Th>
 						<Table.Th className={adminUi.tableHeader}>Entidad</Table.Th>
 						<Table.Th className={adminUi.tableHeader}>Acción</Table.Th>

@@ -32,11 +32,13 @@ const createTestUser = async (role = "admin") => {
 	return { id: userId, email, name: "Test Admin" };
 };
 
-const createTestProcedure = async (overrides?: Partial<{
-	name: string;
-	slug: string;
-	isActive: boolean;
-}>) => {
+const createTestProcedure = async (
+	overrides?: Partial<{
+		name: string;
+		slug: string;
+		isActive: boolean;
+	}>,
+) => {
 	const id = randomUUID();
 	await db.insert(schema.procedureType).values({
 		id,
@@ -142,7 +144,7 @@ describe("VAL-AUDIT-012: Procedure delete audit events", () => {
 				entityType: "procedure_type",
 				entityId: procedureId,
 				action: "delete",
-				summary: `Procedure deleted (soft) "${'Test Procedure'}" (${'test-slug'}) deactivated v1`,
+				summary: `Procedure deleted (soft) "${"Test Procedure"}" (${"test-slug"}) deactivated v1`,
 				payload: {
 					id: procedureId,
 					name: "Test Procedure",
@@ -168,11 +170,16 @@ describe("VAL-AUDIT-012: Procedure delete audit events", () => {
 			expect(auditEvent.actorUserId).toBe(adminUser.id);
 			expect(auditEvent.summary).toContain("deleted");
 			expect(auditEvent.payload).toHaveProperty("mode", "soft");
-			expect(auditEvent.payload).toHaveProperty("reason", "has_existing_requests");
+			expect(auditEvent.payload).toHaveProperty(
+				"reason",
+				"has_existing_requests",
+			);
 		});
 
 		test("audit event summary contains procedure name and deactivation info", async () => {
-			const procedureId = await createTestProcedure({ name: "Licencia de Funcionamiento" });
+			const procedureId = await createTestProcedure({
+				name: "Licencia de Funcionamiento",
+			});
 			await createTestServiceRequest(procedureId);
 
 			const adminUser = await createTestUser("admin");
@@ -183,7 +190,8 @@ describe("VAL-AUDIT-012: Procedure delete audit events", () => {
 				entityType: "procedure_type",
 				entityId: procedureId,
 				action: "delete",
-				summary: 'Procedure deleted (soft) "Licencia de Funcionamiento" (licencia) deactivated v1',
+				summary:
+					'Procedure deleted (soft) "Licencia de Funcionamiento" (licencia) deactivated v1',
 				payload: {
 					id: procedureId,
 					name: "Licencia de Funcionamiento",
@@ -252,7 +260,10 @@ describe("VAL-AUDIT-012: Procedure delete audit events", () => {
 			expect(auditEvent.actorUserId).toBe(adminUser.id);
 			expect(auditEvent.summary).toContain("deleted");
 			expect(auditEvent.payload).toHaveProperty("mode", "hard");
-			expect(auditEvent.payload).toHaveProperty("reason", "no_existing_requests");
+			expect(auditEvent.payload).toHaveProperty(
+				"reason",
+				"no_existing_requests",
+			);
 		});
 
 		test("audit event payload contains procedure details for hard delete", async () => {
@@ -269,7 +280,8 @@ describe("VAL-AUDIT-012: Procedure delete audit events", () => {
 				entityType: "procedure_type",
 				entityId: procedureId,
 				action: "delete",
-				summary: 'Procedure deleted (hard) "Permiso de Circulacion" (permiso-circulacion) v1',
+				summary:
+					'Procedure deleted (hard) "Permiso de Circulacion" (permiso-circulacion) v1',
 				payload: {
 					id: procedureId,
 					name: "Permiso de Circulacion",

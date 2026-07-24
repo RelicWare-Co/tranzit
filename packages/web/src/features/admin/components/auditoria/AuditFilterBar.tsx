@@ -1,8 +1,17 @@
-import { Button, Grid, Group, Paper, Select, Stack, TextInput, Title } from "@mantine/core";
+import {
+	Button,
+	Grid,
+	Group,
+	Paper,
+	Select,
+	Stack,
+	TextInput,
+	Title,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { Filter, Search, XCircle } from "lucide-react";
 import { useEffect } from "react";
-import { entityTypes, actions } from "./constants";
+import { actions, entityTypes } from "./constants";
 
 export interface AuditFilters {
 	entityType: string;
@@ -25,7 +34,10 @@ interface AuditFilterBarProps {
 	onApply: (filters: AuditFilters) => void;
 }
 
-export function AuditFilterBar({ appliedFilters, onApply }: AuditFilterBarProps) {
+export function AuditFilterBar({
+	appliedFilters,
+	onApply,
+}: AuditFilterBarProps) {
 	const form = useForm({
 		mode: "uncontrolled",
 		initialValues: appliedFilters,
@@ -34,7 +46,13 @@ export function AuditFilterBar({ appliedFilters, onApply }: AuditFilterBarProps)
 	// Sync form with applied filters when they change externally
 	useEffect(() => {
 		form.setValues(appliedFilters);
-	}, [appliedFilters.entityType, appliedFilters.action, appliedFilters.actorUserId, appliedFilters.dateFrom, appliedFilters.dateTo]);
+	}, [
+		appliedFilters.entityType,
+		appliedFilters.action,
+		appliedFilters.actorUserId,
+		appliedFilters.dateFrom,
+		appliedFilters.dateTo,
+	]);
 
 	const handleApply = () => {
 		onApply(form.getValues());

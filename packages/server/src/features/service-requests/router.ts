@@ -4,8 +4,8 @@ import {
 	type ServiceRequestStatus,
 	updateServiceRequestStatus,
 } from "../../features/service-requests/service-requests.service";
-import { rpc } from "../../shared/orpc/context";
 import { requireAdminAccess, throwRpcError } from "../../shared/orpc";
+import { rpc } from "../../shared/orpc/context";
 
 const VALID_STATUSES: string[] = [
 	"draft",

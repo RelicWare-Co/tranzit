@@ -21,7 +21,6 @@ import { useEffect, useMemo } from "react";
 import { useAuth } from "#/features/auth/components/AuthContext";
 import { orpcClient } from "#/shared/lib/orpc-client";
 
-
 type CitizenBookingSummary = Awaited<
 	ReturnType<typeof orpcClient.citizen.bookings.mine>
 >[number];

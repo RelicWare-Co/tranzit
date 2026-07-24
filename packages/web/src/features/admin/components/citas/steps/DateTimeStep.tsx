@@ -1,9 +1,9 @@
 import { Select } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
-import { CalendarDays, CheckCircle2, Clock } from "lucide-react";
-import { cx } from "#/shared/lib/cx";
-import { FormField } from "#/features/admin/components";
 import type { UseFormReturnType } from "@mantine/form";
+import { CalendarDays, CheckCircle2, Clock } from "lucide-react";
+import { FormField } from "#/features/admin/components";
+import { cx } from "#/shared/lib/cx";
 import type { BookingKind } from "../types";
 
 interface DateTimeStepProps {
@@ -57,9 +57,7 @@ export function DateTimeStep({
 					{isCompleted ? <CheckCircle2 size={16} /> : "3"}
 				</div>
 				<div>
-					<div className="font-medium text-sm text-zinc-900">
-						Fecha y hora
-					</div>
+					<div className="font-medium text-sm text-zinc-900">Fecha y hora</div>
 					<div className="text-xs text-zinc-500">
 						Selecciona el día y horario disponible
 					</div>
@@ -80,9 +78,7 @@ export function DateTimeStep({
 							minDate={new Date()}
 							radius="lg"
 							size="md"
-							leftSection={
-								<CalendarDays size={16} className="text-zinc-400" />
-							}
+							leftSection={<CalendarDays size={16} className="text-zinc-400" />}
 							className={cx(
 								"transition-all duration-200",
 								values.date && "border-emerald-500/50",
@@ -114,9 +110,7 @@ export function DateTimeStep({
 							nothingFoundMessage="No hay horarios disponibles"
 							radius="lg"
 							size="md"
-							leftSection={
-								<Clock size={16} className="text-zinc-400" />
-							}
+							leftSection={<Clock size={16} className="text-zinc-400" />}
 							className={cx(
 								"transition-all duration-200",
 								values.slotId && "border-emerald-500/50",

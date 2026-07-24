@@ -1,9 +1,9 @@
 import {
 	and,
-	type SQL,
 	desc as drizzleDesc,
 	eq,
 	inArray,
+	type SQL,
 	sql,
 } from "drizzle-orm";
 import { log } from "evlog";
@@ -126,9 +126,7 @@ export async function listServiceRequests(
 		conditions.push(inArray(schema.serviceRequest.status, status));
 	}
 	if (procedureTypeId) {
-		conditions.push(
-			eq(schema.serviceRequest.procedureTypeId, procedureTypeId),
-		);
+		conditions.push(eq(schema.serviceRequest.procedureTypeId, procedureTypeId));
 	}
 	if (citizenUserId) {
 		conditions.push(eq(schema.serviceRequest.citizenUserId, citizenUserId));
@@ -200,7 +198,10 @@ export async function listServiceRequests(
 				draftData: req.draftData as Record<string, unknown>,
 				procedureSnapshot: req.procedureSnapshot as Record<string, unknown>,
 				eligibilityResult: req.eligibilityResult as Record<string, unknown>,
-				requirementsSnapshot: req.requirementsSnapshot as Record<string, unknown>,
+				requirementsSnapshot: req.requirementsSnapshot as Record<
+					string,
+					unknown
+				>,
 				submittedSnapshot: req.submittedSnapshot as Record<string, unknown>,
 				activeBookingId: req.activeBookingId,
 				verifiedAt: req.verifiedAt,
@@ -322,7 +323,10 @@ export async function getServiceRequest(
 		draftData: request.draftData as Record<string, unknown>,
 		procedureSnapshot: request.procedureSnapshot as Record<string, unknown>,
 		eligibilityResult: request.eligibilityResult as Record<string, unknown>,
-		requirementsSnapshot: request.requirementsSnapshot as Record<string, unknown>,
+		requirementsSnapshot: request.requirementsSnapshot as Record<
+			string,
+			unknown
+		>,
 		submittedSnapshot: request.submittedSnapshot as Record<string, unknown>,
 		activeBookingId: request.activeBookingId,
 		verifiedAt: request.verifiedAt,
@@ -388,7 +392,13 @@ export interface UpdateServiceRequestStatusResult {
 export async function updateServiceRequestStatus(
 	input: UpdateServiceRequestStatusInput,
 ): Promise<UpdateServiceRequestStatusResult> {
-	const { requestId, status: newStatus, actorUserId, reason, eligibilityData } = input;
+	const {
+		requestId,
+		status: newStatus,
+		actorUserId,
+		reason,
+		eligibilityData,
+	} = input;
 
 	// Get the current service request
 	const request = await db.query.serviceRequest.findFirst({

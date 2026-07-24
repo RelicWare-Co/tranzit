@@ -1,4 +1,5 @@
 import {
+	ActionIcon,
 	Badge,
 	Button,
 	Checkbox,
@@ -11,22 +12,21 @@ import {
 	Text,
 	TextInput,
 	Tooltip,
-	ActionIcon,
 } from "@mantine/core";
 import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 import { Edit3, Plus, Trash2, User, UserX } from "lucide-react";
 import { useState } from "react";
+import { validateTime } from "#/features/admin/components/configuracion/constants";
+import { getErrorMessage } from "#/features/admin/components/errors";
+import { useConfigMutations } from "#/features/admin/components/hooks/useConfigMutations";
+import type { ConfigSnapshot } from "#/features/admin/components/hooks/useConfigSnapshot";
+import type { StaffDateOverride } from "#/features/admin/components/hooks/useStaffOverrides";
 import { EmptyState } from "#/features/admin/components/ui/EmptyState";
 import { StatusBadge } from "#/features/admin/components/ui/StatusBadge";
 import { TableSkeleton } from "#/features/admin/components/ui/TableSkeleton";
-import { validateTime } from "#/features/admin/components/configuracion/constants";
-import type { ConfigSnapshot } from "#/features/admin/components/hooks/useConfigSnapshot";
-import type { StaffDateOverride } from "#/features/admin/components/hooks/useStaffOverrides";
-import { useConfigMutations } from "#/features/admin/components/hooks/useConfigMutations";
 import { orpcClient } from "#/shared/lib/orpc-client";
-import { getErrorMessage } from "#/features/admin/components/errors";
-import { notifications } from "@mantine/notifications";
 
 interface StaffAvailabilitySectionProps {
 	staff: ConfigSnapshot["staff"];
@@ -110,7 +110,11 @@ export function StaffAvailabilitySection({
 		};
 
 		if (editingId) {
-			await mutations.updateStaffOverride(selectedStaffUserId, editingId, payload);
+			await mutations.updateStaffOverride(
+				selectedStaffUserId,
+				editingId,
+				payload,
+			);
 		} else {
 			await mutations.createStaffOverride(selectedStaffUserId, payload);
 		}
@@ -264,9 +268,7 @@ export function StaffAvailabilitySection({
 											isEditing ? <Edit3 size={16} /> : <Plus size={16} />
 										}
 									>
-										{isEditing
-											? "Actualizar"
-											: "Crear excepción"}
+										{isEditing ? "Actualizar" : "Crear excepción"}
 									</Button>
 								</Group>
 							</Grid.Col>
@@ -328,13 +330,14 @@ export function StaffAvailabilitySection({
 												className="hover:bg-zinc-50/80 transition-colors"
 											>
 												<Table.Td className="font-medium">
-													{new Date(
-														override.overrideDate,
-													).toLocaleDateString("es-CO", {
-														weekday: "short",
-														day: "numeric",
-														month: "short",
-													})}
+													{new Date(override.overrideDate).toLocaleDateString(
+														"es-CO",
+														{
+															weekday: "short",
+															day: "numeric",
+															month: "short",
+														},
+													)}
 												</Table.Td>
 												<Table.Td>
 													<StatusBadge
@@ -345,9 +348,7 @@ export function StaffAvailabilitySection({
 												</Table.Td>
 												<Table.Td className="text-sm">
 													{override.capacityOverride ?? (
-														<span className="text-zinc-400">
-															Sin límite
-														</span>
+														<span className="text-zinc-400">Sin límite</span>
 													)}
 												</Table.Td>
 												<Table.Td className="text-sm">

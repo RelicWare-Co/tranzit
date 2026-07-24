@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
 import { auth } from "../../features/auth/auth.config";
 import { db, schema } from "../../lib/db";
-import { rpc } from "../../shared/orpc/context";
 import { throwRpcError } from "../../shared/orpc";
+import { rpc } from "../../shared/orpc/context";
 
 const { user } = schema;
 

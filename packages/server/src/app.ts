@@ -1,8 +1,8 @@
 import { RPCHandler } from "@orpc/server/fetch";
-import { Hono } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { initLogger, parseError } from "evlog";
 import { evlog } from "evlog/hono";
+import { Hono } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { authApp } from "./features/auth/auth.routes";
 import { requireRole } from "./middleware/authorization";
 import { adminCorsMiddleware, authCorsMiddleware } from "./middleware/cors";

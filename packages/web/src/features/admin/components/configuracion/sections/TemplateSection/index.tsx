@@ -1,22 +1,22 @@
 import {
+	ActionIcon,
 	Badge,
 	Button,
 	Group,
 	Table,
 	Tooltip,
-	ActionIcon,
 } from "@mantine/core";
 import { Edit3, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { EmptyState } from "#/features/admin/components/ui/EmptyState";
-import { StatusBadge } from "#/features/admin/components/ui/StatusBadge";
-import { TableSkeleton } from "#/features/admin/components/ui/TableSkeleton";
 import {
 	weekdayColors,
 	weekdayLabels,
 } from "#/features/admin/components/configuracion/constants";
-import type { ScheduleTemplate } from "#/features/admin/components/hooks/useConfigSnapshot";
 import { useConfigMutations } from "#/features/admin/components/hooks/useConfigMutations";
+import type { ScheduleTemplate } from "#/features/admin/components/hooks/useConfigSnapshot";
+import { EmptyState } from "#/features/admin/components/ui/EmptyState";
+import { StatusBadge } from "#/features/admin/components/ui/StatusBadge";
+import { TableSkeleton } from "#/features/admin/components/ui/TableSkeleton";
 import { ScheduleTemplateModal } from "./ScheduleTemplateModal";
 
 interface TemplateSectionProps {
@@ -76,20 +76,13 @@ export function TemplateSection({
 				<h3 className="text-sm font-semibold text-zinc-900">
 					Templates configurados
 				</h3>
-				<Button
-					leftSection={<Plus size={16} />}
-					onClick={openCreateModal}
-				>
+				<Button leftSection={<Plus size={16} />} onClick={openCreateModal}>
 					Crear plantilla
 				</Button>
 			</Group>
 
 			<Table.ScrollContainer minWidth={780}>
-				<Table
-					withTableBorder
-					withColumnBorders
-					className="border-zinc-200"
-				>
+				<Table withTableBorder withColumnBorders className="border-zinc-200">
 					<Table.Thead>
 						<Table.Tr>
 							<Table.Th className="text-xs font-semibold text-zinc-600">
@@ -187,22 +180,22 @@ export function TemplateSection({
 									<Table.Td>
 										<Group gap={6}>
 											<Tooltip label="Editar">
-											<ActionIcon
-												variant="light"
-												color="blue"
-												aria-label="Editar"
-												onClick={() => openEditModal(template)}
+												<ActionIcon
+													variant="light"
+													color="blue"
+													aria-label="Editar"
+													onClick={() => openEditModal(template)}
 													className="transition-transform duration-150 hover:scale-110"
 												>
 													<Edit3 size={16} />
 												</ActionIcon>
 											</Tooltip>
 											<Tooltip label="Eliminar">
-											<ActionIcon
-												variant="light"
-												color="red"
-												aria-label="Eliminar"
-												onClick={() => void handleDelete(template)}
+												<ActionIcon
+													variant="light"
+													color="red"
+													aria-label="Eliminar"
+													onClick={() => void handleDelete(template)}
 													className="transition-transform duration-150 hover:scale-110"
 												>
 													<Trash2 size={16} />

@@ -1,8 +1,8 @@
 import { Select } from "@mantine/core";
-import { CheckCircle2, FileText } from "lucide-react";
-import { cx } from "#/shared/lib/cx";
-import { FormField } from "#/features/admin/components";
 import type { UseFormReturnType } from "@mantine/form";
+import { CheckCircle2, FileText } from "lucide-react";
+import { FormField } from "#/features/admin/components";
+import { cx } from "#/shared/lib/cx";
 import type { BookingKind } from "../types";
 
 interface ProcedureStepProps {
@@ -78,9 +78,7 @@ export function ProcedureStep({
 						nothingFoundMessage="No se encontraron trámites"
 						radius="lg"
 						size="md"
-						leftSection={
-							<FileText size={16} className="text-zinc-400" />
-						}
+						leftSection={<FileText size={16} className="text-zinc-400" />}
 						className={cx(
 							"transition-all duration-200",
 							value && "border-emerald-500/50",
@@ -96,10 +94,8 @@ export function ProcedureStep({
 			{!isCurrent && isCompleted && (
 				<div className="mt-2 flex items-center gap-2">
 					<span className="text-sm text-zinc-600">
-						{
-							procedureOptions.find((p) => p.value === value)?.label ||
-							"Trámite seleccionado"
-						}
+						{procedureOptions.find((p) => p.value === value)?.label ||
+							"Trámite seleccionado"}
 					</span>
 					<button
 						type="button"

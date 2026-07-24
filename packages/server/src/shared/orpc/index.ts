@@ -13,6 +13,7 @@
 
 export type { PermissionMap } from "./auth-guards";
 export { requireAdminAccess, requireAuthenticatedSession } from "./auth-guards";
+export { extractClientInfo } from "./client-info";
 export {
 	fallbackErrorCode,
 	resolveCachedIdempotencyResponse,
@@ -36,4 +37,3 @@ export {
 } from "./optimistic-concurrency";
 export type { RecurrenceRule } from "./rrule";
 export { generateOccurrences, isDateOnOrAfter, parseRRule } from "./rrule";
-export { extractClientInfo } from "./client-info";

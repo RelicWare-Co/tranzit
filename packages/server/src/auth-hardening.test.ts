@@ -241,9 +241,13 @@ describe("VAL-AUTH-003: Email linking without duplicate identity", () => {
 		});
 		const firstOtp = otpStore["sign-in"]["existing@test.com"];
 
-		const { body: firstSignInBody } = await callAuth(auth, "/sign-in/email-otp", {
-			body: { email: "existing@test.com", otp: firstOtp },
-		});
+		const { body: firstSignInBody } = await callAuth(
+			auth,
+			"/sign-in/email-otp",
+			{
+				body: { email: "existing@test.com", otp: firstOtp },
+			},
+		);
 		expect(firstSignInBody.user).toBeDefined();
 		const originalUserId = firstSignInBody.user.id;
 

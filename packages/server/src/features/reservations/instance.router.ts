@@ -2,8 +2,12 @@ import { moveReservationInstance } from "../../features/reservations/reservation
 import { getReservationInstance } from "../../features/reservations/reservations-instance-read.service";
 import { releaseReservationInstance } from "../../features/reservations/reservations-instance-release.service";
 import { updateReservationInstance } from "../../features/reservations/reservations-instance-update-core.service";
+import {
+	extractClientInfo,
+	parseIfMatch,
+	requireAdminAccess,
+} from "../../shared/orpc";
 import { rpc } from "../../shared/orpc/context";
-import { extractClientInfo, parseIfMatch, requireAdminAccess } from "../../shared/orpc";
 
 export function createReservationsRouter() {
 	return {
@@ -25,10 +29,13 @@ export function createReservationsRouter() {
 				staffUserId?: string;
 				notes?: string | null;
 			};
-			return updateReservationInstance({
-				...payload,
-				ifMatch,
-			}, clientInfo);
+			return updateReservationInstance(
+				{
+					...payload,
+					ifMatch,
+				},
+				clientInfo,
+			);
 		}),
 		release: rpc.handler(async ({ context, input }) => {
 			await requireAdminAccess(context.headers, {

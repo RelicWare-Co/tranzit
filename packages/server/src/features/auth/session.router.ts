@@ -1,6 +1,6 @@
 import { auth } from "../../features/auth/auth.config";
-import { rpc } from "../../shared/orpc/context";
 import { throwRpcError } from "../../shared/orpc";
+import { rpc } from "../../shared/orpc/context";
 
 export function createSessionRouter() {
 	return {

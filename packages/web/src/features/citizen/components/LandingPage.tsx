@@ -15,9 +15,8 @@ import {
 	Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button, Card } from "#/shared/components/ui";
 import { useAuth } from "#/features/auth/components/AuthContext";
-
+import { Badge, Button, Card } from "#/shared/components/ui";
 
 // Scroll animation hook using IntersectionObserver
 function useScrollAnimation(threshold = 0.1) {

@@ -6,8 +6,11 @@ import {
 	listCitizenProcedures,
 	listCitizenSlotsRange,
 } from "../../features/citizen/citizen-portal.service";
+import {
+	extractClientInfo,
+	requireAuthenticatedSession,
+} from "../../shared/orpc";
 import { rpc } from "../../shared/orpc/context";
-import { extractClientInfo, requireAuthenticatedSession } from "../../shared/orpc";
 
 export function createCitizenRouter() {
 	return {
@@ -45,7 +48,11 @@ export function createCitizenRouter() {
 				const session = await requireAuthenticatedSession(context.headers);
 				const payload = input as { bookingId: string };
 				const clientInfo = extractClientInfo(context.headers);
-				return cancelCitizenBooking(session.user.id, payload.bookingId, clientInfo);
+				return cancelCitizenBooking(
+					session.user.id,
+					payload.bookingId,
+					clientInfo,
+				);
 			}),
 			mine: rpc.handler(async ({ context, input }) => {
 				const session = await requireAuthenticatedSession(context.headers);

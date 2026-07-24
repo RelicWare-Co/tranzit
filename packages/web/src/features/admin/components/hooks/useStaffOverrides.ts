@@ -14,12 +14,7 @@ export function useStaffOverrides(userId: string | null) {
 	const queryClient = useQueryClient();
 
 	const query = useQuery({
-		queryKey: [
-			"admin",
-			"configuracion",
-			"staff-overrides",
-			userId,
-		],
+		queryKey: ["admin", "configuracion", "staff-overrides", userId],
 		enabled: Boolean(userId),
 		queryFn: async () => await fetchStaffOverrides(userId ?? ""),
 	});

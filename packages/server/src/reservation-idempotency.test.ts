@@ -32,7 +32,10 @@ import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { checkCapacity } from "./features/bookings/capacity-check.service";
-import { consumeCapacity, releaseCapacity } from "./features/bookings/capacity-consume.service";
+import {
+	consumeCapacity,
+	releaseCapacity,
+} from "./features/bookings/capacity-consume.service";
 import { db, schema } from "./lib/db";
 
 // ---------------------------------------------------------------------------

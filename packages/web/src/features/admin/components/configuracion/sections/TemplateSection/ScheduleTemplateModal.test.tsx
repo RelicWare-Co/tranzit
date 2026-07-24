@@ -2,8 +2,8 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ScheduleTemplate } from "#/features/admin/components/hooks/useConfigSnapshot";
-import { ScheduleTemplateModal } from "./ScheduleTemplateModal";
 import { renderWithProviders } from "#/test/render";
+import { ScheduleTemplateModal } from "./ScheduleTemplateModal";
 
 const sampleTemplate: ScheduleTemplate = {
 	id: "template-1",
@@ -109,9 +109,7 @@ describe("ScheduleTemplateModal", () => {
 	});
 
 	it("keeps the modal open when the API returns an error", async () => {
-		const onUpdate = vi
-			.fn()
-			.mockRejectedValue(new Error("Error de servidor"));
+		const onUpdate = vi.fn().mockRejectedValue(new Error("Error de servidor"));
 		const onClose = vi.fn();
 		const user = userEvent.setup();
 
@@ -148,7 +146,9 @@ describe("ScheduleTemplateModal create interactions", () => {
 			/>,
 		);
 
-		const weekdayField = screen.getByRole("combobox", { name: "Día de la semana" });
+		const weekdayField = screen.getByRole("combobox", {
+			name: "Día de la semana",
+		});
 		expect(weekdayField).toBeInTheDocument();
 		expect(weekdayField).toHaveValue("Lunes");
 	});
