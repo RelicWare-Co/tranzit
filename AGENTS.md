@@ -50,6 +50,9 @@ anteriores de Mantine.
 - Admin y el ciclo ciudadano básico están conectados al backend. Consulta
   `BACKEND_STATUS.md` para contratos y cobertura real; no infieras endpoints
   por la interfaz.
+- La validación de placas es un mock backend explícito para pruebas pre-MVP,
+  mientras no exista integración con RUNT. El hold vuelve a validarla en el
+  servidor; consulta `BACKEND_STATUS.md` para formatos y fixtures.
 - El ciclo avanzado de `service_request` y las pruebas end-to-end ciudadanas
   siguen incompletos.
 

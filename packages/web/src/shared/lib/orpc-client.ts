@@ -527,6 +527,20 @@ type CitizenBookingHoldResponse = {
 	booking: CitizenBookingSummary;
 };
 
+export type VehiclePlateValidation = {
+	plate: string;
+	status: "registered-tulua" | "registered-other-city" | "not-found" | "error";
+	source: "mock";
+	city: string | null;
+	vehicle: {
+		plate: string;
+		brand?: string;
+		model?: string;
+		year?: number;
+	} | null;
+	message: string;
+};
+
 type AdminReservationSeries = {
 	id: string;
 	kind: string;
@@ -743,6 +757,9 @@ export interface TranzitRpcClient {
 	citizen: {
 		procedures: {
 			list: RpcProcedure<CitizenProcedure[]>;
+		};
+		vehicles: {
+			validatePlate: RpcProcedure<VehiclePlateValidation, { plate: string }>;
 		};
 		slots: {
 			range: RpcProcedure<CitizenSlotsRangeResponse, CitizenSlotsRangeInput>;

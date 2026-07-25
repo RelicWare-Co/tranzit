@@ -4,8 +4,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { ChevronRight, Clock, FileText, Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "#/features/auth/components/AuthContext";
-import type { VehiclePlateValidation } from "#/features/citizen/lib/vehicle-plate";
-import { validateVehiclePlate } from "#/features/citizen/lib/vehicle-plate";
+import {
+	getProcedureFormFields,
+	getProcedureRequirements,
+	PROCEDURE_FORM_FIELD_LABELS,
+} from "#/features/citizen/lib/procedure-schema";
 import {
 	Alert,
 	Badge,
@@ -14,12 +17,11 @@ import {
 	CardContent,
 	Input,
 } from "#/shared/components/ui";
-import { orpcClient } from "#/shared/lib/orpc-client";
+import {
+	orpcClient,
+	type VehiclePlateValidation,
+} from "#/shared/lib/orpc-client";
 import classes from "./agendar.module.css";
-
-type CitizenProcedure = Awaited<
-	ReturnType<typeof orpcClient.citizen.procedures.list>
->[number];
 
 type SlotsRangeResponse = Awaited<
 	ReturnType<typeof orpcClient.citizen.slots.range>
@@ -29,41 +31,35 @@ type CitizenBookingSummary = Awaited<
 	ReturnType<typeof orpcClient.citizen.bookings.confirm>
 >;
 
-type ProcedureRequirement = {
-	key: string;
-	label: string;
-	isRequired: boolean;
-	instructions: string | null;
-	downloadUrl: string | null;
-};
-
-const BOOKING_STEPS = [
-	{
-		key: "plate",
-		label: "Vehículo",
-		description: "Valida la placa antes de continuar.",
-	},
-	{
+const BOOKING_STEP_DEFINITIONS = {
+	procedure: {
 		key: "procedure",
 		label: "Trámite",
 		description: "Elige el servicio que vas a realizar.",
 	},
-	{
+	plate: {
+		key: "plate",
+		label: "Vehículo",
+		description: "Valida la placa antes de continuar.",
+	},
+	requirements: {
 		key: "requirements",
 		label: "Requisitos",
 		description: "Revisa formatos y confirma documentos.",
 	},
-	{
+	schedule: {
 		key: "schedule",
 		label: "Horario",
 		description: "Selecciona fecha y hora disponible.",
 	},
-	{
+	details: {
 		key: "details",
 		label: "Datos",
 		description: "Completa tu información y asegura el cupo.",
 	},
-] as const;
+} as const;
+
+type BookingStepKey = keyof typeof BOOKING_STEP_DEFINITIONS;
 
 function getErrorMessage(error: unknown, fallback: string): string {
 	if (error instanceof Error && error.message) return error.message;
@@ -121,171 +117,6 @@ function formatSeconds(seconds: number) {
 	return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
 
-function getProcedureRequirements(procedure: CitizenProcedure | null) {
-	if (!procedure) return [];
-	const rawSchema = procedure.documentSchema;
-	if (!rawSchema || typeof rawSchema !== "object") return [];
-
-	const rawObj = rawSchema as Record<string, unknown>;
-	const requirements = Array.isArray(rawObj.requirements)
-		? rawObj.requirements
-		: Array.isArray(rawObj.required)
-			? rawObj.required
-			: [];
-
-	if (!Array.isArray(requirements)) return [];
-
-	return requirements
-		.map((rawRequirement, index): ProcedureRequirement | null => {
-			if (!rawRequirement || typeof rawRequirement !== "object") return null;
-			const req = rawRequirement as Record<string, unknown>;
-
-			const keyCandidates = [req.key, req.id, req.slug];
-			const keyStr = keyCandidates.find(
-				(c) => typeof c === "string" && c.trim().length > 0,
-			);
-			const key =
-				typeof req.key === "string" && req.key.trim().length > 0
-					? req.key.trim()
-					: typeof req.id === "string" && req.id.trim().length > 0
-						? req.id.trim()
-						: `requirement-${index + 1}`;
-			
-				typeof keyStr === "string" ? keyStr.trim() : `requirement-${index + 1}`;
-
-			const labelCandidates = [req.name, req.label, req.title];
-			const labelStr = labelCandidates.find(
-				(c) => typeof c === "string" && c.trim().length > 0,
-			);
-			const label =
-				typeof labelStr === "string"
-					? labelStr.trim()
-					: `Requisito ${index + 1}`;
-
-			const instructionCandidates = [
-				req.description,
-				req.instructions,
-				req.details,
-			];
-			const instructionStr = instructionCandidates.find(
-				(c) => typeof c === "string" && c.trim().length > 0,
-			);
-			const instructions =
-				typeof instructionStr === "string" ? instructionStr.trim() : null;
-
-			const downloadUrlCandidates = [
-				req.downloadUrl,
-				req.download_url,
-				req.templateUrl,
-				req.template_url,
-				req.url,
-			];
-			const downloadUrl =
-				downloadUrlCandidates.find(
-					(candidate) =>
-						typeof candidate === "string" && candidate.trim().length > 0,
-				) ?? null;
-
-			const isRequiredValue =
-				req.isRequired !== undefined
-					? Boolean(req.isRequired)
-					: req.required !== undefined
-						? Boolean(req.required)
-						: true;
-			return {
-				key,
-				label,
-				isRequired: isRequiredValue,
-				instructions,
-				downloadUrl:
-					typeof downloadUrl === "string" ? downloadUrl.trim() : null,
-			};
-		})
-		.filter(Boolean) as ProcedureRequirement[];
-}
-
-type ProcedureFormFieldType =
-	| "text"
-	| "number"
-	| "email"
-	| "tel"
-	| "select"
-	| "textarea";
-
-interface ProcedureFormField {
-	key: string;
-	label: string;
-	type: ProcedureFormFieldType;
-	required: boolean;
-	placeholder: string | null;
-	options: string[];
-}
-
-const FIELD_TYPE_LABEL: Record<ProcedureFormFieldType, string> = {
-	text: "Texto",
-	number: "Número",
-	email: "Correo",
-	tel: "Telefono",
-	select: "Selección",
-	textarea: "Texto largo",
-};
-
-function getProcedureFormFields(procedure: CitizenProcedure | null) {
-	if (!procedure) return [];
-	const rawSchema = procedure.formSchema;
-	if (!rawSchema || typeof rawSchema !== "object") return [];
-
-	const schema = rawSchema as Record<string, unknown>;
-	const rawFields = schema.fields ?? schema.sections;
-	if (!Array.isArray(rawFields)) return [];
-
-	let fieldList: unknown[] = rawFields;
-	// El seed agrupa campos en sections; el admin usa fields directo.
-	if (rawFields.length && typeof rawFields[0] === "object" && "fields" in (rawFields[0] as Record<string, unknown>)) {
-		fieldList = (rawFields as { fields?: unknown }[]).flatMap(
-			(section) => (Array.isArray(section.fields) ? section.fields : []),
-		);
-	}
-
-	const knownTypes = new Set(["text", "number", "email", "tel", "select", "textarea"]);
-
-	return fieldList
-		.map((rawField, index): ProcedureFormField | null => {
-			if (!rawField || typeof rawField !== "object") return null;
-			const field = rawField as Record<string, unknown>;
-			const key =
-				typeof field.key === "string" && field.key.trim().length > 0
-					? field.key.trim()
-					: typeof field.id === "string" && field.id.trim().length > 0
-						? field.id.trim()
-						: `form-field-${index + 1}`;
-			const labelCandidate =
-				(typeof field.label === "string" && field.label.trim()) ||
-				(typeof field.name === "string" && field.name.trim()) ||
-				"";
-			const label = labelCandidate.length > 0 ? labelCandidate : `Campo ${index + 1}`;
-			const typeRaw = typeof field.type === "string" ? field.type.trim() : "text";
-			const type = (knownTypes.has(typeRaw) ? typeRaw : "text") as ProcedureFormFieldType;
-			const required =
-				field.required !== undefined
-					? Boolean(field.required)
-					: field.isRequired !== undefined
-						? Boolean(field.isRequired)
-						: false;
-			const placeholder =
-				typeof field.placeholder === "string" && field.placeholder.trim().length > 0
-					? field.placeholder.trim()
-					: null;
-			const options = Array.isArray(field.options)
-				? field.options
-						.map((option) => (typeof option === "string" ? option.trim() : ""))
-						.filter(Boolean)
-				: [];
-			return { key, label, type, required, placeholder, options };
-		})
-		.filter((value): value is ProcedureFormField => Boolean(value));
-}
-
 function AgendarPage() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
@@ -296,12 +127,12 @@ function AgendarPage() {
 	const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 	const [requirementsAcknowledged, setRequirementsAcknowledged] =
 		useState(false);
-	const [activeStep, setActiveStep] = useState(0);
+	const [activeStepKey, setActiveStepKey] =
+		useState<BookingStepKey>("procedure");
 
 	const [plateInput, setPlateInput] = useState("");
 	const [plateValidation, setPlateValidation] =
 		useState<VehiclePlateValidation | null>(null);
-	const [isValidatingPlate, setIsValidatingPlate] = useState(false);
 
 	const [holdBooking, setHoldBooking] = useState<CitizenBookingSummary | null>(
 		null,
@@ -359,19 +190,26 @@ function AgendarPage() {
 	}, [proceduresById, detailsForm.values.procedureTypeId]);
 
 	const procedureRequirements = useMemo(
-		() => getProcedureRequirements(selectedProcedure),
-		[selectedProcedure],
+		() => getProcedureRequirements(selectedProcedure?.documentSchema),
+		[selectedProcedure?.documentSchema],
 	);
 
 	const procedureFormFields = useMemo(
-		() => getProcedureFormFields(selectedProcedure),
-		[selectedProcedure],
+		() => getProcedureFormFields(selectedProcedure?.formSchema),
+		[selectedProcedure?.formSchema],
 	);
 
-	const validatedPlate = useMemo(() => {
-		if (plateValidation?.status !== "registered-tulua") return null;
-		return plateValidation.plate || null;
-	}, [plateValidation]);
+	const validatedPlate =
+		plateValidation?.status === "registered-tulua"
+			? plateValidation.plate
+			: null;
+
+	const bookingSteps = useMemo(() => {
+		const keys: BookingStepKey[] = selectedProcedure?.requiresVehicle
+			? ["procedure", "plate", "requirements", "schedule", "details"]
+			: ["procedure", "requirements", "schedule", "details"];
+		return keys.map((key) => BOOKING_STEP_DEFINITIONS[key]);
+	}, [selectedProcedure?.requiresVehicle]);
 
 	const slotsRangeQuery = useQuery({
 		queryKey: ["citizen", "slots-range", 14],
@@ -417,27 +255,37 @@ function AgendarPage() {
 	}, [selectedDaySlots, selectedSlotId]);
 
 	const maxReachableStep = useMemo(() => {
-		if (!validatedPlate) return 0;
-		if (!selectedProcedure) return 1;
-		if (!requirementsAcknowledged) return 2;
-		if (!resolvedSelectedSlotId) return 3;
-		return 4;
+		if (!selectedProcedure) return 0;
+		if (selectedProcedure.requiresVehicle && !validatedPlate) {
+			return bookingSteps.findIndex((step) => step.key === "plate");
+		}
+		if (!requirementsAcknowledged) {
+			return bookingSteps.findIndex((step) => step.key === "requirements");
+		}
+		if (!resolvedSelectedSlotId) {
+			return bookingSteps.findIndex((step) => step.key === "schedule");
+		}
+		return bookingSteps.findIndex((step) => step.key === "details");
 	}, [
+		bookingSteps,
 		requirementsAcknowledged,
 		resolvedSelectedSlotId,
 		selectedProcedure,
 		validatedPlate,
 	]);
 
-	const wizardProgress = useMemo(
-		() => Math.round(((activeStep + 1) / BOOKING_STEPS.length) * 100),
-		[activeStep],
+	const activeStep = Math.max(
+		0,
+		bookingSteps.findIndex((step) => step.key === activeStepKey),
+	);
+	const wizardProgress = Math.round(
+		((activeStep + 1) / bookingSteps.length) * 100,
 	);
 
 	useEffect(() => {
 		if (activeStep <= maxReachableStep) return;
-		setActiveStep(maxReachableStep);
-	}, [activeStep, maxReachableStep]);
+		setActiveStepKey(bookingSteps[maxReachableStep]?.key ?? "procedure");
+	}, [activeStep, bookingSteps, maxReachableStep]);
 
 	useEffect(() => {
 		if (!user?.email) return;
@@ -448,8 +296,15 @@ function AgendarPage() {
 	}, [detailsForm.setFieldValue, detailsForm.values.email, user?.email]);
 
 	useEffect(() => {
-		detailsForm.setFieldValue("plate", validatedPlate ?? "");
-	}, [detailsForm.setFieldValue, validatedPlate]);
+		detailsForm.setFieldValue(
+			"plate",
+			selectedProcedure?.requiresVehicle ? (validatedPlate ?? "") : "",
+		);
+	}, [
+		detailsForm.setFieldValue,
+		selectedProcedure?.requiresVehicle,
+		validatedPlate,
+	]);
 
 	const serverHeldBooking = useMemo(() => {
 		const bookings = myBookingsQuery.data ?? [];
@@ -477,6 +332,7 @@ function AgendarPage() {
 			setPlateValidation({
 				plate: heldPlate,
 				status: "registered-tulua",
+				source: "mock",
 				city: "Tuluá",
 				vehicle: { plate: heldPlate },
 				message: "Vehículo ya validado para esta reserva.",
@@ -508,6 +364,24 @@ function AgendarPage() {
 		},
 		onError: (err) => {
 			setError(getErrorMessage(err, "Error al enviar código OTP."));
+		},
+	});
+
+	const plateValidationMutation = useMutation({
+		mutationFn: async (plate: string) =>
+			await orpcClient.citizen.vehicles.validatePlate({ plate }),
+		onSuccess: (result) => {
+			setPlateValidation(result);
+			setError(null);
+		},
+		onError: (err) => {
+			setPlateValidation(null);
+			setError(
+				getErrorMessage(
+					err,
+					"No pudimos consultar la fuente de prueba. Intenta de nuevo.",
+				),
+			);
 		},
 	});
 
@@ -589,7 +463,7 @@ function AgendarPage() {
 		onSuccess: async () => {
 			setHoldBooking(null);
 			setSelectedSlotId(null);
-			setActiveStep(selectedProcedure ? 3 : 1);
+			setActiveStepKey(selectedProcedure ? "schedule" : "procedure");
 			setError(null);
 			setFeedback("Reserva liberada. Elige otro horario.");
 			await Promise.all([
@@ -620,19 +494,16 @@ function AgendarPage() {
 		holdMutation.mutate();
 	});
 
-	const goToStep = (nextStep: number) => {
-		if (nextStep < 0 || nextStep >= BOOKING_STEPS.length) return;
-		if (nextStep > maxReachableStep) return;
+	const goToStep = (nextStepKey: BookingStepKey) => {
+		const nextStep = bookingSteps.findIndex((step) => step.key === nextStepKey);
+		if (nextStep < 0 || nextStep > maxReachableStep) return;
 		setError(null);
-		setActiveStep(nextStep);
+		setActiveStepKey(nextStepKey);
 	};
 
-	const handleValidatePlate = async () => {
+	const handleValidatePlate = () => {
 		setError(null);
-		setIsValidatingPlate(true);
-		const result = await validateVehiclePlate(plateInput);
-		setPlateValidation(result);
-		setIsValidatingPlate(false);
+		plateValidationMutation.mutate(plateInput);
 	};
 
 	const handlePlateContinue = () => {
@@ -640,7 +511,7 @@ function AgendarPage() {
 			setError("Valida la placa del vehículo antes de continuar.");
 			return;
 		}
-		goToStep(1);
+		goToStep("requirements");
 	};
 
 	const handleProcedureContinue = () => {
@@ -648,7 +519,7 @@ function AgendarPage() {
 			setError("Selecciona un trámite para continuar.");
 			return;
 		}
-		goToStep(2);
+		goToStep(selectedProcedure.requiresVehicle ? "plate" : "requirements");
 	};
 
 	const handleRequirementsContinue = () => {
@@ -656,7 +527,7 @@ function AgendarPage() {
 			setError("Confirma que revisaste los requisitos antes de continuar.");
 			return;
 		}
-		goToStep(3);
+		goToStep("schedule");
 	};
 
 	const handleSlotsContinue = () => {
@@ -664,10 +535,10 @@ function AgendarPage() {
 			setError("Selecciona una fecha y horario para continuar.");
 			return;
 		}
-		goToStep(4);
+		goToStep("details");
 	};
 
-// Step 0: Vehicle plate validation
+	// Vehicle plate validation
 	const renderPlateStep = () => (
 		<div className={classes.stepContent}>
 			<h2 className={classes.stepHeading}>Valida tu vehículo</h2>
@@ -676,7 +547,24 @@ function AgendarPage() {
 				vehículos matriculados en el municipio de Tuluá.
 			</p>
 
-			<div className={classes.plateInputRow}>
+			<Alert
+				variant="info"
+				title="Validación con datos de prueba"
+				className={classes.alertContainer}
+			>
+				Aún no existe conexión con RUNT. Durante esta etapa, cualquier placa con
+				formato colombiano válido se considera matriculada en Tuluá, excepto las
+				placas de prueba CAL123 (otra ciudad), NFD404 (no encontrada) y ERR500
+				(error de consulta).
+			</Alert>
+
+			<form
+				className={classes.plateInputRow}
+				onSubmit={(event) => {
+					event.preventDefault();
+					handleValidatePlate();
+				}}
+			>
 				<Input
 					label="Placa del vehículo"
 					placeholder="ABC123"
@@ -685,19 +573,21 @@ function AgendarPage() {
 						setPlateInput(e.currentTarget.value.toUpperCase());
 						if (plateValidation) setPlateValidation(null);
 					}}
-					disabled={isValidatingPlate}
+					disabled={plateValidationMutation.isPending}
 					className={classes.plateInput}
 				/>
 				<Button
+					type="submit"
 					size="lg"
-					onClick={handleValidatePlate}
-					isLoading={isValidatingPlate}
-					disabled={plateInput.trim().length < 4 || isValidatingPlate}
+					isLoading={plateValidationMutation.isPending}
+					disabled={
+						plateInput.trim().length < 6 || plateValidationMutation.isPending
+					}
 					leftIcon={<Search size={18} />}
 				>
 					Validar placa
 				</Button>
-			</div>
+			</form>
 
 			{plateValidation && (
 				<Alert
@@ -710,10 +600,12 @@ function AgendarPage() {
 					}
 					title={
 						plateValidation.status === "registered-tulua"
-							? `Vehículo registrado en Tuluá`
+							? "Placa habilitada para pruebas"
 							: plateValidation.status === "registered-other-city"
-								? `Matriculado en otra ciudad`
-								: "Placa no encontrada"
+								? "Matriculado en otra ciudad"
+								: plateValidation.status === "not-found"
+									? "Placa no encontrada"
+									: "No pudimos validar la placa"
 					}
 					className={classes.plateResult}
 				>
@@ -767,7 +659,7 @@ function AgendarPage() {
 		</div>
 	);
 
-	// Step 1: Procedure Selection
+	// Procedure selection
 	const renderProcedureStep = () => (
 		<div className={classes.stepContent}>
 			<h2 className={classes.stepHeading}>¿Qué trámite necesitas?</h2>
@@ -843,21 +735,11 @@ function AgendarPage() {
 		</div>
 	);
 
-	// Step 2: Requirements
+	// Requirements
 	const renderRequirementsStep = () =>
 		selectedProcedure && (
 			<div className={classes.stepContent}>
 				<h2 className={classes.stepHeading}>Requisitos del trámite</h2>
-
-				{selectedProcedure.instructions && (
-					<Alert
-						variant="info"
-						title="Indicaciones generales"
-						className={classes.alertContainer}
-					>
-						{selectedProcedure.instructions}
-					</Alert>
-				)}
 
 				<Card variant="inset" padding="lg" className={classes.requirementsCard}>
 					{typeof selectedProcedure.instructions === "string" &&
@@ -877,7 +759,7 @@ function AgendarPage() {
 						{procedureRequirements.length > 0 ? (
 							<div className={classes.requirementsList}>
 								{procedureRequirements.map((req) => (
-									<div key={req.key} className={classes.requirementItem}>
+									<div key={req.id} className={classes.requirementItem}>
 										<div className={classes.requirementHeader}>
 											<div className={classes.requirementIcon}>
 												<FileText size={20} />
@@ -885,17 +767,17 @@ function AgendarPage() {
 											<div className={classes.requirementContent}>
 												<div className={classes.requirementTitleRow}>
 													<h4 className={classes.requirementTitle}>
-														{req.label}
+														{req.name}
 													</h4>
 													{req.isRequired && (
 														<Badge variant="brand" size="sm">
-														Obligatorio
+															Obligatorio
 														</Badge>
 													)}
 												</div>
-												{req.instructions && (
+												{req.description && (
 													<p className={classes.requirementInstructions}>
-														{req.instructions}
+														{req.description}
 													</p>
 												)}
 											</div>
@@ -931,16 +813,14 @@ function AgendarPage() {
 							</p>
 							<div className={classes.formPreviewList}>
 								{procedureFormFields.map((field) => (
-									<div key={field.key} className={classes.formPreviewItem}>
+									<div key={field.id} className={classes.formPreviewItem}>
 										<div className={classes.formPreviewInfo}>
 											<span className={classes.formPreviewLabel}>
 												{field.label}
 											</span>
 											<span className={classes.formPreviewType}>
-												{FIELD_TYPE_LABEL[field.type]}
-												{field.placeholder
-													? ` · ej. ${field.placeholder}`
-													: ""}
+												{PROCEDURE_FORM_FIELD_LABELS[field.type]}
+												{field.placeholder ? ` · ej. ${field.placeholder}` : ""}
 											</span>
 											{field.options.length > 0 && (
 												<span className={classes.formPreviewOptions}>
@@ -985,7 +865,11 @@ function AgendarPage() {
 					<Button
 						variant="ghost"
 						size="lg"
-						onClick={() => goToStep(1)}
+						onClick={() =>
+							goToStep(
+								selectedProcedure.requiresVehicle ? "plate" : "procedure",
+							)
+						}
 						leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
 					>
 						Volver
@@ -1002,7 +886,7 @@ function AgendarPage() {
 			</div>
 		);
 
-	// Step 3: Schedule
+	// Schedule
 	const renderScheduleStep = () =>
 		selectedProcedure &&
 		requirementsAcknowledged && (
@@ -1093,7 +977,7 @@ function AgendarPage() {
 					<Button
 						variant="ghost"
 						size="lg"
-						onClick={() => goToStep(2)}
+						onClick={() => goToStep("requirements")}
 						leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
 					>
 						Volver
@@ -1110,7 +994,7 @@ function AgendarPage() {
 			</div>
 		);
 
-	// Step 4: Details
+	// Applicant details
 	const renderDetailsStep = () =>
 		selectedProcedure &&
 		requirementsAcknowledged &&
@@ -1175,14 +1059,14 @@ function AgendarPage() {
 						<Button
 							variant="ghost"
 							size="lg"
-onClick={() => goToStep(3)}
-						leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
-					>
-						Volver
-					</Button>
-					<Button
-						size="lg"
-						type="submit"
+							onClick={() => goToStep("schedule")}
+							leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
+						>
+							Volver
+						</Button>
+						<Button
+							size="lg"
+							type="submit"
 							isLoading={holdMutation.isPending || sendOtpMutation.isPending}
 							rightIcon={<ChevronRight size={18} />}
 						>
@@ -1193,21 +1077,21 @@ onClick={() => goToStep(3)}
 			</div>
 		);
 
-	// Render the appropriate step
+	// Render the active step
 	const renderStep = () => {
-		switch (activeStep) {
-			case 0:
-				return renderPlateStep();
-			case 1:
+		switch (activeStepKey) {
+			case "procedure":
 				return renderProcedureStep();
-			case 2:
+			case "plate":
+				return renderPlateStep();
+			case "requirements":
 				return renderRequirementsStep();
-			case 3:
+			case "schedule":
 				return renderScheduleStep();
-			case 4:
+			case "details":
 				return renderDetailsStep();
 			default:
-				return renderPlateStep();
+				return renderProcedureStep();
 		}
 	};
 
@@ -1240,7 +1124,7 @@ onClick={() => goToStep(3)}
 						<div className={classes.mainContent}>
 							{/* Step Rail */}
 							<div className={classes.stepRail}>
-								{BOOKING_STEPS.map((step, index) => {
+								{bookingSteps.map((step, index) => {
 									const state =
 										index < activeStep
 											? "done"
@@ -1256,7 +1140,7 @@ onClick={() => goToStep(3)}
 											className={`${classes.stepRailItem} ${
 												state === "active" ? classes.stepRailActive : ""
 											} ${state === "done" ? classes.stepRailDone : ""}`}
-											onClick={() => goToStep(index)}
+											onClick={() => goToStep(step.key)}
 											disabled={!isClickable}
 										>
 											<div className={classes.stepNumber}>{index + 1}</div>
@@ -1287,8 +1171,8 @@ onClick={() => goToStep(3)}
 									</div>
 									<div className={classes.progressInfo}>
 										<span className={classes.progressText}>
-											Paso {activeStep + 1} de {BOOKING_STEPS.length} ·{" "}
-											{BOOKING_STEPS[activeStep]?.label}
+											Paso {activeStep + 1} de {bookingSteps.length} ·{" "}
+											{bookingSteps[activeStep]?.label}
 										</span>
 										<Badge variant="brand">{wizardProgress}% completado</Badge>
 									</div>
@@ -1311,8 +1195,8 @@ onClick={() => goToStep(3)}
 								<div className={classes.summarySection}>
 									<span className={classes.summaryLabel}>Paso actual</span>
 									<Badge variant="brand">
-										{activeStep + 1} / {BOOKING_STEPS.length} ·{" "}
-										{BOOKING_STEPS[activeStep]?.label}
+										{activeStep + 1} / {bookingSteps.length} ·{" "}
+										{bookingSteps[activeStep]?.label}
 									</Badge>
 								</div>
 

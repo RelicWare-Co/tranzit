@@ -1,6 +1,6 @@
 # Backend Status (Current Implementation)
 
-Last updated: 2026-05-01
+Last updated: 2026-07-25
 
 This document describes what the backend **really has implemented today**.
 Use it as an operational map before adding or changing backend behavior.
@@ -154,6 +154,10 @@ Key behavior already implemented:
 - get procedure by ID
 - create with slug validation and deduplication
 - update with config version increment on schema-impacting changes
+- canonical procedure configuration shapes:
+  - `documentSchema.requirements[]` uses `id`, `name`, `description`, `isRequired`, `downloadUrl`, and `order`
+  - `formSchema.fields[]` uses `id`, `label`, `type`, `required`, `placeholder`, `options`, and `order`
+  - legacy aliases and grouped `formSchema.sections[]` are not supported
 - policy enforcement: digital citizen document upload is disabled and `allowsDigitalDocuments` is normalized to `false`
 - remove with soft-delete guard when service requests exist
 - **audit events for all mutations**: create, update, and delete (both soft and hard delete) create `audit_event` entries with `action` and `payload`
@@ -187,6 +191,7 @@ Key behavior already implemented:
 ### 2.6 Citizen portal module (`server/src/orpc/modules/citizen.router.ts`)
 
 - `citizen.procedures.list`
+- `citizen.vehicles.validatePlate`
 - `citizen.slots.range`
 - `citizen.bookings.hold`
 - `citizen.bookings.confirm`
@@ -195,6 +200,11 @@ Key behavior already implemented:
 
 Key behavior already implemented:
 - citizen procedures are exposed in physical-only mode (`allowsDigitalDocuments=false`)
+- vehicle plate lookup is an explicit pre-MVP backend mock, not a RUNT integration:
+  - plates are normalized to uppercase without spaces or hyphens
+  - any Colombian-like valid format is eligible in Tuluá by default
+  - fixtures exercise alternate outcomes: `CAL123` (other city), `NFD404` (not found), and `ERR500` (source error)
+  - `citizen.bookings.hold` repeats the validation server-side for vehicle procedures, persists the result, and ignores submitted plates for procedures that do not require a vehicle
 - no citizen/admin request-document upload/review/download API is exposed
 - **Email notifications on booking lifecycle events**:
   - `citizen.bookings.confirm` sends a confirmation email with procedure name, date/time, staff name, and applicant details

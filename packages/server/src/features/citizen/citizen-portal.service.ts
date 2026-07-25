@@ -19,17 +19,16 @@ import type { TemplateContext } from "../notifications/notification-templates";
 import { isValidDateFormat } from "../schedule/schedule.schemas";
 import { formatDateLocal } from "../schedule/schedule.service";
 import { listScheduleSlotsByDate } from "../schedule/schedule-slots-admin.service";
+import {
+	type VehiclePlateValidation,
+	validateVehiclePlate,
+} from "./vehicle-plate.service";
 
 // Zod schemas for input validation
 const dateStringSchema = z
 	.string()
 	.regex(/^\d{4}-\d{2}-\d{2}$/, "must be YYYY-MM-DD")
 	.refine((value) => isValidDateFormat(value), "must be a valid calendar date");
-
-const listSlotsSchema = z.object({
-	dateFrom: dateStringSchema.optional(),
-	days: z.number().int().positive().max(21).optional().default(7),
-});
 
 const createHoldSchema = z.object({
 	procedureTypeId: z.string().trim().min(1, "procedureTypeId is required"),
@@ -530,19 +529,21 @@ export async function createCitizenBookingHold(
 		throwRpcError("NOT_FOUND", 404, "Trámite no disponible");
 	}
 
-	if (procedure.requiresVehicle && !validatedInput.plate?.trim()) {
-		throwRpcError(
-			"MISSING_REQUIRED_FIELDS",
-			422,
-			"plate is required for this procedure",
-		);
+	let plateValidation: VehiclePlateValidation | null = null;
+	if (procedure.requiresVehicle) {
+		plateValidation = validateVehiclePlate(validatedInput.plate ?? "");
+		if (plateValidation.status !== "registered-tulua") {
+			throwRpcError("VEHICLE_NOT_ELIGIBLE", 422, plateValidation.message, {
+				plateValidation,
+			});
+		}
 	}
 
 	const slot = await db.query.appointmentSlot.findFirst({
 		where: eq(schema.appointmentSlot.id, validatedInput.slotId),
 	});
 
-	if (!slot || slot.status !== "open") {
+	if (slot?.status !== "open") {
 		throwRpcError("NOT_FOUND", 404, "Horario no disponible");
 	}
 
@@ -562,7 +563,7 @@ export async function createCitizenBookingHold(
 		status: "booking_held",
 		procedureConfigVersion: procedure.configVersion,
 		draftData: {
-			plate: validatedInput.plate?.trim().toUpperCase() ?? null,
+			plate: plateValidation?.plate ?? null,
 			applicantName: validatedInput.applicantName.trim(),
 			applicantDocument: validatedInput.applicantDocument.trim(),
 			notes: validatedInput.notes?.trim() ?? null,
@@ -580,6 +581,16 @@ export async function createCitizenBookingHold(
 			eligibilitySchema: procedure.eligibilitySchema,
 			policySchema: procedure.policySchema,
 		},
+		eligibilityResult: plateValidation
+			? {
+					vehiclePlate: {
+						plate: plateValidation.plate,
+						status: plateValidation.status,
+						source: plateValidation.source,
+						city: plateValidation.city,
+					},
+				}
+			: {},
 		requirementsSnapshot: procedure.documentSchema ?? {},
 		verifiedAt: now,
 		createdAt: now,

@@ -332,29 +332,25 @@ async function seedProcedureTypes() {
 				],
 			},
 			formSchema: {
-				sections: [
+				fields: [
 					{
-						title: "Datos del solicitante",
-						fields: [
-							{
-								key: "fullName",
-								label: "Nombre completo",
-								type: "text",
-								required: true,
-							},
-							{
-								key: "document",
-								label: "Número de documento",
-								type: "text",
-								required: true,
-							},
-							{
-								key: "licenseCategory",
-								label: "Categoría de licencia",
-								type: "select",
-								options: ["A1", "A2", "B1", "B2", "C1", "C2"],
-							},
-						],
+						id: "fullName",
+						label: "Nombre completo",
+						type: "text",
+						required: true,
+					},
+					{
+						id: "document",
+						label: "Número de documento",
+						type: "text",
+						required: true,
+					},
+					{
+						id: "licenseCategory",
+						label: "Categoría de licencia",
+						type: "select",
+						required: false,
+						options: ["A1", "A2", "B1", "B2", "C1", "C2"],
 					},
 				],
 			},
@@ -362,7 +358,6 @@ async function seedProcedureTypes() {
 				requirements: [
 					{
 						id: "licenciaAnterior",
-						key: "licenciaAnterior",
 						name: "Licencia anterior",
 						description:
 							"Presentar la licencia de conducción anterior en físico.",
@@ -371,7 +366,6 @@ async function seedProcedureTypes() {
 					},
 					{
 						id: "reciboPago",
-						key: "reciboPago",
 						name: "Recibo de pago",
 						description: "Comprobante de pago de los derechos del trámite.",
 						isRequired: true,
@@ -379,7 +373,6 @@ async function seedProcedureTypes() {
 					},
 					{
 						id: "certificadoMedico",
-						key: "certificadoMedico",
 						name: "Certificado médico",
 						description:
 							"Certificado de aptitud física, mental y de coordinación motriz expedido por CRC habilitado.",
@@ -414,57 +407,41 @@ async function seedProcedureTypes() {
 				],
 			},
 			formSchema: {
-				sections: [
+				fields: [
 					{
-						title: "Datos del vendedor",
-						fields: [
-							{
-								key: "sellerName",
-								label: "Nombre del vendedor",
-								type: "text",
-								required: true,
-							},
-							{
-								key: "sellerDocument",
-								label: "Documento del vendedor",
-								type: "text",
-								required: true,
-							},
-						],
+						id: "sellerName",
+						label: "Nombre del vendedor",
+						type: "text",
+						required: true,
 					},
 					{
-						title: "Datos del comprador",
-						fields: [
-							{
-								key: "buyerName",
-								label: "Nombre del comprador",
-								type: "text",
-								required: true,
-							},
-							{
-								key: "buyerDocument",
-								label: "Documento del comprador",
-								type: "text",
-								required: true,
-							},
-						],
+						id: "sellerDocument",
+						label: "Documento del vendedor",
+						type: "text",
+						required: true,
 					},
 					{
-						title: "Datos del vehículo",
-						fields: [
-							{ key: "plate", label: "Placa", type: "text", required: true },
-							{ key: "brand", label: "Marca", type: "text" },
-							{ key: "model", label: "Modelo", type: "text" },
-							{ key: "year", label: "Año", type: "number" },
-						],
+						id: "buyerName",
+						label: "Nombre del comprador",
+						type: "text",
+						required: true,
 					},
+					{
+						id: "buyerDocument",
+						label: "Documento del comprador",
+						type: "text",
+						required: true,
+					},
+					{ id: "plate", label: "Placa", type: "text", required: true },
+					{ id: "brand", label: "Marca", type: "text", required: false },
+					{ id: "model", label: "Modelo", type: "text", required: false },
+					{ id: "year", label: "Año", type: "number", required: false },
 				],
 			},
 			documentSchema: {
 				requirements: [
 					{
 						id: "tarjetaPropiedad",
-						key: "tarjetaPropiedad",
 						name: "Tarjeta de propiedad",
 						description: "Licencia de tránsito del vehículo original.",
 						isRequired: true,
@@ -472,7 +449,6 @@ async function seedProcedureTypes() {
 					},
 					{
 						id: "soat",
-						key: "soat",
 						name: "SOAT vigente",
 						description:
 							"Póliza de seguro obligatorio al día cargada en el RUNT.",
@@ -481,7 +457,6 @@ async function seedProcedureTypes() {
 					},
 					{
 						id: "formularioTraspaso",
-						key: "formularioTraspaso",
 						name: "Formulario de traspaso",
 						description:
 							"Formulario único nacional debidamente diligenciado con improntas adheridas.",
@@ -490,7 +465,6 @@ async function seedProcedureTypes() {
 					},
 					{
 						id: "cedulaVendedor",
-						key: "cedulaVendedor",
 						name: "Cédula del vendedor",
 						description:
 							"Fotocopia legible del documento de identidad del propietario actual.",
@@ -499,7 +473,6 @@ async function seedProcedureTypes() {
 					},
 					{
 						id: "cedulaComprador",
-						key: "cedulaComprador",
 						name: "Cédula del comprador",
 						description:
 							"Fotocopia legible del documento de identidad del comprador.",
@@ -518,7 +491,7 @@ async function seedProcedureTypes() {
 			slug: "matricula-vehiculo",
 			name: "Matrícula de Vehículo",
 			description: "Primera matrícula de vehículo nuevo o importado",
-			requiresVehicle: true,
+			requiresVehicle: false,
 			allowsPhysicalDocuments: true,
 			allowsDigitalDocuments: false,
 			instructions:
@@ -538,45 +511,39 @@ async function seedProcedureTypes() {
 				],
 			},
 			formSchema: {
-				sections: [
+				fields: [
 					{
-						title: "Información del vehículo",
-						fields: [
-							{
-								key: "vin",
-								label: "VIN / Chasis",
-								type: "text",
-								required: true,
-							},
-							{
-								key: "engineNumber",
-								label: "Número de motor",
-								type: "text",
-								required: true,
-							},
-							{ key: "brand", label: "Marca", type: "text", required: true },
-							{
-								key: "model",
-								label: "Línea / Modelo",
-								type: "text",
-								required: true,
-							},
-							{
-								key: "year",
-								label: "Año de fabricación",
-								type: "number",
-								required: true,
-							},
-							{ key: "color", label: "Color", type: "text" },
-						],
+						id: "vin",
+						label: "VIN / Chasis",
+						type: "text",
+						required: true,
 					},
+					{
+						id: "engineNumber",
+						label: "Número de motor",
+						type: "text",
+						required: true,
+					},
+					{ id: "brand", label: "Marca", type: "text", required: true },
+					{
+						id: "model",
+						label: "Línea / Modelo",
+						type: "text",
+						required: true,
+					},
+					{
+						id: "year",
+						label: "Año de fabricación",
+						type: "number",
+						required: true,
+					},
+					{ id: "color", label: "Color", type: "text", required: false },
 				],
 			},
 			documentSchema: {
 				requirements: [
 					{
 						id: "facturaCompra",
-						key: "facturaCompra",
 						name: "Factura de compra",
 						description:
 							"Factura comercial de compra emitida por concesionario o fabricante.",
@@ -585,7 +552,6 @@ async function seedProcedureTypes() {
 					},
 					{
 						id: "soat",
-						key: "soat",
 						name: "SOAT",
 						description:
 							"Seguro obligatorio de accidentes de tránsito vigente.",
@@ -594,7 +560,6 @@ async function seedProcedureTypes() {
 					},
 					{
 						id: "revisionTecnomecanica",
-						key: "revisionTecnomecanica",
 						name: "Revisión técnico-mecánica",
 						description:
 							"Certificado de revisión técnico-mecánica y de emisiones contaminantes si aplica.",
@@ -616,7 +581,46 @@ async function seedProcedureTypes() {
 			where: eq(procedureType.slug, proc.slug),
 		});
 		if (existing) {
-			console.log(`procedure already exists: ${proc.slug}`);
+			const configurationChanged =
+				existing.name !== proc.name ||
+				existing.description !== proc.description ||
+				existing.requiresVehicle !== proc.requiresVehicle ||
+				existing.allowsPhysicalDocuments !== proc.allowsPhysicalDocuments ||
+				existing.allowsDigitalDocuments !== proc.allowsDigitalDocuments ||
+				existing.instructions !== proc.instructions ||
+				JSON.stringify(existing.eligibilitySchema) !==
+					JSON.stringify(proc.eligibilitySchema) ||
+				JSON.stringify(existing.formSchema) !==
+					JSON.stringify(proc.formSchema) ||
+				JSON.stringify(existing.documentSchema) !==
+					JSON.stringify(proc.documentSchema) ||
+				JSON.stringify(existing.policySchema) !==
+					JSON.stringify(proc.policySchema);
+
+			if (!configurationChanged) {
+				console.log(`procedure already up to date: ${proc.slug}`);
+				continue;
+			}
+
+			await db
+				.update(procedureType)
+				.set({
+					name: proc.name,
+					description: proc.description,
+					isActive: true,
+					configVersion: existing.configVersion + 1,
+					requiresVehicle: proc.requiresVehicle,
+					allowsPhysicalDocuments: proc.allowsPhysicalDocuments,
+					allowsDigitalDocuments: proc.allowsDigitalDocuments,
+					instructions: proc.instructions,
+					eligibilitySchema: proc.eligibilitySchema,
+					formSchema: proc.formSchema,
+					documentSchema: proc.documentSchema,
+					policySchema: proc.policySchema,
+					updatedAt: new Date(),
+				})
+				.where(eq(procedureType.id, existing.id));
+			console.log(`procedure updated: ${proc.slug}`);
 			continue;
 		}
 
@@ -746,7 +750,7 @@ async function seedAppointmentSlots(days = 14) {
 		const template = await db.query.scheduleTemplate.findFirst({
 			where: eq(scheduleTemplate.weekday, weekday),
 		});
-		if (!template || !template.isEnabled) continue;
+		if (!template?.isEnabled) continue;
 
 		const periods: Array<{ start: string; end: string }> = [];
 		if (template.morningStart && template.morningEnd) {

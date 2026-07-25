@@ -6,6 +6,7 @@ import {
 	listCitizenProcedures,
 	listCitizenSlotsRange,
 } from "../../features/citizen/citizen-portal.service";
+import { validateVehiclePlate } from "../../features/citizen/vehicle-plate.service";
 import {
 	extractClientInfo,
 	requireAuthenticatedSession,
@@ -17,6 +18,12 @@ export function createCitizenRouter() {
 		procedures: {
 			list: rpc.handler(async () => {
 				return listCitizenProcedures();
+			}),
+		},
+		vehicles: {
+			validatePlate: rpc.handler(({ input }) => {
+				const payload = input as { plate?: string };
+				return validateVehiclePlate(payload?.plate ?? "");
 			}),
 		},
 		slots: {
