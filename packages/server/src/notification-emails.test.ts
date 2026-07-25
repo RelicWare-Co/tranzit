@@ -134,7 +134,16 @@ async function setupTestData() {
 		},
 	};
 
-	return { bookingId, procedureName, appointmentDate, appointmentTime, staffName, citizenName, citizenEmail, context };
+	return {
+		bookingId,
+		procedureName,
+		appointmentDate,
+		appointmentTime,
+		staffName,
+		citizenName,
+		citizenEmail,
+		context,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +196,8 @@ describe("Notification Email System", () => {
 		});
 
 		test("VAL-NOTIF-005: confirmation email contains booking details", async () => {
-			const { bookingId, citizenEmail, context, procedureName, staffName } = await setupTestData();
+			const { bookingId, citizenEmail, context, procedureName, staffName } =
+				await setupTestData();
 
 			await sendBookingConfirmationEmail({
 				bookingId,
@@ -339,7 +349,9 @@ describe("Notification Email System", () => {
 			});
 
 			for (const notification of notifications) {
-				expect(["pending", "sent", "failed"].includes(notification.status)).toBe(true);
+				expect(
+					["pending", "sent", "failed"].includes(notification.status),
+				).toBe(true);
 			}
 
 			const sentNotification = notifications.find(
@@ -354,9 +366,21 @@ describe("Notification Email System", () => {
 			const { bookingId, citizenEmail, context } = await setupTestData();
 
 			// Simulate all three notification types
-			await sendBookingConfirmationEmail({ bookingId, recipient: citizenEmail, context });
-			await sendBookingCancellationEmail({ bookingId, recipient: citizenEmail, context });
-			await sendHoldExpirationEmail({ bookingId, recipient: citizenEmail, context });
+			await sendBookingConfirmationEmail({
+				bookingId,
+				recipient: citizenEmail,
+				context,
+			});
+			await sendBookingCancellationEmail({
+				bookingId,
+				recipient: citizenEmail,
+				context,
+			});
+			await sendHoldExpirationEmail({
+				bookingId,
+				recipient: citizenEmail,
+				context,
+			});
 
 			// Verify all notification records exist
 			const notifications = await db.query.notificationDelivery.findMany({

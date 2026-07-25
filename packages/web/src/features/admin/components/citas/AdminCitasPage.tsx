@@ -47,7 +47,9 @@ export function AdminCitasPage() {
 
 			setBookings(data as BookingWithRelations[]);
 
-			const scheduleEvents: ScheduleEventData[] = (data as BookingWithRelations[])
+			const scheduleEvents: ScheduleEventData[] = (
+				data as BookingWithRelations[]
+			)
 				.filter((booking) => booking.isActive)
 				.flatMap((booking) => {
 					if (!booking.slot) return [];

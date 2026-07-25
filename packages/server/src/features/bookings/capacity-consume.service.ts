@@ -1,9 +1,6 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
-import {
-	buildBookingSummary,
-	createAuditEvent,
-} from "../audit/audit.service";
+import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import type {
 	CapacityConflict,
 	CapacityMutationResult,

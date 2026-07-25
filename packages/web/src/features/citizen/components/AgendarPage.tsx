@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronRight, Clock, FileText, Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "#/features/auth/components/AuthContext";
+import type { VehiclePlateValidation } from "#/features/citizen/lib/vehicle-plate";
+import { validateVehiclePlate } from "#/features/citizen/lib/vehicle-plate";
 import {
 	Alert,
 	Badge,
@@ -11,12 +14,8 @@ import {
 	CardContent,
 	Input,
 } from "#/shared/components/ui";
-import { useAuth } from "#/features/auth/components/AuthContext";
-import { validateVehiclePlate } from "#/features/citizen/lib/vehicle-plate";
-import type { VehiclePlateValidation } from "#/features/citizen/lib/vehicle-plate";
 import { orpcClient } from "#/shared/lib/orpc-client";
 import classes from "./agendar.module.css";
-
 
 type CitizenProcedure = Awaited<
 	ReturnType<typeof orpcClient.citizen.procedures.list>
@@ -127,31 +126,53 @@ function getProcedureRequirements(procedure: CitizenProcedure | null) {
 	const rawSchema = procedure.documentSchema;
 	if (!rawSchema || typeof rawSchema !== "object") return [];
 
-	const requirements = (rawSchema as { requirements?: unknown }).requirements;
+	const rawObj = rawSchema as Record<string, unknown>;
+	const requirements = Array.isArray(rawObj.requirements)
+		? rawObj.requirements
+		: Array.isArray(rawObj.required)
+			? rawObj.required
+			: [];
+
 	if (!Array.isArray(requirements)) return [];
 
 	return requirements
 		.map((rawRequirement, index): ProcedureRequirement | null => {
 			if (!rawRequirement || typeof rawRequirement !== "object") return null;
 			const req = rawRequirement as Record<string, unknown>;
+
+			const keyCandidates = [req.key, req.id, req.slug];
+			const keyStr = keyCandidates.find(
+				(c) => typeof c === "string" && c.trim().length > 0,
+			);
 			const key =
 				typeof req.key === "string" && req.key.trim().length > 0
 					? req.key.trim()
 					: typeof req.id === "string" && req.id.trim().length > 0
 						? req.id.trim()
 						: `requirement-${index + 1}`;
-			// El admin guarda el nombre como `name`; el seed usa `label`.
-			const labelCandidate =
-				(typeof req.label === "string" && req.label.trim()) ||
-				(typeof req.name === "string" && req.name.trim()) ||
-				"";
-			const label = labelCandidate.length > 0 ? labelCandidate : `Requisito ${index + 1}`;
-			// El admin guarda el detalle como `description`; algunas fuentes usan `instructions`.
-			const descriptionCandidate =
-				(typeof req.instructions === "string" && req.instructions.trim()) ||
-				(typeof req.description === "string" && req.description.trim()) ||
-				null;
-			const instructions = descriptionCandidate?.length ? descriptionCandidate : null;
+			
+				typeof keyStr === "string" ? keyStr.trim() : `requirement-${index + 1}`;
+
+			const labelCandidates = [req.name, req.label, req.title];
+			const labelStr = labelCandidates.find(
+				(c) => typeof c === "string" && c.trim().length > 0,
+			);
+			const label =
+				typeof labelStr === "string"
+					? labelStr.trim()
+					: `Requisito ${index + 1}`;
+
+			const instructionCandidates = [
+				req.description,
+				req.instructions,
+				req.details,
+			];
+			const instructionStr = instructionCandidates.find(
+				(c) => typeof c === "string" && c.trim().length > 0,
+			);
+			const instructions =
+				typeof instructionStr === "string" ? instructionStr.trim() : null;
+
 			const downloadUrlCandidates = [
 				req.downloadUrl,
 				req.download_url,
@@ -827,6 +848,16 @@ function AgendarPage() {
 		selectedProcedure && (
 			<div className={classes.stepContent}>
 				<h2 className={classes.stepHeading}>Requisitos del trámite</h2>
+
+				{selectedProcedure.instructions && (
+					<Alert
+						variant="info"
+						title="Indicaciones generales"
+						className={classes.alertContainer}
+					>
+						{selectedProcedure.instructions}
+					</Alert>
+				)}
 
 				<Card variant="inset" padding="lg" className={classes.requirementsCard}>
 					{typeof selectedProcedure.instructions === "string" &&

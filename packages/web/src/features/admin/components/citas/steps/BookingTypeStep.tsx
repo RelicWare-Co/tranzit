@@ -1,6 +1,6 @@
+import type { UseFormReturnType } from "@mantine/form";
 import { CheckCircle2, FileText, User } from "lucide-react";
 import { cx } from "#/shared/lib/cx";
-import type { UseFormReturnType } from "@mantine/form";
 import type { BookingKind } from "../types";
 
 interface BookingTypeStepProps {
@@ -46,9 +46,7 @@ export function BookingTypeStep({
 					{isCompleted ? <CheckCircle2 size={16} /> : "1"}
 				</div>
 				<div>
-					<div className="font-medium text-sm text-zinc-900">
-						Tipo de cita
-					</div>
+					<div className="font-medium text-sm text-zinc-900">Tipo de cita</div>
 					<div className="text-xs text-zinc-500">
 						Selecciona el tipo de agendamiento
 					</div>
@@ -94,9 +92,7 @@ export function BookingTypeStep({
 							<User size={20} className="text-zinc-600" />
 						</div>
 						<span className="font-medium text-sm">Ciudadano</span>
-						<span className="text-xs text-zinc-500">
-							Atención al público
-						</span>
+						<span className="text-xs text-zinc-500">Atención al público</span>
 					</button>
 				</div>
 			)}

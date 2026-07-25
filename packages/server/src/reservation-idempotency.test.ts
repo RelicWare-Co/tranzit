@@ -18,7 +18,7 @@
  *
  * Run with: cd server && bun test src/reservation-idempotency.test.ts
  *
- * These tests use the production database (sqlite.db) with unique test data.
+ * These tests use the isolated test database (sqlite.test.db).
  * Each test uses unique identifiers to avoid conflicts.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -32,7 +32,10 @@ import { cors } from "hono/cors";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { checkCapacity } from "./features/bookings/capacity-check.service";
-import { consumeCapacity, releaseCapacity } from "./features/bookings/capacity-consume.service";
+import {
+	consumeCapacity,
+	releaseCapacity,
+} from "./features/bookings/capacity-consume.service";
 import { db, schema } from "./lib/db";
 
 // ---------------------------------------------------------------------------

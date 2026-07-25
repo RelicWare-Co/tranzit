@@ -12,8 +12,12 @@ import {
 	updateReservationSeries,
 	updateReservationSeriesFromDate,
 } from "../../features/reservations/reservation-series-update.service";
+import {
+	extractClientInfo,
+	parseIfMatch,
+	requireAdminAccess,
+} from "../../shared/orpc";
 import { rpc } from "../../shared/orpc/context";
-import { extractClientInfo, parseIfMatch, requireAdminAccess } from "../../shared/orpc";
 
 export function createReservationSeriesRouter() {
 	return {

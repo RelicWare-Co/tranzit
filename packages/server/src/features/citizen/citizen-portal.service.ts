@@ -3,13 +3,13 @@ import { log } from "evlog";
 import { z } from "zod";
 import { db, schema } from "../../lib/db";
 import { throwCapacityConflict, throwRpcError } from "../../shared/orpc";
-import { createAuditEvent, buildBookingSummary } from "../audit/audit.service";
+import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import {
 	confirmExistingBooking,
 	createBooking,
 } from "../bookings/bookings-mutations.service";
-import { releaseCapacity } from "../bookings/capacity-consume.service";
 import { checkCapacity } from "../bookings/capacity-check.service";
+import { releaseCapacity } from "../bookings/capacity-consume.service";
 import {
 	sendBookingCancellationEmail,
 	sendBookingConfirmationEmail,

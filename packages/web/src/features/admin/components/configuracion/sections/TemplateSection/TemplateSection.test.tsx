@@ -2,8 +2,8 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ScheduleTemplate } from "#/features/admin/components/hooks/useConfigSnapshot";
-import { TemplateSection } from "./index";
 import { renderWithProviders } from "#/test/render";
+import { TemplateSection } from "./index";
 
 vi.mock("#/features/admin/components/hooks/useConfigMutations", () => ({
 	useConfigMutations: () => ({

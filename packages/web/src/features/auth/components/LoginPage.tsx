@@ -1,12 +1,12 @@
 import { PinInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Mail, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Input } from "#/shared/components/ui";
 import { useAuth } from "#/features/auth/components/AuthContext";
-
+import { Alert, Button, Card, Input } from "#/shared/components/ui";
+import { orpc } from "#/shared/lib/orpc-client";
 
 type OtpStep = "email" | "verify";
 
@@ -29,9 +29,12 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 function LoginPage() {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const {
 		sendVerificationOtp,
 		signInEmailOtp,
+		refreshUser,
+		hasRole,
 		isAuthenticated,
 		isLoading: authLoading,
 	} = useAuth();
@@ -40,6 +43,34 @@ function LoginPage() {
 	const [otpCode, setOtpCode] = useState("");
 	const [feedback, setFeedback] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
+	const hasBackofficeAccess =
+		hasRole("admin") || hasRole("staff") || hasRole("auditor");
+	const shouldFetchOnboarding =
+		!authLoading && isAuthenticated && !hasBackofficeAccess;
+	const onboardingStatusQueryOptions =
+		orpc.admin.onboarding.status.queryOptions({
+			enabled: shouldFetchOnboarding,
+			retry: false,
+		});
+	const onboardingStatusQuery = useQuery(onboardingStatusQueryOptions);
+	const onboardingMutation = useMutation(
+		orpc.admin.onboarding.bootstrap.mutationOptions(),
+	);
+	const showOnboarding =
+		isAuthenticated &&
+		!hasBackofficeAccess &&
+		onboardingStatusQuery.data?.adminExists === false;
+	const isCheckingOnboarding =
+		isAuthenticated && !hasBackofficeAccess && onboardingStatusQuery.isLoading;
+	const hasOnboardingStatusError =
+		isAuthenticated && !hasBackofficeAccess && onboardingStatusQuery.isError;
+	const isRedirectingAuthenticatedSession =
+		!authLoading &&
+		isAuthenticated &&
+		(isCompletingOnboarding ||
+			hasBackofficeAccess ||
+			onboardingStatusQuery.data?.adminExists === true);
 
 	const form = useForm({
 		initialValues: {
@@ -86,7 +117,6 @@ function LoginPage() {
 		onSuccess: () => {
 			setError(null);
 			setFeedback(null);
-			navigate({ to: "/mi-perfil" });
 		},
 		onError: (mutationError) => {
 			setError(
@@ -100,20 +130,34 @@ function LoginPage() {
 	});
 
 	useEffect(() => {
-		if (!authLoading && isAuthenticated) {
-			navigate({ to: "/mi-perfil" });
-		}
-	}, [authLoading, isAuthenticated, navigate]);
+		if (authLoading || !isAuthenticated || isCompletingOnboarding) return;
 
-	const handleSendOtp = form.onSubmit(async (values) => {
+		if (hasBackofficeAccess) {
+			navigate({ to: "/admin", replace: true });
+			return;
+		}
+
+		if (onboardingStatusQuery.data?.adminExists === true) {
+			navigate({ to: "/mi-perfil", replace: true });
+		}
+	}, [
+		authLoading,
+		hasBackofficeAccess,
+		isAuthenticated,
+		isCompletingOnboarding,
+		navigate,
+		onboardingStatusQuery.data?.adminExists,
+	]);
+
+	const handleSendOtp = form.onSubmit((values) => {
 		setError(null);
 		setFeedback(null);
-		await sendOtpMutation.mutateAsync({
+		sendOtpMutation.mutate({
 			email: values.email.trim().toLowerCase(),
 		});
 	});
 
-	const handleVerifyOtp = async () => {
+	const handleVerifyOtp = () => {
 		if (otpCode.length !== 6) {
 			setError("El código OTP debe tener 6 dígitos.");
 			return;
@@ -121,12 +165,41 @@ function LoginPage() {
 
 		setError(null);
 		setFeedback(null);
-		await verifyOtpMutation.mutateAsync({
+		verifyOtpMutation.mutate({
 			email: sentEmail,
 			otp: otpCode,
 			name: form.values.name.trim() || undefined,
 		});
 	};
+
+	const handleOnboard = async () => {
+		setError(null);
+		setIsCompletingOnboarding(true);
+
+		try {
+			await onboardingMutation.mutateAsync(undefined);
+			queryClient.setQueryData(onboardingStatusQueryOptions.queryKey, {
+				adminExists: true,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: onboardingStatusQueryOptions.queryKey,
+				exact: true,
+				refetchType: "none",
+			});
+			await refreshUser();
+			navigate({ to: "/admin", replace: true });
+		} catch (onboardingError) {
+			setIsCompletingOnboarding(false);
+			setError(
+				getErrorMessage(
+					onboardingError,
+					"No se pudo activar la cuenta administradora. Intenta de nuevo.",
+				),
+			);
+		}
+	};
+
+	if (authLoading || isRedirectingAuthenticatedSession) return null;
 
 	return (
 		<div
@@ -135,7 +208,8 @@ function LoginPage() {
 				display: "flex",
 				alignItems: "center",
 				justifyContent: "center",
-				padding: "var(--space-6)",
+				padding:
+					"calc(var(--space-20) + var(--space-4)) var(--space-6) var(--space-8)",
 				background: `linear-gradient(135deg, var(--bg-primary) 0%, var(--brand-50) 50%, var(--bg-secondary) 100%)`,
 			}}
 		>
@@ -156,7 +230,11 @@ function LoginPage() {
 								boxShadow: "var(--shadow-md)",
 							}}
 						>
-							<Mail size={28} color="white" />
+							{showOnboarding ? (
+								<ShieldCheck size={28} color="white" />
+							) : (
+								<Mail size={28} color="white" />
+							)}
 						</div>
 						<h1
 							style={{
@@ -167,7 +245,7 @@ function LoginPage() {
 								marginBottom: "var(--space-2)",
 							}}
 						>
-							Bienvenido
+							{showOnboarding ? "Configurar administrador" : "Bienvenido"}
 						</h1>
 						<p
 							style={{
@@ -176,9 +254,13 @@ function LoginPage() {
 								margin: 0,
 							}}
 						>
-							{step === "email"
-								? "Ingresa tu correo para acceder al portal ciudadano"
-								: `Ingresa el código enviado a ${sentEmail}`}
+							{showOnboarding
+								? "No hay administradores. Activa tu cuenta como administrador principal."
+								: isAuthenticated
+									? "Estamos preparando tu acceso."
+									: step === "email"
+										? "Ingresa tu correo para acceder a SIMUT"
+										: `Ingresa el código enviado a ${sentEmail}`}
 						</p>
 					</div>
 
@@ -202,7 +284,67 @@ function LoginPage() {
 						</div>
 					)}
 
-					{step === "email" ? (
+					{isCheckingOnboarding && (
+						<div style={{ marginBottom: "var(--space-6)" }}>
+							<Alert variant="info" title="Verificando acceso">
+								Estamos comprobando la configuración administrativa.
+							</Alert>
+						</div>
+					)}
+
+					{hasOnboardingStatusError && (
+						<div style={{ marginBottom: "var(--space-6)" }}>
+							<Alert variant="error" title="No pudimos verificar el acceso">
+								<div
+									style={{
+										display: "flex",
+										flexDirection: "column",
+										gap: "var(--space-3)",
+									}}
+								>
+									<span>
+										Intenta consultar nuevamente el estado del sistema.
+									</span>
+									<Button
+										variant="secondary"
+										size="sm"
+										onClick={() => {
+											void onboardingStatusQuery.refetch();
+										}}
+									>
+										Reintentar
+									</Button>
+								</div>
+							</Alert>
+						</div>
+					)}
+
+					{showOnboarding ? (
+						<div
+							style={{
+								display: "flex",
+								flexDirection: "column",
+								gap: "var(--space-5)",
+							}}
+						>
+							<Alert variant="success" title="Primer administrador">
+								Tu identidad ya fue verificada por OTP. Puedes activar esta
+								cuenta como administradora principal del sistema.
+							</Alert>
+							<Button
+								variant="primary"
+								size="lg"
+								leftIcon={<ShieldCheck size={18} />}
+								onClick={() => {
+									void handleOnboard();
+								}}
+								isLoading={onboardingMutation.isPending}
+								fullWidth
+							>
+								Activar como administrador
+							</Button>
+						</div>
+					) : isAuthenticated ? null : step === "email" ? (
 						<form onSubmit={handleSendOtp}>
 							<div
 								style={{
@@ -296,7 +438,7 @@ function LoginPage() {
 									onClick={() => {
 										setError(null);
 										setFeedback(null);
-										void sendOtpMutation.mutateAsync({ email: sentEmail });
+										sendOtpMutation.mutate({ email: sentEmail });
 									}}
 									isLoading={sendOtpMutation.isPending}
 									fullWidth
@@ -308,9 +450,7 @@ function LoginPage() {
 							<Button
 								variant="primary"
 								size="lg"
-								onClick={() => {
-									void handleVerifyOtp();
-								}}
+								onClick={handleVerifyOtp}
 								disabled={otpCode.length !== 6}
 								isLoading={verifyOtpMutation.isPending}
 								fullWidth

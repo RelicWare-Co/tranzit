@@ -23,6 +23,7 @@ tsconfig.tsbuildinfo
 
 # Local databases
 packages/server/sqlite.db
+packages/server/sqlite.test.db*
 *.db-shm
 *.db-wal
 .soulforge

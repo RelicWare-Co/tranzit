@@ -362,16 +362,16 @@ describe("Staff API Auth Guards", () => {
 	});
 
 	/** Create a user via OTP and sign in, returning the session cookie. */
-	async function signInUser(
-		email: string,
-		_isAdmin = false,
-	): Promise<string> {
+	async function signInUser(email: string, _isAdmin = false): Promise<string> {
 		// Send OTP (creates user if not exists)
-		const sendOtpReq = makeRequest("/api/auth/email-otp/send-verification-otp", {
-			method: "POST",
-			body: { email, type: "sign-in" },
-			headers: { Origin: "http://localhost:3000" },
-		});
+		const sendOtpReq = makeRequest(
+			"/api/auth/email-otp/send-verification-otp",
+			{
+				method: "POST",
+				body: { email, type: "sign-in" },
+				headers: { Origin: "http://localhost:3000" },
+			},
+		);
 		await app.fetch(sendOtpReq);
 
 		const otp = otpStore["sign-in"][email];

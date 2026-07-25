@@ -1,5 +1,4 @@
-import { Badge, Code, Stack } from "@mantine/core";
-import { rem } from "@mantine/core";
+import { Badge, Code, rem, Stack } from "@mantine/core";
 
 interface ActorBadgeProps {
 	actorType: string;

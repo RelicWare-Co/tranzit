@@ -2,7 +2,10 @@ import type { MiddlewareHandler } from "hono";
 import { auth } from "../features/auth/auth.config";
 import type { AppVariables } from "../shared/types/app-context";
 
-export const sessionMiddleware: MiddlewareHandler<AppVariables> = async (c, next) => {
+export const sessionMiddleware: MiddlewareHandler<AppVariables> = async (
+	c,
+	next,
+) => {
 	const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
 	if (!session) {

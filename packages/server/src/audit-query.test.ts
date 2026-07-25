@@ -17,8 +17,8 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import {
-	listAuditEvents,
 	getAuditEvent,
+	listAuditEvents,
 } from "./features/audit/audit-query.service";
 import { db, schema } from "./lib/db";
 import { createTranzitRpcRouter } from "./shared/orpc/router";
@@ -525,9 +525,7 @@ describe("Audit Query API", () => {
 		});
 
 		test("throws 404 for non-existent ID", async () => {
-			await expect(
-				getAuditEvent("non-existent-id"),
-			).rejects.toThrow();
+			await expect(getAuditEvent("non-existent-id")).rejects.toThrow();
 		});
 	});
 

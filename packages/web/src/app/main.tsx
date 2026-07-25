@@ -1,7 +1,13 @@
 import "@fontsource/geist-sans";
 import "@fontsource/public-sans";
 import "@fontsource/sora";
-import { Badge, createTheme, MantineProvider, Modal, Table } from "@mantine/core";
+import {
+	Badge,
+	createTheme,
+	MantineProvider,
+	Modal,
+	Table,
+} from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";

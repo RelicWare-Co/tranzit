@@ -11,12 +11,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { BarChart3, Calendar, ClipboardList, Users } from "lucide-react";
-import { useAuth } from "#/features/auth/components/AuthContext";
-import { orpcClient } from "#/shared/lib/orpc-client";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { formatDateLocal } from "#/features/admin/components/dates";
-
+import { useAuth } from "#/features/auth/components/AuthContext";
+import { orpcClient } from "#/shared/lib/orpc-client";
 
 type KpiData = {
 	label: string;
@@ -338,11 +337,7 @@ function RecentAppointments() {
 									>
 										{time}
 									</Text>
-									<Badge
-										color={statusInfo.color}
-										variant="light"
-										size="sm"
-									>
+									<Badge color={statusInfo.color} variant="light" size="sm">
 										{statusInfo.label}
 									</Badge>
 								</Group>

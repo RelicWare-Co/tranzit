@@ -9,10 +9,11 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-
+import {
+	confirmBooking,
+	consumeCapacity,
+} from "./features/bookings/capacity-consume.service";
 import { db, schema } from "./lib/db";
-import { confirmBooking } from "./features/bookings/capacity-consume.service";
-import { consumeCapacity } from "./features/bookings/capacity-consume.service";
 
 // ---------------------------------------------------------------------------
 // Test Helpers
@@ -100,7 +101,10 @@ const createTestProcedure = async () => {
 	return id;
 };
 
-const createTestServiceRequest = async (citizenUserId: string, procedureTypeId: string) => {
+const createTestServiceRequest = async (
+	citizenUserId: string,
+	procedureTypeId: string,
+) => {
 	const id = randomUUID();
 	await db.insert(schema.serviceRequest).values({
 		id,
@@ -128,7 +132,12 @@ const cleanupTestData = async (
 		await db
 			.update(schema.serviceRequest)
 			.set({ activeBookingId: null })
-			.where(eq(schema.serviceRequest.activeBookingId, schema.serviceRequest.activeBookingId));
+			.where(
+				eq(
+					schema.serviceRequest.activeBookingId,
+					schema.serviceRequest.activeBookingId,
+				),
+			);
 	} catch {
 		// Ignore
 	}
@@ -154,7 +163,9 @@ const cleanupTestData = async (
 
 	for (const slotId of slotIds) {
 		try {
-			await db.delete(schema.appointmentSlot).where(eq(schema.appointmentSlot.id, slotId));
+			await db
+				.delete(schema.appointmentSlot)
+				.where(eq(schema.appointmentSlot.id, slotId));
 		} catch {
 			// Ignore
 		}
@@ -162,7 +173,9 @@ const cleanupTestData = async (
 
 	for (const userId of userIds) {
 		try {
-			await db.delete(schema.staffProfile).where(eq(schema.staffProfile.userId, userId));
+			await db
+				.delete(schema.staffProfile)
+				.where(eq(schema.staffProfile.userId, userId));
 		} catch {
 			// Ignore
 		}
@@ -212,7 +225,10 @@ describe("VAL-AUDIT-002: Booking confirmation creates audit event", () => {
 			slotIds.push(slotId);
 
 			const procedureId = await createTestProcedure();
-			const serviceRequestId = await createTestServiceRequest(citizenUser.id, procedureId);
+			const serviceRequestId = await createTestServiceRequest(
+				citizenUser.id,
+				procedureId,
+			);
 
 			// Create a held booking using consumeCapacity
 			const consumeResult = await consumeCapacity(
@@ -274,7 +290,10 @@ describe("VAL-AUDIT-002: Booking confirmation creates audit event", () => {
 			slotIds.push(slotId);
 
 			const procedureId = await createTestProcedure();
-			const serviceRequestId = await createTestServiceRequest(citizenUser.id, procedureId);
+			const serviceRequestId = await createTestServiceRequest(
+				citizenUser.id,
+				procedureId,
+			);
 
 			const consumeResult = await consumeCapacity(
 				slotId,
@@ -324,7 +343,10 @@ describe("VAL-AUDIT-002: Booking confirmation creates audit event", () => {
 			slotIds.push(slotId);
 
 			const procedureId = await createTestProcedure();
-			const serviceRequestId = await createTestServiceRequest(citizenUser.id, procedureId);
+			const serviceRequestId = await createTestServiceRequest(
+				citizenUser.id,
+				procedureId,
+			);
 
 			const consumeResult = await consumeCapacity(
 				slotId,
@@ -372,7 +394,10 @@ describe("VAL-AUDIT-002: Booking confirmation creates audit event", () => {
 			slotIds.push(slotId);
 
 			const procedureId = await createTestProcedure();
-			const serviceRequestId = await createTestServiceRequest(citizenUser.id, procedureId);
+			const serviceRequestId = await createTestServiceRequest(
+				citizenUser.id,
+				procedureId,
+			);
 
 			const consumeResult = await consumeCapacity(
 				slotId,

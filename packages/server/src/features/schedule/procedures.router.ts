@@ -4,12 +4,12 @@ import {
 	createAuditEvent,
 } from "../../features/audit/audit.service";
 import { db, schema } from "../../lib/db";
-import { rpc } from "../../shared/orpc/context";
 import {
 	extractClientInfo,
 	requireAdminAccess,
 	throwRpcError,
 } from "../../shared/orpc";
+import { rpc } from "../../shared/orpc/context";
 
 // Input validation helpers
 function generateId(): string {

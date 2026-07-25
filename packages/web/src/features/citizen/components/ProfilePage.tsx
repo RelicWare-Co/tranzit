@@ -21,7 +21,6 @@ import { useEffect, useMemo } from "react";
 import { useAuth } from "#/features/auth/components/AuthContext";
 import { orpcClient } from "#/shared/lib/orpc-client";
 
-
 type CitizenBookingSummary = Awaited<
 	ReturnType<typeof orpcClient.citizen.bookings.mine>
 >[number];
@@ -136,7 +135,7 @@ function ProfilePage() {
 
 	if (authLoading || !isAuthenticated || !user) {
 		return (
-			<Box py={80}>
+			<Box pt={120} pb={80}>
 				<Container size="sm">
 					<Group justify="center" gap="sm">
 						<Loader size="sm" />
@@ -150,7 +149,7 @@ function ProfilePage() {
 	}
 
 	return (
-		<Box py={72}>
+		<Box pt={120} pb={72}>
 			<Container size="lg">
 				<Stack gap="lg">
 					<Card withBorder radius="md" p="xl">

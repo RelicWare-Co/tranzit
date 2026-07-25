@@ -1,8 +1,8 @@
 import { Select } from "@mantine/core";
-import { CheckCircle2, MapPin } from "lucide-react";
-import { cx } from "#/shared/lib/cx";
-import { FormField } from "#/features/admin/components";
 import type { UseFormReturnType } from "@mantine/form";
+import { CheckCircle2, MapPin } from "lucide-react";
+import { FormField } from "#/features/admin/components";
+import { cx } from "#/shared/lib/cx";
 import type { BookingKind } from "../types";
 
 interface StaffStepProps {
@@ -56,9 +56,7 @@ export function StaffStep({
 					{isCompleted ? <CheckCircle2 size={16} /> : "4"}
 				</div>
 				<div>
-					<div className="font-medium text-sm text-zinc-900">
-						Funcionario
-					</div>
+					<div className="font-medium text-sm text-zinc-900">Funcionario</div>
 					<div className="text-xs text-zinc-500">
 						Asigna un encargado para la cita
 					</div>
@@ -80,9 +78,7 @@ export function StaffStep({
 						nothingFoundMessage="No se encontraron funcionarios"
 						radius="lg"
 						size="md"
-						leftSection={
-							<MapPin size={16} className="text-zinc-400" />
-						}
+						leftSection={<MapPin size={16} className="text-zinc-400" />}
 						className={cx(
 							"transition-all duration-200",
 							value && "border-emerald-500/50",
@@ -94,9 +90,7 @@ export function StaffStep({
 			{!isCurrent && isCompleted && (
 				<div className="mt-2 flex items-center gap-2">
 					<span className="text-sm text-zinc-600">
-						{
-							staffOptions.find((s) => s.value === value)?.label
-						}
+						{staffOptions.find((s) => s.value === value)?.label}
 					</span>
 					<button
 						type="button"

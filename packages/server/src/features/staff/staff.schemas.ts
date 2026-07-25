@@ -101,12 +101,16 @@ export const validateWeeklyAvailability = (
 	const result = weeklyAvailabilitySchema.safeParse(wa);
 	if (!result.success) {
 		const firstIssue = result.error.issues[0];
-		const path = firstIssue.path.length > 0 ? `.${firstIssue.path.join(".")}` : "";
-		return { valid: false, error: `weeklyAvailability${path}: ${firstIssue.message}` };
+		const path =
+			firstIssue.path.length > 0 ? `.${firstIssue.path.join(".")}` : "";
+		return {
+			valid: false,
+			error: `weeklyAvailability${path}: ${firstIssue.message}`,
+		};
 	}
 
 	return { valid: true, parsed: result.data };
 };
 
 // Export schemas for reuse
-export { weeklyAvailabilitySchema, dayConfigSchema, timeFieldSchema };
+export { dayConfigSchema, timeFieldSchema, weeklyAvailabilitySchema };

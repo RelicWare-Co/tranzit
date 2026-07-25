@@ -96,18 +96,30 @@ export const bookingConfirmationTemplate: EmailTemplate = {
 								<div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Funcionario</div>
 								<div style="font-size: 14px;">${ctx.staffName ?? "Por asignar"}</div>
 							</div>
-							${ctx.serviceRequest?.applicantName ? `<div>
+							${
+								ctx.serviceRequest?.applicantName
+									? `<div>
 								<div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Solicitante</div>
 								<div style="font-size: 14px;">${ctx.serviceRequest.applicantName}</div>
-							</div>` : ""}
-							${ctx.serviceRequest?.applicantDocument ? `<div>
+							</div>`
+									: ""
+							}
+							${
+								ctx.serviceRequest?.applicantDocument
+									? `<div>
 								<div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Documento</div>
 								<div style="font-size: 14px;">${ctx.serviceRequest.applicantDocument}</div>
-							</div>` : ""}
-							${ctx.serviceRequest?.plate ? `<div>
+							</div>`
+									: ""
+							}
+							${
+								ctx.serviceRequest?.plate
+									? `<div>
 								<div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Placa</div>
 								<div style="font-size: 14px;">${ctx.serviceRequest.plate}</div>
-							</div>` : ""}
+							</div>`
+									: ""
+							}
 						</div>
 					</div>
 
@@ -117,9 +129,13 @@ export const bookingConfirmationTemplate: EmailTemplate = {
 						</p>
 					</div>
 
-					${ctx.bookingId ? `<div style="text-align: center; margin-top: 16px;">
+					${
+						ctx.bookingId
+							? `<div style="text-align: center; margin-top: 16px;">
 						<div style="font-size: 12px; color: #9ca3af;">ID de reserva: ${ctx.bookingId}</div>
-					</div>` : ""}
+					</div>`
+							: ""
+					}
 				</div>
 			</div>
 		`;
@@ -146,7 +162,9 @@ export const bookingCancellationTemplate: EmailTemplate = {
 		}
 
 		lines.push(``);
-		lines.push(`Si tiene preguntas, puede agendar una nueva cita en nuestro portal.`);
+		lines.push(
+			`Si tiene preguntas, puede agendar una nueva cita en nuestro portal.`,
+		);
 
 		return lines.join("\n");
 	},
@@ -166,10 +184,14 @@ export const bookingCancellationTemplate: EmailTemplate = {
 								<div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Fecha y Hora (Cancelada)</div>
 								<div style="font-size: 16px; font-weight: 600; text-decoration: line-through; color: #9ca3af;">${dateTime}</div>
 							</div>
-							${ctx.serviceRequest?.applicantName ? `<div>
+							${
+								ctx.serviceRequest?.applicantName
+									? `<div>
 								<div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Solicitante</div>
 								<div style="font-size: 14px;">${ctx.serviceRequest.applicantName}</div>
-							</div>` : ""}
+							</div>`
+									: ""
+							}
 						</div>
 					</div>
 
@@ -237,7 +259,8 @@ export const otpTemplate: EmailTemplate = {
 	subject: (ctx) => ctx.subject ?? "Codigo de acceso SIMUT Tulua",
 	text: (ctx) => {
 		const lines = [
-			ctx.description ?? "Use este codigo para continuar el ingreso o registro transparente en SIMUT Tulua.",
+			ctx.description ??
+				"Use este codigo para continuar el ingreso o registro transparente en SIMUT Tulua.",
 			``,
 			`Codigo: ${ctx.otp}`,
 			``,
@@ -247,7 +270,9 @@ export const otpTemplate: EmailTemplate = {
 	},
 	html: (ctx) => {
 		const title = ctx.title ?? "Codigo de acceso";
-		const description = ctx.description ?? "Use este codigo para continuar el ingreso o registro transparente en SIMUT Tulua.";
+		const description =
+			ctx.description ??
+			"Use este codigo para continuar el ingreso o registro transparente en SIMUT Tulua.";
 
 		return `
 			<div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827;">

@@ -2,12 +2,12 @@ import { Badge, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { useCallback, useState } from "react";
-import { orpcClient } from "#/shared/lib/orpc-client";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
+import { orpcClient } from "#/shared/lib/orpc-client";
+import type { AuditFilters } from "./AuditFilterBar";
 import { AuditFilterBar, defaultFilters } from "./AuditFilterBar";
 import { AuditPagination } from "./AuditPagination";
 import { AuditTable } from "./AuditTable";
-import type { AuditFilters } from "./AuditFilterBar";
 
 export function AdminAuditoriaPage() {
 	const [appliedFilters, setAppliedFilters] =
@@ -18,7 +18,8 @@ export function AdminAuditoriaPage() {
 
 	const fetchAuditEvents = useCallback(async () => {
 		const payload: Parameters<typeof orpcClient.admin.audit.list>[0] = {};
-		if (appliedFilters.entityType) payload.entityType = appliedFilters.entityType;
+		if (appliedFilters.entityType)
+			payload.entityType = appliedFilters.entityType;
 		if (appliedFilters.actorUserId)
 			payload.actorUserId = appliedFilters.actorUserId;
 		if (appliedFilters.action) payload.action = appliedFilters.action;
@@ -97,10 +98,7 @@ export function AdminAuditoriaPage() {
 			<Paper withBorder radius="lg" p="md" shadow="sm">
 				<Stack gap="md">
 					<Group justify="space-between" wrap="nowrap">
-						<Title
-							order={5}
-							className="text-sm font-semibold text-zinc-900"
-						>
+						<Title order={5} className="text-sm font-semibold text-zinc-900">
 							Registros de auditoría
 							{auditQuery.data ? (
 								<Text component="span" c="dimmed" size="sm" ml="xs">
@@ -111,19 +109,21 @@ export function AdminAuditoriaPage() {
 					</Group>
 
 					<AuditTable
-						entries={(auditQuery.data?.entries ?? []) as Array<{
-							id: string;
-							createdAt: string;
-							actorType: string;
-							actorUserId: string | null;
-							entityType: string;
-							entityId: string;
-							action: string;
-							summary: string;
-							payload: Record<string, unknown>;
-							ipAddress: string | null;
-							userAgent: string | null;
-						}>}
+						entries={
+							(auditQuery.data?.entries ?? []) as Array<{
+								id: string;
+								createdAt: string;
+								actorType: string;
+								actorUserId: string | null;
+								entityType: string;
+								entityId: string;
+								action: string;
+								summary: string;
+								payload: Record<string, unknown>;
+								ipAddress: string | null;
+								userAgent: string | null;
+							}>
+						}
 						total={auditQuery.data?.total ?? 0}
 						isLoading={auditQuery.isPending}
 						isError={auditQuery.isError}

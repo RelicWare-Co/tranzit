@@ -10,8 +10,12 @@ import {
 	validateWeeklyAvailability,
 } from "../../features/staff/staff.schemas";
 import { db, schema } from "../../lib/db";
+import {
+	extractClientInfo,
+	requireAdminAccess,
+	throwRpcError,
+} from "../../shared/orpc";
 import { rpc } from "../../shared/orpc/context";
-import { extractClientInfo, requireAdminAccess, throwRpcError } from "../../shared/orpc";
 
 function parseDefaultCapacity(value: unknown): number {
 	const capacity = Number(value);

@@ -8,14 +8,14 @@ import {
 	FormActions,
 	PremiumModal,
 } from "#/features/admin/components";
-import { getErrorMessage } from "#/features/admin/components/errors";
 import { formatDateLocal } from "#/features/admin/components/dates";
+import { getErrorMessage } from "#/features/admin/components/errors";
 import { orpcClient } from "#/shared/lib/orpc-client";
-import type { BookingKind } from "./types";
 import { BookingTypeStep } from "./steps/BookingTypeStep";
-import { ProcedureStep } from "./steps/ProcedureStep";
 import { DateTimeStep } from "./steps/DateTimeStep";
+import { ProcedureStep } from "./steps/ProcedureStep";
 import { StaffStep } from "./steps/StaffStep";
+import type { BookingKind } from "./types";
 
 interface NewBookingModalProps {
 	opened: boolean;
@@ -51,8 +51,7 @@ export function NewBookingModal({
 					: null,
 			date: (value) => (!value ? "Seleccioná una fecha" : null),
 			slotId: (value) => (!value ? "Seleccioná un horario" : null),
-			staffUserId: (value) =>
-				!value ? "Seleccioná un funcionario" : null,
+			staffUserId: (value) => (!value ? "Seleccioná un funcionario" : null),
 		},
 	});
 
@@ -76,8 +75,7 @@ export function NewBookingModal({
 	const staffQuery = useQuery({
 		queryKey: ["admin", "citas", "staff-list"],
 		enabled: opened,
-		queryFn: async () =>
-			await orpcClient.admin.staff.list({ isActive: true }),
+		queryFn: async () => await orpcClient.admin.staff.list({ isActive: true }),
 	});
 
 	const proceduresQuery = useQuery({
@@ -99,12 +97,7 @@ export function NewBookingModal({
 	const staffOptions = useMemo(
 		() =>
 			(staffQuery.data ?? [])
-				.filter(
-					(staff) =>
-						staff.isActive &&
-						staff.isAssignable &&
-						staff.user,
-				)
+				.filter((staff) => staff.isActive && staff.isAssignable && staff.user)
 				.map((staff) => ({
 					value: staff.userId,
 					label: staff.user?.name || staff.user?.email || staff.userId,
@@ -126,8 +119,7 @@ export function NewBookingModal({
 			(slotsQuery.data?.slots ?? []).filter(
 				(slot) =>
 					slot.status === "open" &&
-					(slot.remainingCapacity === null ||
-						slot.remainingCapacity > 0),
+					(slot.remainingCapacity === null || slot.remainingCapacity > 0),
 			),
 		[slotsQuery.data?.slots],
 	);

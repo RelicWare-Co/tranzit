@@ -1,4 +1,4 @@
-import { Box, Group, Paper, Stack, Text, Title, rem } from "@mantine/core";
+import { Box, Group, Paper, rem, Stack, Text, Title } from "@mantine/core";
 
 interface SectionCardProps {
 	children: React.ReactNode;

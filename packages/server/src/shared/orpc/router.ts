@@ -1,13 +1,13 @@
 import { createAuditRouter } from "../../features/audit/router";
+import { createOnboardingRouter } from "../../features/auth/onboarding.router";
+import { createSessionRouter } from "../../features/auth/session.router";
 import { createBookingsRouter } from "../../features/bookings/router";
 import { createCitizenRouter } from "../../features/citizen/router";
-import { createOnboardingRouter } from "../../features/auth/onboarding.router";
-import { createProceduresRouter } from "../../features/schedule/procedures.router";
-import { createReservationSeriesRouter } from "../../features/reservations/series.router";
 import { createReservationsRouter } from "../../features/reservations/instance.router";
+import { createReservationSeriesRouter } from "../../features/reservations/series.router";
+import { createProceduresRouter } from "../../features/schedule/procedures.router";
 import { createScheduleRouter } from "../../features/schedule/schedule.router";
 import { createServiceRequestsRouter } from "../../features/service-requests/router";
-import { createSessionRouter } from "../../features/auth/session.router";
 import { createStaffRouter } from "../../features/staff/router";
 
 export function createTranzitRpcRouter() {

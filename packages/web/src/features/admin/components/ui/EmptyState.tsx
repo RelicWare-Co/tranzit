@@ -1,5 +1,4 @@
-import { Box, Text } from "@mantine/core";
-import { rem } from "@mantine/core";
+import { Box, rem, Text } from "@mantine/core";
 
 interface EmptyStateProps {
 	icon: React.ElementType;

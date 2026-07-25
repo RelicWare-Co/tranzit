@@ -65,7 +65,7 @@ export function StaffCard({
 								variant="light"
 								size="xs"
 								leftSection={<CheckCircle2 size={10} strokeWidth={2.5} />}
-								>
+							>
 								Activo
 							</Badge>
 						) : (
@@ -74,7 +74,7 @@ export function StaffCard({
 								variant="light"
 								size="xs"
 								leftSection={<UserX size={10} strokeWidth={2.5} />}
-								>
+							>
 								Inactivo
 							</Badge>
 						)}
@@ -83,19 +83,11 @@ export function StaffCard({
 						{profile.user?.email}
 					</Text>
 					{isAssignable ? (
-						<Badge
-							color="red"
-							variant="light"
-							size="xs"
-							>
+						<Badge color="red" variant="light" size="xs">
 							Recibe citas
 						</Badge>
 					) : (
-						<Badge
-							color="gray"
-							variant="light"
-							size="xs"
-							>
+						<Badge color="gray" variant="light" size="xs">
 							No asignable
 						</Badge>
 					)}

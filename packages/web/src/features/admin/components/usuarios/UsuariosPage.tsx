@@ -12,22 +12,18 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { AlertCircle, CheckCircle2, Plus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { authClient } from "#/shared/lib/auth-client";
-import { orpcClient } from "#/shared/lib/orpc-client";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
 import { adminUi } from "#/features/admin/components/admin-ui";
 import { formatDateLocal } from "#/features/admin/components/dates";
 import { getErrorMessage } from "#/features/admin/components/errors";
+import { authClient } from "#/shared/lib/auth-client";
+import { orpcClient } from "#/shared/lib/orpc-client";
 import { AddStaffModal } from "./AddStaffModal";
 import { mapBookingsByStaff } from "./booking-utils";
 import { ReassignModal } from "./ReassignModal";
 import { StaffCard } from "./StaffCard";
 import { StaffDetailEmptyState, StaffDetailPanel } from "./StaffDetailPanel";
-import type {
-	BookingByStaff,
-	CreateStaffPayload,
-	StaffProfile,
-} from "./types";
+import type { BookingByStaff, CreateStaffPayload, StaffProfile } from "./types";
 
 export function UsuariosPage() {
 	const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);

@@ -1,5 +1,4 @@
-import { Button, Collapse, Paper, Stack, Text } from "@mantine/core";
-import { rem } from "@mantine/core";
+import { Button, Collapse, Paper, rem, Stack, Text } from "@mantine/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 

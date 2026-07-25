@@ -1,29 +1,23 @@
 import {
 	Alert,
-	Badge,
-	Checkbox,
-	Grid,
+	Button,
 	NumberInput,
 	Select,
-	Stack,
-	Text,
-	TextInput,
+	Switch,
+	Textarea,
 } from "@mantine/core";
 import { TimePicker } from "@mantine/dates";
 import { useForm } from "@mantine/form";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CalendarClock, Save } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-	FormActionButton,
-	FormActions,
-	PremiumModal,
-} from "#/features/admin/components";
+import { PremiumModal } from "#/features/admin/components";
+import classes from "#/features/admin/components/configuracion/Configuracion.module.css";
 import {
 	validateScheduleTimeFields,
 	weekdayLabels,
 } from "#/features/admin/components/configuracion/constants";
-import type { ScheduleTemplate } from "#/features/admin/components/hooks/useConfigSnapshot";
 import { getErrorMessage } from "#/features/admin/components/errors";
+import type { ScheduleTemplate } from "#/features/admin/components/hooks/useConfigSnapshot";
 
 type TemplatePayload = {
 	weekday: number;
@@ -44,7 +38,10 @@ interface ScheduleTemplateModalProps {
 	mode: "create" | "edit";
 	template?: ScheduleTemplate;
 	onCreate: (payload: TemplatePayload) => Promise<void>;
-	onUpdate: (id: string, payload: Omit<TemplatePayload, "weekday">) => Promise<void>;
+	onUpdate: (
+		id: string,
+		payload: Omit<TemplatePayload, "weekday">,
+	) => Promise<void>;
 }
 
 const EMPTY_VALUES = {
@@ -65,6 +62,11 @@ const TIME_PICKER_LABELS = {
 	minutesInputLabel: "Minutos",
 	clearButtonProps: { "aria-label": "Limpiar hora" } as const,
 };
+
+const weekdayOptions = Object.entries(weekdayLabels).map(([value, label]) => ({
+	value,
+	label,
+}));
 
 export function ScheduleTemplateModal({
 	opened,
@@ -190,179 +192,193 @@ export function ScheduleTemplateModal({
 			? `Editar plantilla — ${weekdayLabels[template.weekday]}`
 			: "Crear plantilla de agenda";
 
-	const subtitle =
-		mode === "create"
-			? "Define horarios y parámetros de slots para un día de la semana"
-			: undefined;
-
 	return (
 		<PremiumModal
 			opened={opened}
 			onClose={handleClose}
 			title={title}
-			subtitle={subtitle}
-			size="lg"
+			subtitle="Configura una regla semanal de atención."
+			size="xl"
+			closeOnClickOutside={!isSubmitting}
+			closeOnEscape={!isSubmitting}
+			classNames={{
+				content: classes.modalContent,
+				header: classes.modalHeader,
+				body: classes.modalBody,
+			}}
 		>
-			<form onSubmit={form.onSubmit(handleSubmit)}>
-				<Stack gap="lg">
-					{submitError && (
-						<Alert
-							color="red"
-							variant="light"
-							radius="md"
-							icon={<AlertCircle size={16} />}
-						>
-							{submitError}
-						</Alert>
-					)}
+			<form
+				onSubmit={form.onSubmit(handleSubmit)}
+				className={classes.modalForm}
+			>
+				{submitError ? (
+					<Alert
+						color="red"
+						variant="light"
+						radius="md"
+						icon={<AlertCircle size={16} />}
+						mt="lg"
+					>
+						{submitError}
+					</Alert>
+				) : null}
 
-					<Grid>
-						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							{mode === "edit" && template ? (
-								<Stack gap={4}>
-									<Text size="sm" fw={500}>
-										Día de la semana
-									</Text>
-									<Badge variant="light" radius="sm" size="lg">
-										{weekdayLabels[template.weekday]}
-									</Badge>
-								</Stack>
-							) : (
-								<Select
-									label="Día de la semana"
-									placeholder="Selecciona"
-									data={Object.entries(weekdayLabels).map(([value, label]) => ({
-										value,
-										label,
-									}))}
-									disabled={isSubmitting}
-									{...form.getInputProps("weekday")}
-								/>
-							)}
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<NumberInput
-								label="Duración del slot (min)"
-								placeholder="20"
-								min={5}
-								max={240}
+				<section className={classes.formSection}>
+					<div className={classes.formSectionHeading}>
+						<h3 className={classes.formSectionTitle}>Regla base</h3>
+						<p className={classes.formSectionDescription}>
+							Elige el día y los límites que se aplicarán a cada slot.
+						</p>
+					</div>
+					<div className={classes.formGrid}>
+						{mode === "edit" && template ? (
+							<div className={classes.readonlyDay}>
+								<span className={classes.readonlyLabel}>Día de la semana</span>
+								<span className={classes.readonlyValue}>
+									{weekdayLabels[template.weekday]}
+								</span>
+							</div>
+						) : (
+							<Select
+								label="Día de la semana"
+								placeholder="Selecciona un día"
+								data={weekdayOptions}
 								disabled={isSubmitting}
-								{...form.getInputProps("slotDurationMinutes")}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<NumberInput
-								label="Buffer (min)"
-								placeholder="0"
-								min={0}
-								max={60}
-								disabled={isSubmitting}
-								{...form.getInputProps("bufferMinutes")}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<NumberInput
-								label="Capacidad máxima"
-								placeholder="Ilimitada"
-								min={1}
-								disabled={isSubmitting}
-								{...form.getInputProps("slotCapacityLimit")}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<TimePicker
-								label="Inicio mañana"
-								withDropdown
-								minutesStep={5}
-								clearable
-								disabled={isSubmitting}
-								value={form.values.morningStart}
+								value={String(form.values.weekday)}
 								onChange={(value) =>
-									form.setFieldValue("morningStart", value)
+									form.setFieldValue("weekday", Number(value ?? 1))
 								}
-								error={form.errors.morningStart}
-								{...TIME_PICKER_LABELS}
+								error={form.errors.weekday}
 							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<TimePicker
-								label="Fin mañana"
-								withDropdown
-								minutesStep={5}
-								clearable
-								disabled={isSubmitting}
-								value={form.values.morningEnd}
-								onChange={(value) => form.setFieldValue("morningEnd", value)}
-								error={form.errors.morningEnd}
-								{...TIME_PICKER_LABELS}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<TimePicker
-								label="Inicio tarde"
-								withDropdown
-								minutesStep={5}
-								clearable
-								disabled={isSubmitting}
-								value={form.values.afternoonStart}
-								onChange={(value) =>
-									form.setFieldValue("afternoonStart", value)
-								}
-								error={form.errors.afternoonStart}
-								{...TIME_PICKER_LABELS}
-							/>
-						</Grid.Col>
-						<Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
-							<TimePicker
-								label="Fin tarde"
-								withDropdown
-								minutesStep={5}
-								clearable
-								disabled={isSubmitting}
-								value={form.values.afternoonEnd}
-								onChange={(value) =>
-									form.setFieldValue("afternoonEnd", value)
-								}
-								error={form.errors.afternoonEnd}
-								{...TIME_PICKER_LABELS}
-							/>
-						</Grid.Col>
-						<Grid.Col span={12}>
-							<TextInput
-								label="Notas"
-								placeholder="Notas opcionales sobre este template..."
-								disabled={isSubmitting}
-								{...form.getInputProps("notes")}
-							/>
-						</Grid.Col>
-						<Grid.Col span={12}>
-							<Checkbox
-								label="Habilitado"
-								description="Activar este template"
-								disabled={isSubmitting}
-								{...form.getInputProps("isEnabled", { type: "checkbox" })}
-							/>
-						</Grid.Col>
-					</Grid>
-
-					<FormActions align="right">
-						<FormActionButton
-							variant="secondary"
-							type="button"
-							onClick={handleClose}
+						)}
+						<NumberInput
+							label="Duración del slot"
+							description="Entre 5 y 240 minutos"
+							suffix=" min"
+							min={5}
+							max={240}
 							disabled={isSubmitting}
-						>
-							Cancelar
-						</FormActionButton>
-						<FormActionButton
-							variant="primary"
-							type="submit"
-							isLoading={isSubmitting}
-						>
-							{mode === "edit" ? "Guardar cambios" : "Crear plantilla"}
-						</FormActionButton>
-					</FormActions>
-				</Stack>
+							{...form.getInputProps("slotDurationMinutes")}
+						/>
+						<NumberInput
+							label="Tiempo entre slots"
+							description="Pausa antes de la siguiente cita"
+							suffix=" min"
+							min={0}
+							max={60}
+							disabled={isSubmitting}
+							{...form.getInputProps("bufferMinutes")}
+						/>
+						<NumberInput
+							label="Capacidad máxima"
+							description="Déjalo vacío para no limitar"
+							placeholder="Sin límite"
+							min={1}
+							disabled={isSubmitting}
+							{...form.getInputProps("slotCapacityLimit")}
+						/>
+					</div>
+				</section>
+
+				<section className={classes.formSection}>
+					<div className={classes.formSectionHeading}>
+						<h3 className={classes.formSectionTitle}>Ventanas de atención</h3>
+						<p className={classes.formSectionDescription}>
+							Agrupa cada jornada con su hora de inicio y fin. Puedes dejar una
+							jornada vacía.
+						</p>
+					</div>
+					<div className={classes.windowGrid}>
+						<span className={classes.windowLabel}>Mañana</span>
+						<TimePicker
+							label="Inicio mañana"
+							withDropdown
+							minutesStep={5}
+							clearable
+							disabled={isSubmitting}
+							value={form.values.morningStart}
+							onChange={(value) => form.setFieldValue("morningStart", value)}
+							error={form.errors.morningStart}
+							{...TIME_PICKER_LABELS}
+						/>
+						<TimePicker
+							label="Fin mañana"
+							withDropdown
+							minutesStep={5}
+							clearable
+							disabled={isSubmitting}
+							value={form.values.morningEnd}
+							onChange={(value) => form.setFieldValue("morningEnd", value)}
+							error={form.errors.morningEnd}
+							{...TIME_PICKER_LABELS}
+						/>
+						<span className={classes.windowLabel}>Tarde</span>
+						<TimePicker
+							label="Inicio tarde"
+							withDropdown
+							minutesStep={5}
+							clearable
+							disabled={isSubmitting}
+							value={form.values.afternoonStart}
+							onChange={(value) => form.setFieldValue("afternoonStart", value)}
+							error={form.errors.afternoonStart}
+							{...TIME_PICKER_LABELS}
+						/>
+						<TimePicker
+							label="Fin tarde"
+							withDropdown
+							minutesStep={5}
+							clearable
+							disabled={isSubmitting}
+							value={form.values.afternoonEnd}
+							onChange={(value) => form.setFieldValue("afternoonEnd", value)}
+							error={form.errors.afternoonEnd}
+							{...TIME_PICKER_LABELS}
+						/>
+					</div>
+				</section>
+
+				<section className={classes.formSection}>
+					<div className={classes.formSectionHeading}>
+						<h3 className={classes.formSectionTitle}>Estado y contexto</h3>
+					</div>
+					<div className={classes.formGrid}>
+						<Switch
+							label="Plantilla habilitada"
+							description="Permite generar disponibilidad con esta regla"
+							disabled={isSubmitting}
+							className={classes.switchControl}
+							{...form.getInputProps("isEnabled", { type: "checkbox" })}
+						/>
+						<Textarea
+							label="Notas internas"
+							placeholder="Agrega contexto para el equipo"
+							rows={2}
+							disabled={isSubmitting}
+							{...form.getInputProps("notes")}
+						/>
+					</div>
+				</section>
+
+				<div className={classes.modalActions}>
+					<Button
+						variant="default"
+						type="button"
+						onClick={handleClose}
+						disabled={isSubmitting}
+					>
+						Cancelar
+					</Button>
+					<Button
+						type="submit"
+						loading={isSubmitting}
+						leftSection={
+							mode === "edit" ? <Save size={16} /> : <CalendarClock size={16} />
+						}
+					>
+						{mode === "edit" ? "Guardar cambios" : "Crear plantilla"}
+					</Button>
+				</div>
 			</form>
 		</PremiumModal>
 	);
