@@ -1,4 +1,10 @@
-import { Badge, Box, Button, Menu, Table, Text } from "@mantine/core";
+import {
+	Badge,
+	EmptyState,
+	Skeleton,
+	Table,
+	UnstyledButton,
+} from "@mantine/core";
 import {
 	createColumnHelper,
 	flexRender,
@@ -9,18 +15,13 @@ import {
 } from "@tanstack/react-table";
 import {
 	ArrowDown,
-	ArrowDownUp,
 	ArrowUp,
 	ArrowUpDown,
-	Calendar,
+	CalendarSearch,
 	Check,
-	CheckCircle2,
-	MoreVertical,
-	XCircle,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { adminUi } from "#/features/admin/components/admin-ui";
-import { orpcClient } from "#/shared/lib/orpc-client";
+import classes from "../Reportes.module.css";
 
 interface Booking {
 	id: string;
@@ -36,44 +37,63 @@ interface Booking {
 		name?: string | null;
 		email?: string | null;
 	} | null;
+	request?: {
+		email?: string | null;
+		procedureType?: {
+			name?: string | null;
+		} | null;
+		citizen?: {
+			name?: string | null;
+			email?: string | null;
+		} | null;
+	} | null;
 }
 
 interface BookingTableProps {
 	bookings: Booking[];
 	selectedBookingId: string | null;
 	onSelectBooking: (id: string) => void;
-	runAction: (
-		actionId: string,
-		action: () => Promise<unknown>,
-		successMessage: string,
-		errorFallback: string,
-	) => Promise<unknown>;
-	releaseReason: "cancelled" | "expired" | "attended";
-	reassignTargetStaffId: string;
+	isLoading: boolean;
 }
 
-function getStatusBadgeProps(status: string) {
-	const normalized = status.toLowerCase();
-	if (normalized === "confirmed")
-		return { color: "teal", variant: "light" as const };
-	if (normalized === "held" || normalized === "pending")
-		return { color: "yellow", variant: "light" as const };
-	if (normalized === "cancelled")
-		return { color: "red", variant: "light" as const };
-	return { color: "gray", variant: "light" as const };
-}
+const STATUS_CONFIG: Record<
+	string,
+	{ label: string; color: string; description: string }
+> = {
+	confirmed: {
+		label: "Confirmada",
+		color: "teal",
+		description: "Consume capacidad",
+	},
+	held: {
+		label: "Hold temporal",
+		color: "yellow",
+		description: "Pendiente de confirmar",
+	},
+	cancelled: {
+		label: "Cancelada",
+		color: "gray",
+		description: "No consume capacidad",
+	},
+	expired: {
+		label: "Expirada",
+		color: "gray",
+		description: "No consume capacidad",
+	},
+	attended: {
+		label: "Atendida",
+		color: "blue",
+		description: "Atención registrada",
+	},
+};
 
 const columnHelper = createColumnHelper<Booking>();
 
 function SortIcon({ isSorted }: { isSorted: false | "asc" | "desc" }) {
-	if (isSorted === "asc") return <ArrowUp size={12} className="text-red-600" />;
-	if (isSorted === "desc")
-		return <ArrowDown size={12} className="text-red-600" />;
+	if (isSorted === "asc") return <ArrowUp size={13} aria-hidden="true" />;
+	if (isSorted === "desc") return <ArrowDown size={13} aria-hidden="true" />;
 	return (
-		<ArrowUpDown
-			size={12}
-			className="text-[var(--text-secondary)] opacity-0 group-hover:opacity-50 transition-opacity"
-		/>
+		<ArrowUpDown size={13} className={classes.sortIcon} aria-hidden="true" />
 	);
 }
 
@@ -81,9 +101,7 @@ export function BookingTable({
 	bookings,
 	selectedBookingId,
 	onSelectBooking,
-	runAction,
-	releaseReason,
-	reassignTargetStaffId,
+	isLoading,
 }: BookingTableProps) {
 	const [sorting, setSorting] = useState<SortingState>([
 		{ id: "slotDate", desc: false },
@@ -97,163 +115,99 @@ export function BookingTable({
 				size: 48,
 				cell: ({ row }) => {
 					const isSelected = row.original.id === selectedBookingId;
-					return isSelected ? (
-						<div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600">
-							<Check size={14} className="text-white" strokeWidth={2.5} />
-						</div>
-					) : (
-						<div className="h-6 w-6 rounded-full border-2 border-[var(--border-subtle)]" />
+					return (
+						<span
+							className={classes.selectionMark}
+							data-selected={isSelected || undefined}
+							aria-hidden="true"
+						>
+							<Check size={13} />
+						</span>
 					);
 				},
 			}),
-			columnHelper.accessor("id", {
-				header: "ID",
-				size: 100,
-				cell: (info) => (
-					<span className="font-mono text-xs text-[var(--text-secondary)]">
-						{info.getValue().slice(0, 8)}…
-					</span>
-				),
-			}),
 			columnHelper.accessor((row) => row.slot?.slotDate ?? "", {
 				id: "slotDate",
-				header: "Fecha",
-				size: 120,
-				cell: (info) =>
-					info.getValue() || (
-						<span className="text-[var(--text-secondary)]">-</span>
-					),
+				header: "Fecha y hora",
+				size: 190,
+				cell: ({ row }) => (
+					<div className={classes.primaryCell}>
+						<span className={classes.primaryValue}>
+							{row.original.slot?.slotDate || "Fecha no disponible"}
+						</span>
+						<span className={classes.secondaryValue}>
+							{row.original.slot?.startTime && row.original.slot?.endTime
+								? `${row.original.slot.startTime} – ${row.original.slot.endTime}`
+								: "Horario no disponible"}
+						</span>
+					</div>
+				),
 			}),
 			columnHelper.accessor(
-				(row) =>
-					row.slot?.startTime && row.slot?.endTime
-						? `${row.slot.startTime} – ${row.slot.endTime}`
-						: "",
+				(row) => row.request?.procedureType?.name ?? "Reserva administrativa",
 				{
-					id: "time",
-					header: "Hora",
-					size: 140,
-					cell: (info) =>
-						info.getValue() || (
-							<span className="text-[var(--text-secondary)]">--</span>
-						),
+					id: "procedure",
+					header: "Trámite y ciudadano",
+					size: 240,
+					cell: ({ row }) => (
+						<div className={classes.primaryCell}>
+							<span className={classes.primaryValue}>
+								{row.original.request?.procedureType?.name ??
+									"Reserva administrativa"}
+							</span>
+							<span className={classes.secondaryValue}>
+								{row.original.request?.citizen?.name ||
+									row.original.request?.citizen?.email ||
+									row.original.request?.email ||
+									"Sin ciudadano asociado"}
+							</span>
+						</div>
+					),
+				},
+			),
+			columnHelper.accessor(
+				(row) => row.staff?.name || row.staff?.email || "Sin asignar",
+				{
+					id: "staff",
+					header: "Funcionario",
+					size: 180,
+					cell: (info) => info.getValue(),
 				},
 			),
 			columnHelper.accessor("status", {
 				header: "Estado",
-				size: 120,
-				cell: (info) => (
-					<Badge
-						{...getStatusBadgeProps(info.getValue())}
-						size="sm"
-						radius="sm"
-					>
-						{info.getValue()}
-					</Badge>
-				),
-			}),
-			columnHelper.accessor("isActive", {
-				header: "Activo",
-				size: 100,
-				cell: (info) =>
-					info.getValue() ? (
-						<Badge color="teal" variant="light" size="sm" radius="sm">
-							Activo
-						</Badge>
-					) : (
-						<Badge color="gray" variant="light" size="sm" radius="sm">
-							Inactivo
-						</Badge>
-					),
-			}),
-			columnHelper.accessor(
-				(row) => row.staff?.name || row.staff?.email || "",
-				{
-					id: "staff",
-					header: "Staff",
-					size: 180,
-					cell: (info) =>
-						info.getValue() || (
-							<span className="text-[var(--text-secondary)]">Sin asignar</span>
-						),
+				size: 155,
+				cell: ({ row }) => {
+					const config = STATUS_CONFIG[row.original.status] ?? {
+						label: row.original.status,
+						color: "gray",
+						description: row.original.isActive
+							? "Consume capacidad"
+							: "No consume capacidad",
+					};
+					return (
+						<div className={classes.primaryCell}>
+							<Badge color={config.color} variant="light" size="sm" radius="sm">
+								{config.label}
+							</Badge>
+							<span className={classes.secondaryValue}>
+								{config.description}
+							</span>
+						</div>
+					);
 				},
-			),
-			columnHelper.display({
-				id: "actions",
-				header: "",
-				size: 56,
-				cell: ({ row }) => (
-					<Menu position="bottom-end">
-						<Menu.Target>
-							<Button
-								variant="subtle"
-								size="xs"
-								p={0}
-								onClick={(e) => e.stopPropagation()}
-							>
-								<MoreVertical size={14} />
-							</Button>
-						</Menu.Target>
-						<Menu.Dropdown>
-							<Menu.Item
-								leftSection={<CheckCircle2 size={14} />}
-								onClick={() =>
-									void runAction(
-										"booking-confirm",
-										async () =>
-											await orpcClient.admin.bookings.confirm({
-												id: row.original.id,
-											}),
-										"Cita confirmada.",
-										"No se pudo confirmar la cita.",
-									)
-								}
-							>
-								Confirmar
-							</Menu.Item>
-							<Menu.Item
-								leftSection={<ArrowDownUp size={14} />}
-								onClick={() => {
-									if (!reassignTargetStaffId) return;
-									void runAction(
-										"booking-reassign",
-										async () =>
-											await orpcClient.admin.bookings.reassign({
-												id: row.original.id,
-												targetStaffUserId: reassignTargetStaffId,
-											}),
-										"Cita reasignada.",
-										"No se pudo reasignar la cita.",
-									);
-								}}
-							>
-								Reasignar
-							</Menu.Item>
-							<Menu.Divider />
-							<Menu.Item
-								color="red"
-								leftSection={<XCircle size={14} />}
-								onClick={() =>
-									void runAction(
-										"booking-release",
-										async () =>
-											await orpcClient.admin.bookings.release({
-												id: row.original.id,
-												reason: releaseReason,
-											}),
-										"Cita liberada.",
-										"No se pudo liberar la cita.",
-									)
-								}
-							>
-								Liberar
-							</Menu.Item>
-						</Menu.Dropdown>
-					</Menu>
+			}),
+			columnHelper.accessor("id", {
+				header: "Referencia",
+				size: 110,
+				cell: (info) => (
+					<span className={classes.reference}>
+						{info.getValue().slice(0, 8)}
+					</span>
 				),
 			}),
 		],
-		[selectedBookingId, releaseReason, reassignTargetStaffId, runAction],
+		[selectedBookingId],
 	);
 
 	const table = useReactTable({
@@ -265,74 +219,76 @@ export function BookingTable({
 		getSortedRowModel: getSortedRowModel(),
 	});
 
+	if (isLoading) {
+		return (
+			<div className={classes.tableFrame}>
+				<div
+					className={classes.loadingState}
+					role="status"
+					aria-label="Cargando citas"
+				>
+					<div className={classes.loadingRows}>
+						<Skeleton height={34} radius="sm" />
+						<Skeleton height={54} radius="sm" />
+						<Skeleton height={54} radius="sm" />
+						<Skeleton height={54} radius="sm" />
+						<Skeleton height={54} radius="sm" />
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	if (bookings.length === 0) {
 		return (
-			<div className={`${adminUi.surfaceMuted} text-center py-12`}>
-				<div className="flex flex-col items-center gap-4">
-					<div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
-						<Calendar size={22} className="text-zinc-400" strokeWidth={1.5} />
-					</div>
-					<Text className="text-base font-semibold text-[var(--text-primary)]">
-						No hay citas para mostrar
-					</Text>
-					<Text
+			<div className={classes.tableFrame}>
+				<div className={classes.emptyState}>
+					<EmptyState
+						icon={<CalendarSearch size={30} />}
+						title="No hay citas en esta consulta"
+						description="Ajusta el rango de fechas o restablece los filtros para ampliar los resultados."
 						size="sm"
-						className="max-w-sm leading-relaxed text-[var(--text-secondary)]"
-					>
-						No se encontraron citas con los filtros actuales. Ajustá los filtros
-						o creá una nueva cita.
-					</Text>
+						withIndicatorBackground
+					/>
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<Box>
-			<Table.ScrollContainer minWidth={900}>
-				<Table
-					highlightOnHover
-					highlightOnHoverColor="var(--bg-secondary)"
-					withRowBorders
-					borderColor="var(--border-subtle)"
-					verticalSpacing="sm"
-					horizontalSpacing="md"
-					stripedColor="var(--bg-primary)"
-					striped="odd"
-					className="rounded-xl overflow-hidden"
-				>
+		<div className={classes.tableFrame}>
+			<Table.ScrollContainer minWidth={880} type="native">
+				<Table className={classes.table} withRowBorders={false}>
 					<Table.Thead>
 						{table.getHeaderGroups().map((headerGroup) => (
-							<Table.Tr
-								key={headerGroup.id}
-								className="bg-[var(--bg-secondary)]"
-							>
+							<Table.Tr key={headerGroup.id}>
 								{headerGroup.headers.map((header) => {
 									const canSort = header.column.getCanSort();
 									return (
 										<Table.Th
 											key={header.id}
-											className={
-												canSort
-													? `${adminUi.tableHeader} cursor-pointer select-none group`
-													: adminUi.tableHeader
-											}
-											onClick={
-												canSort
-													? header.column.getToggleSortingHandler()
-													: undefined
-											}
 											style={{ width: header.getSize() }}
 										>
-											<div className="flex items-center gap-1.5">
-												{flexRender(
+											{canSort ? (
+												<UnstyledButton
+													className={classes.sortButton}
+													onClick={header.column.getToggleSortingHandler()}
+													aria-label={`Ordenar por ${String(
+														header.column.columnDef.header,
+													)}`}
+												>
+													{flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+													<SortIcon isSorted={header.column.getIsSorted()} />
+												</UnstyledButton>
+											) : (
+												flexRender(
 													header.column.columnDef.header,
 													header.getContext(),
-												)}
-												{canSort && (
-													<SortIcon isSorted={header.column.getIsSorted()} />
-												)}
-											</div>
+												)
+											)}
 										</Table.Th>
 									);
 								})}
@@ -345,15 +301,20 @@ export function BookingTable({
 							return (
 								<Table.Tr
 									key={row.id}
-									className={
-										isSelected
-											? "bg-[var(--brand-100)]/40 cursor-pointer transition-colors"
-											: "cursor-pointer transition-colors"
-									}
+									className={classes.tableRow}
+									data-selected={isSelected || undefined}
+									aria-selected={isSelected}
+									tabIndex={0}
 									onClick={() => onSelectBooking(row.original.id)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter" || event.key === " ") {
+											event.preventDefault();
+											onSelectBooking(row.original.id);
+										}
+									}}
 								>
 									{row.getVisibleCells().map((cell) => (
-										<Table.Td key={cell.id} className={adminUi.tableCell}>
+										<Table.Td key={cell.id}>
 											{flexRender(
 												cell.column.columnDef.cell,
 												cell.getContext(),
@@ -366,6 +327,6 @@ export function BookingTable({
 					</Table.Tbody>
 				</Table>
 			</Table.ScrollContainer>
-		</Box>
+		</div>
 	);
 }

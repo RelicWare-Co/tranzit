@@ -1,4 +1,10 @@
-import { Badge, Group, Loader, Table, Text } from "@mantine/core";
+import {
+	Badge,
+	EmptyState,
+	Skeleton,
+	Table,
+	UnstyledButton,
+} from "@mantine/core";
 import {
 	createColumnHelper,
 	flexRender,
@@ -7,9 +13,10 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Repeat2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { adminUi } from "#/features/admin/components/admin-ui";
+import { getErrorMessage } from "#/features/admin/components/errors";
+import classes from "../Reportes.module.css";
 
 interface SeriesItem {
 	id: string;
@@ -30,14 +37,10 @@ interface SeriesTableProps {
 const columnHelper = createColumnHelper<SeriesItem>();
 
 function SortIcon({ isSorted }: { isSorted: false | "asc" | "desc" }) {
-	if (isSorted === "asc") return <ArrowUp size={12} className="text-red-600" />;
-	if (isSorted === "desc")
-		return <ArrowDown size={12} className="text-red-600" />;
+	if (isSorted === "asc") return <ArrowUp size={13} aria-hidden="true" />;
+	if (isSorted === "desc") return <ArrowDown size={13} aria-hidden="true" />;
 	return (
-		<ArrowUpDown
-			size={12}
-			className="text-[var(--text-secondary)] opacity-0 group-hover:opacity-50 transition-opacity"
-		/>
+		<ArrowUpDown size={13} className={classes.sortIcon} aria-hidden="true" />
 	);
 }
 
@@ -56,30 +59,40 @@ export function SeriesTable({
 			columnHelper.display({
 				id: "select",
 				header: "",
-				size: 48,
+				size: 44,
 				cell: ({ row }) => {
 					const isSelected = row.original.id === selectedSeriesId;
-					return isSelected ? (
-						<div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600">
-							<Check size={14} className="text-white" strokeWidth={2.5} />
-						</div>
-					) : (
-						<div className="h-6 w-6 rounded-full border-2 border-[var(--border-subtle)]" />
+					return (
+						<span
+							className={classes.selectionMark}
+							data-selected={isSelected || undefined}
+							aria-hidden="true"
+						>
+							<Check size={13} />
+						</span>
 					);
 				},
 			}),
 			columnHelper.accessor("id", {
-				header: "ID",
-				size: 100,
+				header: "Serie",
+				size: 130,
 				cell: (info) => (
-					<span className="font-mono text-xs text-[var(--text-secondary)]">
-						{info.getValue().slice(0, 8)}…
-					</span>
+					<div className={classes.primaryCell}>
+						<span className={classes.primaryValue}>
+							{info.getValue().slice(0, 8)}
+						</span>
+						<span className={classes.secondaryValue}>Reserva recurrente</span>
+					</div>
 				),
+			}),
+			columnHelper.accessor("activeInstanceCount", {
+				header: "Instancias",
+				size: 105,
+				cell: (info) => info.getValue() ?? 0,
 			}),
 			columnHelper.accessor("isActive", {
 				header: "Estado",
-				size: 120,
+				size: 100,
 				cell: (info) => (
 					<Badge
 						color={info.getValue() ? "teal" : "gray"}
@@ -91,23 +104,13 @@ export function SeriesTable({
 					</Badge>
 				),
 			}),
-			columnHelper.accessor("activeInstanceCount", {
-				header: "Instancias",
-				size: 120,
-				cell: (info) =>
-					info.getValue() ?? (
-						<span className="text-[var(--text-secondary)]">-</span>
-					),
-			}),
 			columnHelper.accessor("notes", {
-				header: "Notas",
-				size: 200,
+				header: "Contexto",
+				size: 190,
 				cell: (info) => (
-					<Text size="sm" c="dimmed" truncate maw={200}>
-						{info.getValue() ?? (
-							<span className="text-[var(--text-secondary)]">Sin notas</span>
-						)}
-					</Text>
+					<span className={classes.secondaryValue}>
+						{info.getValue() || "Sin notas internas"}
+					</span>
 				),
 			}),
 		],
@@ -125,106 +128,119 @@ export function SeriesTable({
 
 	if (isError) {
 		return (
-			<div className={`${adminUi.surfaceMuted} text-center py-8`}>
-				<Text size="sm" c="red">
-					Error cargando series
-				</Text>
-				<Text component="pre" size="xs" c="dimmed" className="mt-2">
-					{JSON.stringify(error, null, 2)}
-				</Text>
+			<div className={classes.emptyState}>
+				<EmptyState
+					icon={<Repeat2 size={28} />}
+					title="No se pudieron cargar las series"
+					description={getErrorMessage(error, "Intenta actualizar los datos.")}
+					size="sm"
+					color="red"
+					variant="light"
+				/>
 			</div>
 		);
 	}
 
 	if (isLoading) {
 		return (
-			<Group justify="center" py="xl">
-				<Loader size="sm" />
-			</Group>
+			<div
+				className={classes.loadingState}
+				role="status"
+				aria-label="Cargando series"
+			>
+				<div className={classes.loadingRows}>
+					<Skeleton height={34} radius="sm" />
+					<Skeleton height={58} radius="sm" />
+					<Skeleton height={58} radius="sm" />
+					<Skeleton height={58} radius="sm" />
+				</div>
+			</div>
 		);
 	}
 
 	if (series.length === 0) {
 		return (
-			<div className={`${adminUi.surfaceMuted} text-center py-10`}>
-				<Text size="sm" c="dimmed">
-					No hay series de reserva activas.
-				</Text>
+			<div className={classes.emptyState}>
+				<EmptyState
+					icon={<Repeat2 size={28} />}
+					title="No hay series para mostrar"
+					description="Cambia el filtro de estado o crea una nueva reserva recurrente."
+					size="sm"
+					withIndicatorBackground
+				/>
 			</div>
 		);
 	}
 
 	return (
-		<Table.ScrollContainer minWidth={600}>
-			<Table
-				highlightOnHover
-				highlightOnHoverColor="var(--bg-secondary)"
-				withRowBorders
-				borderColor="var(--border-subtle)"
-				verticalSpacing="sm"
-				horizontalSpacing="md"
-				stripedColor="var(--bg-primary)"
-				striped="odd"
-				className="rounded-xl overflow-hidden"
-			>
-				<Table.Thead>
-					{table.getHeaderGroups().map((headerGroup) => (
-						<Table.Tr key={headerGroup.id} className="bg-[var(--bg-secondary)]">
-							{headerGroup.headers.map((header) => {
-								const canSort = header.column.getCanSort();
-								return (
-									<Table.Th
-										key={header.id}
-										className={
-											canSort
-												? `${adminUi.tableHeader} cursor-pointer select-none group`
-												: adminUi.tableHeader
-										}
-										onClick={
-											canSort
-												? header.column.getToggleSortingHandler()
-												: undefined
-										}
-										style={{ width: header.getSize() }}
-									>
-										<div className="flex items-center gap-1.5">
-											{flexRender(
-												header.column.columnDef.header,
-												header.getContext(),
+		<div className={classes.tableFrame}>
+			<Table.ScrollContainer minWidth={620} type="native">
+				<Table className={classes.table} withRowBorders={false}>
+					<Table.Thead>
+						{table.getHeaderGroups().map((headerGroup) => (
+							<Table.Tr key={headerGroup.id}>
+								{headerGroup.headers.map((header) => {
+									const canSort = header.column.getCanSort();
+									return (
+										<Table.Th
+											key={header.id}
+											style={{ width: header.getSize() }}
+										>
+											{canSort ? (
+												<UnstyledButton
+													className={classes.sortButton}
+													onClick={header.column.getToggleSortingHandler()}
+												>
+													{flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+													<SortIcon isSorted={header.column.getIsSorted()} />
+												</UnstyledButton>
+											) : (
+												flexRender(
+													header.column.columnDef.header,
+													header.getContext(),
+												)
 											)}
-											{canSort && (
-												<SortIcon isSorted={header.column.getIsSorted()} />
-											)}
-										</div>
-									</Table.Th>
-								);
-							})}
-						</Table.Tr>
-					))}
-				</Table.Thead>
-				<Table.Tbody>
-					{table.getRowModel().rows.map((row) => {
-						const isSelected = row.original.id === selectedSeriesId;
-						return (
-							<Table.Tr
-								key={row.id}
-								className={
-									isSelected
-										? "bg-[var(--brand-100)]/40 cursor-pointer transition-colors"
-										: "cursor-pointer transition-colors"
-								}
-								onClick={() => onSelectSeries(row.original.id)}
-							>
-								{row.getVisibleCells().map((cell) => (
-									<Table.Td key={cell.id} className={adminUi.tableCell}>
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</Table.Td>
-								))}
+										</Table.Th>
+									);
+								})}
 							</Table.Tr>
-						);
-					})}
-				</Table.Tbody>
-			</Table>
-		</Table.ScrollContainer>
+						))}
+					</Table.Thead>
+					<Table.Tbody>
+						{table.getRowModel().rows.map((row) => {
+							const isSelected = row.original.id === selectedSeriesId;
+							return (
+								<Table.Tr
+									key={row.id}
+									className={classes.tableRow}
+									data-selected={isSelected || undefined}
+									aria-selected={isSelected}
+									tabIndex={0}
+									onClick={() => onSelectSeries(row.original.id)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter" || event.key === " ") {
+											event.preventDefault();
+											onSelectSeries(row.original.id);
+										}
+									}}
+								>
+									{row.getVisibleCells().map((cell) => (
+										<Table.Td key={cell.id}>
+											{flexRender(
+												cell.column.columnDef.cell,
+												cell.getContext(),
+											)}
+										</Table.Td>
+									))}
+								</Table.Tr>
+							);
+						})}
+					</Table.Tbody>
+				</Table>
+			</Table.ScrollContainer>
+		</div>
 	);
 }

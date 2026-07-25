@@ -1,4 +1,10 @@
-import { Badge, Group, Loader, Table, Text } from "@mantine/core";
+import {
+	Badge,
+	EmptyState,
+	Skeleton,
+	Table,
+	UnstyledButton,
+} from "@mantine/core";
 import {
 	createColumnHelper,
 	flexRender,
@@ -7,9 +13,15 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
+import {
+	ArrowDown,
+	ArrowUp,
+	ArrowUpDown,
+	CalendarRange,
+	Check,
+} from "lucide-react";
 import { useMemo, useState } from "react";
-import { adminUi } from "#/features/admin/components/admin-ui";
+import classes from "../Reportes.module.css";
 import type { ReservationInstance } from "../types";
 
 interface InstanceTableProps {
@@ -21,26 +33,20 @@ interface InstanceTableProps {
 
 const columnHelper = createColumnHelper<ReservationInstance>();
 
-function getStatusBadgeProps(status: string) {
-	const normalized = status.toLowerCase();
-	if (normalized === "confirmed")
-		return { color: "teal", variant: "light" as const };
-	if (normalized === "held" || normalized === "pending")
-		return { color: "yellow", variant: "light" as const };
-	if (normalized === "cancelled")
-		return { color: "red", variant: "light" as const };
-	return { color: "gray", variant: "light" as const };
-}
+const STATUS_LABELS: Record<string, string> = {
+	confirmed: "Confirmada",
+	held: "Hold temporal",
+	pending: "Pendiente",
+	cancelled: "Cancelada",
+	expired: "Expirada",
+	attended: "Atendida",
+};
 
 function SortIcon({ isSorted }: { isSorted: false | "asc" | "desc" }) {
-	if (isSorted === "asc") return <ArrowUp size={12} className="text-red-600" />;
-	if (isSorted === "desc")
-		return <ArrowDown size={12} className="text-red-600" />;
+	if (isSorted === "asc") return <ArrowUp size={13} aria-hidden="true" />;
+	if (isSorted === "desc") return <ArrowDown size={13} aria-hidden="true" />;
 	return (
-		<ArrowUpDown
-			size={12}
-			className="text-[var(--text-secondary)] opacity-0 group-hover:opacity-50 transition-opacity"
-		/>
+		<ArrowUpDown size={13} className={classes.sortIcon} aria-hidden="true" />
 	);
 }
 
@@ -59,71 +65,68 @@ export function InstanceTable({
 			columnHelper.display({
 				id: "select",
 				header: "",
-				size: 48,
+				size: 44,
 				cell: ({ row }) => {
 					const isSelected = row.original.id === selectedInstanceId;
-					return isSelected ? (
-						<div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600">
-							<Check size={14} className="text-white" strokeWidth={2.5} />
-						</div>
-					) : (
-						<div className="h-6 w-6 rounded-full border-2 border-[var(--border-subtle)]" />
+					return (
+						<span
+							className={classes.selectionMark}
+							data-selected={isSelected || undefined}
+							aria-hidden="true"
+						>
+							<Check size={13} />
+						</span>
 					);
 				},
 			}),
-			columnHelper.accessor("id", {
-				header: "ID",
-				size: 100,
-				cell: (info) => (
-					<span className="font-mono text-xs text-[var(--text-secondary)]">
-						{info.getValue().slice(0, 8)}…
-					</span>
-				),
-			}),
 			columnHelper.accessor((row) => row.slot?.slotDate ?? "", {
 				id: "slotDate",
-				header: "Fecha",
-				size: 120,
-				cell: (info) =>
-					info.getValue() || (
-						<span className="text-[var(--text-secondary)]">-</span>
-					),
+				header: "Fecha y hora",
+				size: 190,
+				cell: ({ row }) => (
+					<div className={classes.primaryCell}>
+						<span className={classes.primaryValue}>
+							{row.original.slot?.slotDate || "Sin fecha"}
+						</span>
+						<span className={classes.secondaryValue}>
+							{row.original.slot?.startTime && row.original.slot?.endTime
+								? `${row.original.slot.startTime} – ${row.original.slot.endTime}`
+								: "Sin horario"}
+						</span>
+					</div>
+				),
 			}),
-			columnHelper.accessor(
-				(row) =>
-					row.slot?.startTime && row.slot?.endTime
-						? `${row.slot.startTime} – ${row.slot.endTime}`
-						: "",
-				{
-					id: "time",
-					header: "Hora",
-					size: 140,
-					cell: (info) =>
-						info.getValue() || (
-							<span className="text-[var(--text-secondary)]">--</span>
-						),
-				},
-			),
 			columnHelper.accessor("status", {
 				header: "Estado",
-				size: 120,
+				size: 130,
 				cell: (info) => (
 					<Badge
-						{...getStatusBadgeProps(info.getValue())}
+						color={info.row.original.isActive ? "teal" : "gray"}
+						variant="light"
 						size="sm"
 						radius="sm"
 					>
-						{info.getValue()}
+						{STATUS_LABELS[info.getValue()] ?? info.getValue()}
 					</Badge>
 				),
 			}),
 			columnHelper.accessor("staffUserId", {
-				header: "Staff",
-				size: 180,
-				cell: (info) =>
-					info.getValue() ?? (
-						<span className="text-[var(--text-secondary)]">Sin asignar</span>
-					),
+				header: "Funcionario",
+				size: 170,
+				cell: (info) => (
+					<span className={classes.reference}>
+						{info.getValue()?.slice(0, 12) ?? "Sin asignar"}
+					</span>
+				),
+			}),
+			columnHelper.accessor("notes", {
+				header: "Notas",
+				size: 190,
+				cell: (info) => (
+					<span className={classes.secondaryValue}>
+						{info.getValue() || "Sin notas"}
+					</span>
+				),
 			}),
 		],
 		[selectedInstanceId],
@@ -140,93 +143,107 @@ export function InstanceTable({
 
 	if (isLoading) {
 		return (
-			<Group justify="center" py="xl">
-				<Loader size="sm" />
-			</Group>
+			<div className={classes.tableFrame}>
+				<div
+					className={classes.loadingState}
+					role="status"
+					aria-label="Cargando instancias"
+				>
+					<div className={classes.loadingRows}>
+						<Skeleton height={34} radius="sm" />
+						<Skeleton height={54} radius="sm" />
+						<Skeleton height={54} radius="sm" />
+					</div>
+				</div>
+			</div>
 		);
 	}
 
 	if (instances.length === 0) {
 		return (
-			<div className={`${adminUi.surfaceMuted} text-center py-10`}>
-				<Text size="sm" c="dimmed">
-					No hay instancias activas para esta serie.
-				</Text>
+			<div className={classes.tableFrame}>
+				<div className={classes.emptyState}>
+					<EmptyState
+						icon={<CalendarRange size={28} />}
+						title="Esta serie no tiene instancias activas"
+						description="Las instancias aparecerán aquí cuando existan reservas vigentes asociadas."
+						size="sm"
+						withIndicatorBackground
+					/>
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<Table.ScrollContainer minWidth={800}>
-			<Table
-				highlightOnHover
-				highlightOnHoverColor="var(--bg-secondary)"
-				withRowBorders
-				borderColor="var(--border-subtle)"
-				verticalSpacing="sm"
-				horizontalSpacing="md"
-				stripedColor="var(--bg-primary)"
-				striped="odd"
-				className="rounded-xl overflow-hidden"
-			>
-				<Table.Thead>
-					{table.getHeaderGroups().map((headerGroup) => (
-						<Table.Tr key={headerGroup.id} className="bg-[var(--bg-secondary)]">
-							{headerGroup.headers.map((header) => {
-								const canSort = header.column.getCanSort();
-								return (
-									<Table.Th
-										key={header.id}
-										className={
-											canSort
-												? `${adminUi.tableHeader} cursor-pointer select-none group`
-												: adminUi.tableHeader
-										}
-										onClick={
-											canSort
-												? header.column.getToggleSortingHandler()
-												: undefined
-										}
-										style={{ width: header.getSize() }}
-									>
-										<div className="flex items-center gap-1.5">
-											{flexRender(
-												header.column.columnDef.header,
-												header.getContext(),
+		<div className={classes.tableFrame}>
+			<Table.ScrollContainer minWidth={720} type="native">
+				<Table className={classes.table} withRowBorders={false}>
+					<Table.Thead>
+						{table.getHeaderGroups().map((headerGroup) => (
+							<Table.Tr key={headerGroup.id}>
+								{headerGroup.headers.map((header) => {
+									const canSort = header.column.getCanSort();
+									return (
+										<Table.Th
+											key={header.id}
+											style={{ width: header.getSize() }}
+										>
+											{canSort ? (
+												<UnstyledButton
+													className={classes.sortButton}
+													onClick={header.column.getToggleSortingHandler()}
+												>
+													{flexRender(
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
+													<SortIcon isSorted={header.column.getIsSorted()} />
+												</UnstyledButton>
+											) : (
+												flexRender(
+													header.column.columnDef.header,
+													header.getContext(),
+												)
 											)}
-											{canSort && (
-												<SortIcon isSorted={header.column.getIsSorted()} />
-											)}
-										</div>
-									</Table.Th>
-								);
-							})}
-						</Table.Tr>
-					))}
-				</Table.Thead>
-				<Table.Tbody>
-					{table.getRowModel().rows.map((row) => {
-						const isSelected = row.original.id === selectedInstanceId;
-						return (
-							<Table.Tr
-								key={row.id}
-								className={
-									isSelected
-										? "bg-[var(--brand-100)]/40 cursor-pointer transition-colors"
-										: "cursor-pointer transition-colors"
-								}
-								onClick={() => onSelectInstance(row.original.id)}
-							>
-								{row.getVisibleCells().map((cell) => (
-									<Table.Td key={cell.id} className={adminUi.tableCell}>
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</Table.Td>
-								))}
+										</Table.Th>
+									);
+								})}
 							</Table.Tr>
-						);
-					})}
-				</Table.Tbody>
-			</Table>
-		</Table.ScrollContainer>
+						))}
+					</Table.Thead>
+					<Table.Tbody>
+						{table.getRowModel().rows.map((row) => {
+							const isSelected = row.original.id === selectedInstanceId;
+							return (
+								<Table.Tr
+									key={row.id}
+									className={classes.tableRow}
+									data-selected={isSelected || undefined}
+									aria-selected={isSelected}
+									tabIndex={0}
+									onClick={() => onSelectInstance(row.original.id)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter" || event.key === " ") {
+											event.preventDefault();
+											onSelectInstance(row.original.id);
+										}
+									}}
+								>
+									{row.getVisibleCells().map((cell) => (
+										<Table.Td key={cell.id}>
+											{flexRender(
+												cell.column.columnDef.cell,
+												cell.getContext(),
+											)}
+										</Table.Td>
+									))}
+								</Table.Tr>
+							);
+						})}
+					</Table.Tbody>
+				</Table>
+			</Table.ScrollContainer>
+		</div>
 	);
 }

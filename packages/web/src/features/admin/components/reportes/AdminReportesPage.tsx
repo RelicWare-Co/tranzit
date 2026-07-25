@@ -1,15 +1,25 @@
-import { Button, Card, Group, Loader, Stack, Text } from "@mantine/core";
-import { Calendar, FileText, RefreshCw, Users } from "lucide-react";
+import { Alert, Badge, Button, Skeleton, Tabs, Text } from "@mantine/core";
+import {
+	AlertCircle,
+	CalendarDays,
+	RefreshCw,
+	Repeat2,
+	ShieldCheck,
+} from "lucide-react";
 import { useState } from "react";
 import { AdminPageHeader } from "#/features/admin/components/AdminPageHeader";
-import { adminUi } from "#/features/admin/components/admin-ui";
+import { getErrorMessage } from "#/features/admin/components/errors";
 import { BookingsSection } from "./bookings";
+import { OperationResult } from "./OperationResult";
+import classes from "./Reportes.module.css";
 import { StatsOverview } from "./StatsOverview";
 import { SeriesSection } from "./series";
 import { useReportesData } from "./useReportesData";
 
+type ReportsTab = "bookings" | "series";
+
 export function AdminReportesPage() {
-	const [activeTab, setActiveTab] = useState<string>("bookings");
+	const [activeTab, setActiveTab] = useState<ReportsTab>("bookings");
 	const {
 		sessionQuery,
 		bookingsQuery,
@@ -43,91 +53,114 @@ export function AdminReportesPage() {
 		asNullableText,
 	} = useReportesData();
 
-	const tabs = [
-		{ value: "bookings", label: "Citas", icon: Calendar },
-		{ value: "series", label: "Series de reserva", icon: FileText },
-	] as const;
+	const isRefreshing =
+		bookingsQuery.isFetching ||
+		seriesQuery.isFetching ||
+		seriesInstancesQuery.isFetching;
 
 	return (
-		<Stack gap="xl">
-			<AdminPageHeader
-				title="Reportes y operaciones"
-				description="Gestión operativa de citas, series de reserva e instancias administrativas."
-				actions={
-					<Button
-						leftSection={<RefreshCw size={16} />}
-						onClick={() => void refreshAll()}
-						variant="light"
-						size="sm"
+		<div className={classes.page}>
+			<div className={classes.pageStack}>
+				<AdminPageHeader
+					title="Operación y reportes"
+					description="Consulta el estado de la agenda y gestiona citas o reservas recurrentes desde un mismo lugar."
+					actions={
+						<Button
+							leftSection={<RefreshCw size={16} />}
+							onClick={() => void refreshAll()}
+							variant="default"
+							loading={isRefreshing}
+						>
+							Actualizar datos
+						</Button>
+					}
+				/>
+
+				{sessionQuery.isError ? (
+					<Alert color="red" icon={<AlertCircle size={18} />} radius="md">
+						<Text fw={650}>
+							{getErrorMessage(
+								sessionQuery.error,
+								"No se pudo validar la sesión operativa",
+							)}
+						</Text>
+					</Alert>
+				) : null}
+
+				{sessionQuery.isPending ? (
+					<div
+						className={classes.pageStack}
+						role="status"
+						aria-label="Cargando reportes"
 					>
-						Refrescar
-					</Button>
-				}
-			/>
+						<Skeleton height={44} radius="md" />
+						<Skeleton height={108} radius="lg" />
+						<Skeleton height={520} radius="lg" />
+					</div>
+				) : null}
 
-			{(sessionQuery.isPending || !sessionQuery.data) && (
-				<Group justify="center" py="xl">
-					<Loader size="sm" />
-				</Group>
-			)}
-
-			{sessionQuery.data && (
-				<>
-					{/* Session Card */}
-					<Card className={adminUi.surface} radius="lg" p="md">
-						<Group gap="md" wrap="nowrap">
-							<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-zinc-200">
-								<Users size={18} className="text-red-700" strokeWidth={1.75} />
-							</div>
-							<Stack gap={0}>
-								<Text className="text-sm font-semibold text-[var(--text-primary)]">
-									Sesión activa
-								</Text>
-								<Text size="sm" className="text-[var(--text-secondary)]">
-									{sessionQuery.data.user.email} (
-									{sessionQuery.data.user.role ?? "sin rol"})
-								</Text>
-							</Stack>
-						</Group>
-					</Card>
-
-					{/* Stats */}
-					<StatsOverview
-						confirmedBookings={confirmedBookings}
-						heldBookings={heldBookings}
-						totalBookings={totalBookings}
-						activeSeries={activeSeries}
-					/>
-
-					{/* Custom Tabs Navigation */}
-					<div className="mb-4">
-						<div className="flex gap-1 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--border-subtle)]">
-							{tabs.map((tab) => {
-								const Icon = tab.icon;
-								const isActive = activeTab === tab.value;
-								return (
-									<button
-										key={tab.value}
-										type="button"
-										onClick={() => setActiveTab(tab.value)}
-										className={`
-											flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium
-											transition-all duration-200 cursor-pointer
-											${
-												isActive
-													? "bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm"
-													: "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)]"
-											}
-										`}
-									>
-										<Icon size={16} />
-										{tab.label}
-									</button>
-								);
-							})}
+				{sessionQuery.data ? (
+					<>
+						<div className={classes.sessionBar}>
+							<span className={classes.sessionIcon}>
+								<ShieldCheck size={16} aria-hidden="true" />
+							</span>
+							<span className={classes.sessionCopy}>
+								<span className={classes.sessionLabel}>Sesión operativa</span>
+								{" · "}
+								{sessionQuery.data.user.email}
+							</span>
+							<Badge color="gray" variant="light">
+								{sessionQuery.data.user.role ?? "Sin rol"}
+							</Badge>
 						</div>
-						<div className="mt-4">
-							{activeTab === "bookings" && (
+
+						<StatsOverview
+							confirmedBookings={confirmedBookings}
+							heldBookings={heldBookings}
+							totalBookings={totalBookings}
+							activeSeries={activeSeries}
+						/>
+
+						{actionResult ? (
+							<OperationResult
+								result={actionResult}
+								onClose={() => setActionResult(null)}
+							/>
+						) : null}
+
+						<Tabs
+							value={activeTab}
+							onChange={(value) =>
+								setActiveTab((value as ReportsTab | null) ?? "bookings")
+							}
+							className={classes.reportsShell}
+							classNames={{
+								list: classes.tabsList,
+								tab: classes.tab,
+								panel: classes.tabPanel,
+							}}
+						>
+							<Tabs.List aria-label="Áreas de operación y reportes">
+								<Tabs.Tab
+									value="bookings"
+									leftSection={
+										<CalendarDays className={classes.tabIcon} size={17} />
+									}
+								>
+									Citas de la agenda
+								</Tabs.Tab>
+								<Tabs.Tab
+									value="series"
+									leftSection={
+										<Repeat2 className={classes.tabIcon} size={17} />
+									}
+								>
+									Reservas recurrentes
+								</Tabs.Tab>
+							</Tabs.List>
+
+							<Tabs.Panel value="bookings">
 								<BookingsSection
 									filtersDraft={bookingFiltersDraft}
 									setFiltersDraft={setBookingFiltersDraft}
@@ -140,8 +173,9 @@ export function AdminReportesPage() {
 									isRunning={isRunning}
 									runAction={runAction}
 								/>
-							)}
-							{activeTab === "series" && (
+							</Tabs.Panel>
+
+							<Tabs.Panel value="series">
 								<SeriesSection
 									seriesQuery={seriesQuery}
 									selectedSeriesId={selectedSeriesId}
@@ -159,43 +193,11 @@ export function AdminReportesPage() {
 									selectedSeries={selectedSeries}
 									asNullableText={asNullableText}
 								/>
-							)}
-						</div>
-					</div>
-
-					{/* Action Result */}
-					{actionResult ? (
-						<Card className={adminUi.surfaceInset} radius="lg" p="md">
-							<Stack gap="xs">
-								<Group justify="space-between">
-									<Text
-										fw={600}
-										size="sm"
-										className="text-[var(--text-primary)]"
-									>
-										Resultado de la operación
-									</Text>
-									<Button
-										variant="subtle"
-										size="xs"
-										onClick={() => setActionResult(null)}
-									>
-										Cerrar
-									</Button>
-								</Group>
-								<Text
-									component="pre"
-									fz="xs"
-									style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-									className="text-[var(--text-secondary)]"
-								>
-									{JSON.stringify(actionResult, null, 2)}
-								</Text>
-							</Stack>
-						</Card>
-					) : null}
-				</>
-			)}
-		</Stack>
+							</Tabs.Panel>
+						</Tabs>
+					</>
+				) : null}
+			</div>
+		</div>
 	);
 }

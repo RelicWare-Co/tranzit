@@ -1,22 +1,18 @@
 import {
 	Button,
-	Collapse,
-	Group,
 	Loader,
+	Modal,
 	Select,
-	Stack,
-	Text,
 	Textarea,
 	TextInput,
-	Title,
-	UnstyledButton,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
-import { adminUi } from "#/features/admin/components/admin-ui";
 import { orpcClient } from "#/shared/lib/orpc-client";
+import classes from "../Reportes.module.css";
 import { RRuleBuilder, type RRuleValue, useRRuleString } from "./RRuleBuilder";
 
 interface CreateSeriesFormProps {
@@ -37,7 +33,7 @@ export function CreateSeriesForm({
 	isRunning,
 	createSeries,
 }: CreateSeriesFormProps) {
-	const [isOpen, setIsOpen] = useState(false);
+	const [opened, modal] = useDisclosure(false);
 	const [rruleValue, setRruleValue] = useState<RRuleValue>({
 		freq: "WEEKLY",
 		interval: 1,
@@ -46,6 +42,7 @@ export function CreateSeriesForm({
 	});
 
 	const recurrenceRuleString = useRRuleString(rruleValue);
+	const isSubmitting = isRunning === "create-series";
 
 	const form = useForm({
 		mode: "uncontrolled",
@@ -58,10 +55,17 @@ export function CreateSeriesForm({
 			notes: "",
 		},
 		validate: {
-			slotId: (value) => (!value ? "Seleccioná un slot" : null),
-			staffUserId: (value) => (!value ? "Seleccioná un funcionario" : null),
+			slotDate: (value) => (!value ? "Selecciona una fecha base" : null),
+			slotId: (value) => (!value ? "Selecciona un horario" : null),
+			staffUserId: (value) => (!value ? "Selecciona un funcionario" : null),
 			startDate: (value) => (!value ? "La fecha de inicio es requerida" : null),
-			endDate: (value) => (!value ? "La fecha de fin es requerida" : null),
+			endDate: (value, values) => {
+				if (!value) return "La fecha de fin es requerida";
+				if (values.startDate && value < values.startDate) {
+					return "La fecha final debe ser posterior al inicio";
+				}
+				return null;
+			},
 		},
 	});
 
@@ -79,142 +83,144 @@ export function CreateSeriesForm({
 			}),
 	});
 
-	const slotOptions =
-		(slotsQuery.data?.slots ?? [])
-			.filter((slot) => slot.status === "open")
-			.map((slot) => ({
-				value: slot.id,
-				label: `${slot.startTime} – ${slot.endTime} (${slot.remainingCapacity ?? "∞"})`,
-			})) ?? [];
+	const slotOptions = (slotsQuery.data?.slots ?? [])
+		.filter((slot) => slot.status === "open")
+		.map((slot) => ({
+			value: slot.id,
+			label: `${slot.startTime} – ${slot.endTime} · ${
+				slot.remainingCapacity ?? "Sin límite"
+			} cupos`,
+		}));
 
-	const handleSubmit = form.onSubmit((values) => {
-		void createSeries({
-			recurrenceRule: recurrenceRuleString,
-			slotId: values.slotId,
-			staffUserId: values.staffUserId,
-			startDate: values.startDate,
-			endDate: values.endDate,
-			notes: values.notes.trim() || null,
-		});
-		setIsOpen(false);
-		form.reset();
+	const handleSubmit = form.onSubmit(async (values) => {
+		try {
+			await createSeries({
+				recurrenceRule: recurrenceRuleString,
+				slotId: values.slotId,
+				staffUserId: values.staffUserId,
+				startDate: values.startDate,
+				endDate: values.endDate,
+				notes: values.notes.trim() || null,
+			});
+			form.reset();
+			setRruleValue({
+				freq: "WEEKLY",
+				interval: 1,
+				byDay: ["MO"],
+				byMonthDay: null,
+			});
+			modal.close();
+		} catch {
+			// The operation error is already surfaced by createSeries.
+		}
 	});
 
 	return (
-		<div className={adminUi.surfaceInset}>
-			<Stack gap="md" p="md">
-				{/* Header - Collapsible */}
-				<UnstyledButton
-					onClick={() => setIsOpen(!isOpen)}
-					className="flex w-full items-center justify-between rounded-lg px-3 py-3 hover:bg-[var(--bg-secondary)] transition-colors"
-				>
-					<Group gap="sm">
-						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
-							<Plus size={16} className="text-red-700" strokeWidth={1.75} />
+		<>
+			<Button leftSection={<Plus size={16} />} onClick={modal.open}>
+				Nueva serie
+			</Button>
+
+			<Modal
+				opened={opened}
+				onClose={modal.close}
+				title="Nueva serie de reserva"
+				size="lg"
+				centered
+				closeOnClickOutside={!isSubmitting}
+				closeOnEscape={!isSubmitting}
+				withCloseButton={!isSubmitting}
+			>
+				<p className={classes.modalIntro}>
+					Crea reservas administrativas recurrentes a partir de un horario base.
+					Las instancias resultantes consumirán capacidad en la agenda.
+				</p>
+				<form onSubmit={handleSubmit}>
+					<section className={classes.modalSection}>
+						<h3 className={classes.modalSectionTitle}>Patrón de repetición</h3>
+						<RRuleBuilder value={rruleValue} onChange={setRruleValue} />
+					</section>
+
+					<section className={classes.modalSection}>
+						<h3 className={classes.modalSectionTitle}>Horario y responsable</h3>
+						<div className={classes.formGrid}>
+							<TextInput
+								label="Fecha para buscar el horario base"
+								description="Solo se mostrarán horarios abiertos de esta fecha."
+								type="date"
+								key={form.key("slotDate")}
+								{...form.getInputProps("slotDate")}
+							/>
+							<Select
+								label="Horario base"
+								placeholder={
+									form.values.slotDate
+										? "Selecciona un horario"
+										: "Primero selecciona una fecha"
+								}
+								key={form.key("slotId")}
+								{...form.getInputProps("slotId")}
+								data={slotOptions}
+								disabled={!form.values.slotDate || slotsQuery.isLoading}
+								rightSection={
+									slotsQuery.isLoading ? <Loader size="xs" /> : null
+								}
+							/>
+							<Select
+								label="Funcionario responsable"
+								placeholder="Selecciona un funcionario"
+								searchable
+								key={form.key("staffUserId")}
+								{...form.getInputProps("staffUserId")}
+								data={staffOptions}
+							/>
 						</div>
-						<Stack gap={0}>
-							<Title
-								order={5}
-								className="text-sm font-semibold text-[var(--text-primary)]"
-							>
-								Nueva serie de reserva
-							</Title>
-							<Text size="xs" className="text-[var(--text-secondary)]">
-								{isOpen ? "Ocultar formulario" : "Crear reserva recurrente"}
-							</Text>
-						</Stack>
-					</Group>
-					{isOpen ? (
-						<ChevronUp size={18} className="text-[var(--text-secondary)]" />
-					) : (
-						<ChevronDown size={18} className="text-[var(--text-secondary)]" />
-					)}
-				</UnstyledButton>
+					</section>
 
-				<Collapse expanded={isOpen}>
-					<form onSubmit={handleSubmit}>
-						<Stack gap="lg">
-							{/* Recurrence */}
-							<Stack gap="xs">
-								<Text size="sm" fw={600} className="text-[var(--text-primary)]">
-									Regla de recurrencia
-								</Text>
-								<RRuleBuilder value={rruleValue} onChange={setRruleValue} />
-							</Stack>
+					<section className={classes.modalSection}>
+						<h3 className={classes.modalSectionTitle}>Vigencia y contexto</h3>
+						<div className={classes.formGrid}>
+							<TextInput
+								label="Inicio de la serie"
+								type="date"
+								key={form.key("startDate")}
+								{...form.getInputProps("startDate")}
+							/>
+							<TextInput
+								label="Fin de la serie"
+								type="date"
+								key={form.key("endDate")}
+								{...form.getInputProps("endDate")}
+							/>
+						</div>
+						<Textarea
+							label="Notas internas"
+							description="Opcional. Explica el propósito de la reserva para otros operadores."
+							rows={3}
+							key={form.key("notes")}
+							{...form.getInputProps("notes")}
+						/>
+					</section>
 
-							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-								<TextInput
-									label="Fecha para slot base"
-									size="sm"
-									type="date"
-									key={form.key("slotDate")}
-									{...form.getInputProps("slotDate")}
-								/>
-								<Select
-									label="Slot base"
-									size="sm"
-									placeholder="Seleccioná slot"
-									key={form.key("slotId")}
-									{...form.getInputProps("slotId")}
-									data={slotOptions}
-									disabled={!form.values.slotDate || slotsQuery.isLoading}
-									rightSection={
-										slotsQuery.isLoading ? <Loader size="xs" /> : null
-									}
-								/>
-								<Select
-									label="Funcionario"
-									size="sm"
-									placeholder="Seleccioná funcionario"
-									key={form.key("staffUserId")}
-									{...form.getInputProps("staffUserId")}
-									data={staffOptions}
-								/>
-								<TextInput
-									label="Inicio serie"
-									size="sm"
-									type="date"
-									key={form.key("startDate")}
-									{...form.getInputProps("startDate")}
-								/>
-								<TextInput
-									label="Fin serie"
-									size="sm"
-									type="date"
-									key={form.key("endDate")}
-									{...form.getInputProps("endDate")}
-								/>
-								<Textarea
-									label="Notas"
-									size="sm"
-									minRows={2}
-									key={form.key("notes")}
-									{...form.getInputProps("notes")}
-								/>
-							</div>
-
-							<Group justify="flex-end" gap="sm">
-								<Button
-									type="button"
-									variant="default"
-									size="sm"
-									onClick={() => setIsOpen(false)}
-								>
-									Cancelar
-								</Button>
-								<Button
-									type="submit"
-									size="sm"
-									loading={isRunning === "create-series"}
-									leftSection={<Plus size={14} />}
-								>
-									Crear serie
-								</Button>
-							</Group>
-						</Stack>
-					</form>
-				</Collapse>
-			</Stack>
-		</div>
+					<div className={classes.formActions}>
+						<Button
+							type="button"
+							variant="default"
+							onClick={modal.close}
+							disabled={isSubmitting}
+						>
+							Cancelar
+						</Button>
+						<Button
+							type="submit"
+							loading={isSubmitting}
+							leftSection={<Plus size={15} />}
+						>
+							Crear serie
+						</Button>
+					</div>
+				</form>
+			</Modal>
+		</>
 	);
 }

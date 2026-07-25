@@ -1,6 +1,6 @@
-import { Card, Group, Stack, Text } from "@mantine/core";
-import { Calendar, CheckCircle2, Clock, FileText } from "lucide-react";
-import { adminUi } from "#/features/admin/components/admin-ui";
+import { CalendarDays, CheckCircle2, Clock3, Repeat2 } from "lucide-react";
+import type { ReactNode } from "react";
+import classes from "./Reportes.module.css";
 
 interface StatsOverviewProps {
 	confirmedBookings: number;
@@ -9,41 +9,23 @@ interface StatsOverviewProps {
 	activeSeries: number;
 }
 
-function StatCard({
+function Metric({
 	icon,
 	label,
 	value,
-	iconBg,
+	tone,
 }: {
-	icon: React.ReactNode;
+	icon: ReactNode;
 	label: string;
 	value: number;
-	iconBg: string;
+	tone?: "success" | "warning";
 }) {
 	return (
-		<Card className={adminUi.surface} radius="lg" p="md" shadow="none">
-			<Stack gap="xs">
-				<Group gap="xs" wrap="nowrap">
-					<div
-						className="flex h-8 w-8 items-center justify-center rounded-md"
-						style={{ backgroundColor: iconBg }}
-					>
-						{icon}
-					</div>
-					<Text
-						size="xs"
-						className="font-medium uppercase tracking-wider text-[var(--text-secondary)]"
-					>
-						{label}
-					</Text>
-				</Group>
-				<Text
-					className={`text-2xl font-bold text-[var(--text-primary)] ${adminUi.monoStat}`}
-				>
-					{value}
-				</Text>
-			</Stack>
-		</Card>
+		<div className={classes.metric} data-tone={tone}>
+			<span className={classes.metricIcon}>{icon}</span>
+			<span className={classes.metricLabel}>{label}</span>
+			<span className={classes.metricValue}>{value}</span>
+		</div>
 	);
 }
 
@@ -54,31 +36,29 @@ export function StatsOverview({
 	activeSeries,
 }: StatsOverviewProps) {
 	return (
-		<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-			<StatCard
-				icon={<CheckCircle2 size={16} className="text-teal-700" />}
+		<section className={classes.overview} aria-label="Resumen de la agenda">
+			<Metric
+				icon={<CalendarDays size={18} aria-hidden="true" />}
+				label="Citas en la consulta"
+				value={totalBookings}
+			/>
+			<Metric
+				icon={<CheckCircle2 size={18} aria-hidden="true" />}
 				label="Confirmadas"
 				value={confirmedBookings}
-				iconBg="#f0fdf4"
+				tone="success"
 			/>
-			<StatCard
-				icon={<Clock size={16} className="text-amber-700" />}
-				label="Pendientes"
+			<Metric
+				icon={<Clock3 size={18} aria-hidden="true" />}
+				label="Holds vigentes"
 				value={heldBookings}
-				iconBg="#fffbeb"
+				tone="warning"
 			/>
-			<StatCard
-				icon={<Calendar size={16} className="text-blue-700" />}
-				label="Total citas"
-				value={totalBookings}
-				iconBg="#eff6ff"
-			/>
-			<StatCard
-				icon={<FileText size={16} className="text-purple-700" />}
+			<Metric
+				icon={<Repeat2 size={18} aria-hidden="true" />}
 				label="Series activas"
 				value={activeSeries}
-				iconBg="#faf5ff"
 			/>
-		</div>
+		</section>
 	);
 }

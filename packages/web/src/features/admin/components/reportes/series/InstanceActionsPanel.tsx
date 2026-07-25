@@ -1,27 +1,26 @@
 import {
 	Button,
-	Divider,
-	Group,
+	EmptyState,
 	Loader,
+	Modal,
 	Select,
-	Stack,
 	Text,
 	TextInput,
-	Title,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import {
 	AlertTriangle,
 	ArrowDownUp,
+	CalendarClock,
 	CalendarDays,
-	Info,
 	Save,
 	UserCheck,
 } from "lucide-react";
 import { useMemo } from "react";
-import { adminUi } from "#/features/admin/components/admin-ui";
 import { orpcClient } from "#/shared/lib/orpc-client";
+import classes from "../Reportes.module.css";
 import type { ReservationInstance } from "../types";
 
 interface InstanceActionsPanelProps {
@@ -44,17 +43,23 @@ export function InstanceActionsPanel({
 	runAction,
 	asNullableText,
 }: InstanceActionsPanelProps) {
+	const [releaseOpened, releaseModal] = useDisclosure(false);
+
 	const updateForm = useForm({
 		mode: "uncontrolled",
 		initialValues: { staffUserId: "", notes: "" },
 	});
-
 	const moveForm = useForm({
 		mode: "uncontrolled",
 		initialValues: { slotDate: "", targetSlotId: "", targetStaffUserId: "" },
 		validate: {
-			targetSlotId: (value) => (!value ? "Seleccioná el slot destino" : null),
+			slotDate: (value) => (!value ? "Selecciona una fecha" : null),
+			targetSlotId: (value) => (!value ? "Selecciona un horario" : null),
 		},
+	});
+	const releaseForm = useForm({
+		mode: "uncontrolled",
+		initialValues: { reason: "cancelled" },
 	});
 
 	const moveSlotsQuery = useQuery({
@@ -77,39 +82,62 @@ export function InstanceActionsPanel({
 				.filter((slot) => slot.status === "open")
 				.map((slot) => ({
 					value: slot.id,
-					label: `${slot.startTime} – ${slot.endTime} (${slot.remainingCapacity ?? "∞"})`,
+					label: `${slot.startTime} – ${slot.endTime} · ${
+						slot.remainingCapacity ?? "Sin límite"
+					} cupos`,
 				})),
 		[moveSlotsQuery.data?.slots],
 	);
 
 	if (!selectedInstance) {
 		return (
-			<div className="flex h-full min-h-[160px] items-center justify-center rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
-				<Text c="dimmed" size="sm">
-					Seleccioná una instancia para gestionar sus acciones
-				</Text>
+			<div className={classes.emptySelection}>
+				<EmptyState
+					icon={<CalendarClock size={28} />}
+					title="Selecciona una instancia"
+					description="Podrás editarla o moverla sin afectar las demás reservas de la serie."
+					size="sm"
+					withIndicatorBackground
+				/>
 			</div>
 		);
 	}
 
+	const handleRelease = releaseForm.onSubmit(async (values) => {
+		try {
+			await runAction(
+				"instance-release",
+				async () =>
+					await orpcClient.admin.reservations.release({
+						bookingId: selectedInstance.id,
+						reason: values.reason,
+					}),
+				"Instancia liberada. El resto de la serie no fue modificado.",
+				"No se pudo liberar la instancia.",
+			);
+			releaseModal.close();
+		} catch {
+			// The operation error is already surfaced by runAction.
+		}
+	});
+
 	return (
-		<div className={adminUi.surfaceInset}>
-			<Stack gap="lg">
-				<div className="flex items-center gap-3">
-					<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
-						<Info size={16} className="text-red-700" strokeWidth={1.75} />
+		<>
+			<div className={classes.actionPanel}>
+				<header className={classes.actionHeader}>
+					<div>
+						<p className={classes.actionEyebrow}>Instancia seleccionada</p>
+						<h4 className={classes.actionTitle}>
+							{selectedInstance.slot?.slotDate ?? "Sin fecha"}
+							{" · "}
+							{selectedInstance.slot?.startTime ?? "Sin hora"}
+						</h4>
+						<p className={classes.actionReference}>
+							{selectedInstance.id.slice(0, 8)}
+						</p>
 					</div>
-					<Title
-						order={6}
-						className="text-sm font-semibold text-[var(--text-primary)]"
-					>
-						Acciones sobre instancia
-					</Title>
-				</div>
+				</header>
 
-				<Divider className={adminUi.divider} />
-
-				{/* Update */}
 				<form
 					onSubmit={updateForm.onSubmit(
 						(values) =>
@@ -122,57 +150,43 @@ export function InstanceActionsPanel({
 											asNullableText(values.staffUserId) ?? undefined,
 										notes: asNullableText(values.notes),
 									}),
-								"Instancia actualizada.",
+								"Instancia actualizada sin modificar el resto de la serie.",
 								"No se pudo actualizar la instancia.",
 							),
 					)}
 				>
-					<Stack gap="md">
-						<Text
-							size="xs"
-							fw={600}
-							className="uppercase tracking-wider text-[var(--text-secondary)]"
-						>
-							Actualizar instancia
-						</Text>
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					<section className={classes.actionSection}>
+						<h4 className={classes.actionSectionTitle}>
+							Actualizar esta instancia
+						</h4>
+						<div className={classes.formGrid}>
 							<Select
-								label="Nuevo staff"
-								size="sm"
-								placeholder="Opcional"
-								leftSection={
-									<UserCheck
-										size={14}
-										className="text-[var(--text-secondary)]"
-									/>
-								}
+								label="Nuevo funcionario"
+								placeholder="Conservar responsable"
+								searchable
+								leftSection={<UserCheck size={15} />}
 								key={updateForm.key("staffUserId")}
 								{...updateForm.getInputProps("staffUserId")}
 								data={staffOptions}
 							/>
 							<TextInput
-								label="Notas"
-								size="sm"
+								label="Notas internas"
 								key={updateForm.key("notes")}
 								{...updateForm.getInputProps("notes")}
 							/>
 						</div>
-						<Group justify="flex-start">
+						<div className={classes.formActions}>
 							<Button
 								type="submit"
-								size="sm"
-								leftSection={<Save size={14} />}
+								leftSection={<Save size={15} />}
 								loading={isRunning === "instance-update"}
 							>
-								Actualizar
+								Actualizar instancia
 							</Button>
-						</Group>
-					</Stack>
+						</div>
+					</section>
 				</form>
 
-				<Divider className={adminUi.divider} />
-
-				{/* Move */}
 				<form
 					onSubmit={moveForm.onSubmit(
 						(values) =>
@@ -185,36 +199,27 @@ export function InstanceActionsPanel({
 										targetStaffUserId:
 											asNullableText(values.targetStaffUserId) ?? undefined,
 									}),
-								"Instancia movida.",
+								"Instancia movida al horario seleccionado.",
 								"No se pudo mover la instancia.",
 							),
 					)}
 				>
-					<Stack gap="md">
-						<Text
-							size="xs"
-							fw={600}
-							className="uppercase tracking-wider text-[var(--text-secondary)]"
-						>
-							Mover instancia
-						</Text>
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+					<section className={classes.actionSection}>
+						<h4 className={classes.actionSectionTitle}>Mover esta instancia</h4>
+						<p className={classes.actionSectionDescription}>
+							El cambio no afecta las demás reservas de la serie.
+						</p>
+						<div className={classes.formGridThree}>
 							<TextInput
-								label="Fecha del slot destino"
-								size="sm"
+								label="Fecha destino"
 								type="date"
-								leftSection={
-									<CalendarDays
-										size={14}
-										className="text-[var(--text-secondary)]"
-									/>
-								}
+								leftSection={<CalendarDays size={15} />}
 								key={moveForm.key("slotDate")}
 								{...moveForm.getInputProps("slotDate")}
 							/>
 							<Select
-								label="Slot destino"
-								size="sm"
+								label="Horario destino"
+								placeholder="Selecciona un horario"
 								key={moveForm.key("targetSlotId")}
 								{...moveForm.getInputProps("targetSlotId")}
 								data={moveSlotOptions}
@@ -224,79 +229,89 @@ export function InstanceActionsPanel({
 								}
 							/>
 							<Select
-								label="Staff destino"
-								size="sm"
-								placeholder="Opcional"
-								leftSection={
-									<UserCheck
-										size={14}
-										className="text-[var(--text-secondary)]"
-									/>
-								}
+								label="Funcionario destino"
+								placeholder="Conservar responsable"
+								searchable
 								key={moveForm.key("targetStaffUserId")}
 								{...moveForm.getInputProps("targetStaffUserId")}
 								data={staffOptions}
 							/>
 						</div>
-						<Group gap="sm" wrap="wrap">
+						<div className={classes.formActions}>
 							<Button
 								type="submit"
-								variant="light"
-								size="sm"
-								leftSection={<ArrowDownUp size={14} />}
+								leftSection={<ArrowDownUp size={15} />}
 								loading={isRunning === "instance-move"}
 							>
 								Mover instancia
 							</Button>
-							<Select
-								label="Razón de liberación"
-								size="sm"
-								w={200}
-								defaultValue="cancelled"
-								data={[
-									{ value: "cancelled", label: "Cancelada" },
-									{ value: "expired", label: "Expirada" },
-									{ value: "attended", label: "Atendida" },
-								]}
-								onChange={(value) => {
-									const reason = value ?? "cancelled";
-									void runAction(
-										"instance-release",
-										async () =>
-											await orpcClient.admin.reservations.release({
-												bookingId: selectedInstance.id,
-												reason,
-											}),
-										"Instancia liberada.",
-										"No se pudo liberar la instancia.",
-									);
-								}}
-							/>
-							<Button
-								color="red"
-								variant="light"
-								size="sm"
-								leftSection={<AlertTriangle size={14} />}
-								loading={isRunning === "instance-release"}
-								onClick={() => {
-									void runAction(
-										"instance-release",
-										async () =>
-											await orpcClient.admin.reservations.release({
-												bookingId: selectedInstance.id,
-												reason: "cancelled",
-											}),
-										"Instancia liberada.",
-										"No se pudo liberar la instancia.",
-									);
-								}}
-							>
-								Liberar instancia
-							</Button>
-						</Group>
-					</Stack>
+						</div>
+					</section>
 				</form>
-			</Stack>
-		</div>
+
+				<section className={classes.actionSection}>
+					<h4 className={classes.actionSectionTitle}>Liberar esta instancia</h4>
+					<p className={classes.actionSectionDescription}>
+						Libera su capacidad sin cancelar toda la serie.
+					</p>
+					<div>
+						<Button
+							color="red"
+							variant="light"
+							leftSection={<AlertTriangle size={15} />}
+							onClick={releaseModal.open}
+						>
+							Liberar instancia
+						</Button>
+					</div>
+				</section>
+			</div>
+
+			<Modal
+				opened={releaseOpened}
+				onClose={releaseModal.close}
+				title="Liberar instancia"
+				centered
+				closeOnClickOutside={isRunning !== "instance-release"}
+				closeOnEscape={isRunning !== "instance-release"}
+				withCloseButton={isRunning !== "instance-release"}
+			>
+				<Text className={classes.modalIntro}>
+					Solo se desactivará la reserva {selectedInstance.id.slice(0, 8)}. La
+					serie continuará generando y conservando sus demás instancias.
+				</Text>
+				<form onSubmit={handleRelease}>
+					<div className={classes.actionSection}>
+						<Select
+							label="Motivo de liberación"
+							key={releaseForm.key("reason")}
+							{...releaseForm.getInputProps("reason")}
+							data={[
+								{ value: "cancelled", label: "Instancia cancelada" },
+								{ value: "expired", label: "Instancia expirada" },
+								{ value: "attended", label: "Atención completada" },
+							]}
+						/>
+						<div className={classes.formActions}>
+							<Button
+								type="button"
+								variant="default"
+								onClick={releaseModal.close}
+								disabled={isRunning === "instance-release"}
+							>
+								Conservar instancia
+							</Button>
+							<Button
+								type="submit"
+								color="red"
+								loading={isRunning === "instance-release"}
+							>
+								Confirmar liberación
+							</Button>
+						</div>
+					</div>
+				</form>
+			</Modal>
+		</>
 	);
 }

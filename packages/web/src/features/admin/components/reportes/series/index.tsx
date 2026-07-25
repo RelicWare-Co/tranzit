@@ -1,6 +1,8 @@
-import { Card, SimpleGrid, Stack, Title } from "@mantine/core";
+import { EmptyState, Tabs } from "@mantine/core";
+import { ListTree, Repeat2, Settings2 } from "lucide-react";
 import { useMemo } from "react";
-import { adminUi } from "#/features/admin/components/admin-ui";
+import classes from "../Reportes.module.css";
+import { ReportSectionHeader } from "../ReportSectionHeader";
 import type { ReservationInstance, ReservationSeriesFilters } from "../types";
 import { CreateSeriesForm } from "./CreateSeriesForm";
 import { InstanceActionsPanel } from "./InstanceActionsPanel";
@@ -9,14 +11,16 @@ import { SeriesActionsPanel } from "./SeriesActionsPanel";
 import { SeriesFilters } from "./SeriesFilters";
 import { SeriesTable } from "./SeriesTable";
 
+interface SeriesItem {
+	id: string;
+	isActive: boolean;
+	activeInstanceCount?: number | null;
+	notes?: string | null;
+}
+
 interface SeriesSectionProps {
 	seriesQuery: {
-		data?: Array<{
-			id: string;
-			isActive: boolean;
-			activeInstanceCount?: number | null;
-			notes?: string | null;
-		}>;
+		data?: SeriesItem[];
 		isLoading: boolean;
 		isError: boolean;
 		error: unknown;
@@ -47,10 +51,7 @@ interface SeriesSectionProps {
 	}) => Promise<unknown>;
 	seriesFilters: ReservationSeriesFilters;
 	setSeriesFilters: (filters: ReservationSeriesFilters) => void;
-	selectedSeries: {
-		id: string;
-		notes?: string | null;
-	} | null;
+	selectedSeries: SeriesItem | null;
 	asNullableText: (value: string) => string | null;
 }
 
@@ -78,72 +79,127 @@ export function SeriesSection({
 	);
 
 	return (
-		<Stack gap="lg">
-			{/* Create Form - Collapsible */}
-			<CreateSeriesForm
-				staffOptions={staffOptions}
-				isRunning={isRunning}
-				createSeries={createSeries}
+		<div className={classes.sectionStack}>
+			<ReportSectionHeader
+				title="Reservas recurrentes"
+				description="Administra bloqueos administrativos que se repiten y revisa cada instancia generada por una serie."
+				count={seriesQuery.data?.length ?? 0}
+				countLabel="series"
+				actions={
+					<CreateSeriesForm
+						staffOptions={staffOptions}
+						isRunning={isRunning}
+						createSeries={createSeries}
+					/>
+				}
 			/>
 
-			{/* Filters */}
 			<SeriesFilters filters={seriesFilters} onChange={setSeriesFilters} />
 
-			{/* Two Column Layout */}
-			<SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
-				{/* Left: Series List */}
-				<Card className={adminUi.surface} radius="lg" p="md">
-					<Stack gap="md">
-						<SeriesTable
-							series={seriesQuery.data ?? []}
-							selectedSeriesId={selectedSeriesId}
-							onSelectSeries={setSelectedSeriesId}
-							isLoading={seriesQuery.isLoading}
-							isError={seriesQuery.isError}
-							error={seriesQuery.error}
-						/>
-					</Stack>
-				</Card>
-
-				{/* Right: Actions + Instances */}
-				<Stack gap="lg">
-					<SeriesActionsPanel
-						selectedSeries={selectedSeries}
-						isRunning={isRunning}
-						staffOptions={staffOptions}
-						runAction={runAction}
-						asNullableText={asNullableText}
+			<div className={classes.masterDetail}>
+				<section className={classes.masterPane} aria-label="Listado de series">
+					<header className={classes.paneHeader}>
+						<div>
+							<h3 className={classes.paneTitle}>Series configuradas</h3>
+							<p className={classes.paneDescription}>
+								Selecciona una para revisar sus instancias.
+							</p>
+						</div>
+					</header>
+					<SeriesTable
+						series={seriesQuery.data ?? []}
+						selectedSeriesId={selectedSeriesId}
+						onSelectSeries={setSelectedSeriesId}
+						isLoading={seriesQuery.isLoading}
+						isError={seriesQuery.isError}
+						error={seriesQuery.error}
 					/>
+				</section>
 
-					{selectedSeries && (
-						<Card className={adminUi.surface} radius="lg" p="md">
-							<Stack gap="md">
-								<Title
-									order={5}
-									className="text-sm font-semibold text-[var(--text-primary)]"
-								>
-									Instancias de la serie
-								</Title>
+				<section
+					className={classes.detailPane}
+					aria-label="Detalle de la serie"
+				>
+					{selectedSeries ? (
+						<>
+							<header className={classes.actionHeader}>
+								<div>
+									<p className={classes.actionEyebrow}>Serie seleccionada</p>
+									<h3 className={classes.actionTitle}>
+										Serie {selectedSeries.id.slice(0, 8)}
+									</h3>
+									<p className={classes.actionReference}>
+										{selectedSeries.activeInstanceCount ?? 0} instancias activas
+									</p>
+								</div>
+							</header>
 
-								<InstanceTable
-									instances={instances}
-									selectedInstanceId={selectedInstanceId}
-									onSelectInstance={setSelectedInstanceId}
-									isLoading={seriesInstancesQuery.isLoading}
-								/>
+							<Tabs
+								defaultValue="instances"
+								classNames={{
+									list: classes.detailTabsList,
+									tab: classes.detailTab,
+								}}
+							>
+								<Tabs.List aria-label="Detalle y configuración de la serie">
+									<Tabs.Tab
+										value="instances"
+										leftSection={<ListTree size={16} />}
+									>
+										Instancias
+									</Tabs.Tab>
+									<Tabs.Tab
+										value="settings"
+										leftSection={<Settings2 size={16} />}
+									>
+										Gestionar serie
+									</Tabs.Tab>
+								</Tabs.List>
 
-								<InstanceActionsPanel
-									selectedInstance={selectedInstance}
-									isRunning={isRunning}
-									staffOptions={staffOptions}
-									runAction={runAction}
-									asNullableText={asNullableText}
-								/>
-							</Stack>
-						</Card>
+								<Tabs.Panel value="instances">
+									<div className={classes.sectionStack}>
+										<InstanceTable
+											instances={instances}
+											selectedInstanceId={selectedInstanceId}
+											onSelectInstance={setSelectedInstanceId}
+											isLoading={seriesInstancesQuery.isLoading}
+										/>
+										<InstanceActionsPanel
+											key={selectedInstance?.id ?? "no-instance"}
+											selectedInstance={selectedInstance}
+											isRunning={isRunning}
+											staffOptions={staffOptions}
+											runAction={runAction}
+											asNullableText={asNullableText}
+										/>
+									</div>
+								</Tabs.Panel>
+
+								<Tabs.Panel value="settings">
+									<SeriesActionsPanel
+										key={selectedSeries.id}
+										selectedSeries={selectedSeries}
+										isRunning={isRunning}
+										staffOptions={staffOptions}
+										runAction={runAction}
+										asNullableText={asNullableText}
+									/>
+								</Tabs.Panel>
+							</Tabs>
+						</>
+					) : (
+						<div className={classes.emptySelection}>
+							<EmptyState
+								icon={<Repeat2 size={30} />}
+								title="Selecciona una serie"
+								description="Aquí podrás revisar sus instancias y administrar cambios futuros."
+								size="sm"
+								withIndicatorBackground
+							/>
+						</div>
 					)}
-				</Stack>
-			</SimpleGrid>
-		</Stack>
+				</section>
+			</div>
+		</div>
 	);
 }

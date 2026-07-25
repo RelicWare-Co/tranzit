@@ -1,5 +1,5 @@
 import { Select } from "@mantine/core";
-import { Filter } from "lucide-react";
+import classes from "../Reportes.module.css";
 import type { ReservationSeriesFilters } from "../types";
 
 interface SeriesFiltersProps {
@@ -9,15 +9,15 @@ interface SeriesFiltersProps {
 
 export function SeriesFilters({ filters, onChange }: SeriesFiltersProps) {
 	return (
-		<div className="flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-3">
-			<div className="flex items-center gap-2 text-[var(--text-secondary)]">
-				<Filter size={14} strokeWidth={1.75} />
-				<span className="text-xs font-semibold uppercase tracking-wider">
-					Series
-				</span>
+		<div className={classes.seriesFilterBar}>
+			<div className={classes.filterCopy}>
+				<p className={classes.filterTitle}>Estado de las series</p>
+				<p className={classes.filterDescription}>
+					Las series inactivas se conservan como historial operativo.
+				</p>
 			</div>
 			<Select
-				size="sm"
+				label="Mostrar"
 				value={filters.isActive}
 				onChange={(value) =>
 					onChange({
@@ -25,9 +25,9 @@ export function SeriesFilters({ filters, onChange }: SeriesFiltersProps) {
 					})
 				}
 				data={[
-					{ value: "all", label: "Todas" },
-					{ value: "true", label: "Activas" },
-					{ value: "false", label: "Inactivas" },
+					{ value: "all", label: "Todas las series" },
+					{ value: "true", label: "Solo activas" },
+					{ value: "false", label: "Solo inactivas" },
 				]}
 			/>
 		</div>

@@ -1,19 +1,13 @@
-import {
-	Checkbox,
-	Group,
-	NumberInput,
-	Select,
-	Stack,
-	Text,
-} from "@mantine/core";
+import { Checkbox, NumberInput, Select } from "@mantine/core";
 import { useMemo } from "react";
+import classes from "../Reportes.module.css";
 
 export type Frequency = "DAILY" | "WEEKLY" | "MONTHLY";
 
 export interface RRuleValue {
 	freq: Frequency;
 	interval: number;
-	byDay: string[]; // MO, TU, WE, TH, FR, SA, SU
+	byDay: string[];
 	byMonthDay: number | null;
 }
 
@@ -32,11 +26,13 @@ const DAYS = [
 	{ value: "SU", label: "Dom" },
 ];
 
+const DAY_NAMES = Object.fromEntries(
+	DAYS.map((day) => [day.value, day.label.toLowerCase()]),
+);
+
 function buildRRuleString(value: RRuleValue): string {
 	const parts: string[] = [`FREQ=${value.freq}`];
-	if (value.interval > 1) {
-		parts.push(`INTERVAL=${value.interval}`);
-	}
+	if (value.interval > 1) parts.push(`INTERVAL=${value.interval}`);
 	if (value.freq === "WEEKLY" && value.byDay.length > 0) {
 		parts.push(`BYDAY=${value.byDay.join(",")}`);
 	}
@@ -51,30 +47,53 @@ export function useRRuleString(value: RRuleValue): string {
 }
 
 export function RRuleBuilder({ value, onChange }: RRuleBuilderProps) {
-	const preview = useRRuleString(value);
+	const humanPreview = useMemo(() => {
+		if (value.freq === "DAILY") {
+			return value.interval === 1
+				? "La reserva se repetirá todos los días."
+				: `La reserva se repetirá cada ${value.interval} días.`;
+		}
+		if (value.freq === "MONTHLY") {
+			const day = value.byMonthDay ?? 1;
+			return value.interval === 1
+				? `La reserva se repetirá el día ${day} de cada mes.`
+				: `La reserva se repetirá el día ${day}, cada ${value.interval} meses.`;
+		}
+
+		const dayNames = value.byDay
+			.map((day) => DAY_NAMES[day])
+			.filter(Boolean)
+			.join(", ");
+		const frequency =
+			value.interval === 1 ? "cada semana" : `cada ${value.interval} semanas`;
+		return `La reserva se repetirá ${frequency} los días: ${
+			dayNames || "sin días seleccionados"
+		}.`;
+	}, [value]);
 
 	const toggleDay = (day: string) => {
-		const has = value.byDay.includes(day);
+		const hasDay = value.byDay.includes(day);
 		onChange({
 			...value,
-			byDay: has ? value.byDay.filter((d) => d !== day) : [...value.byDay, day],
+			byDay: hasDay
+				? value.byDay.filter((candidate) => candidate !== day)
+				: [...value.byDay, day],
 		});
 	};
 
 	return (
-		<Stack gap="md">
-			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div className={classes.actionSection}>
+			<div className={classes.formGrid}>
 				<Select
-					label="Repetir"
-					size="sm"
+					label="Frecuencia"
 					value={value.freq}
 					data={[
-						{ value: "DAILY", label: "Diariamente" },
-						{ value: "WEEKLY", label: "Semanalmente" },
-						{ value: "MONTHLY", label: "Mensualmente" },
+						{ value: "DAILY", label: "Todos los días" },
+						{ value: "WEEKLY", label: "Cada semana" },
+						{ value: "MONTHLY", label: "Cada mes" },
 					]}
-					onChange={(val) => {
-						const freq = (val as Frequency) ?? "WEEKLY";
+					onChange={(nextValue) => {
+						const freq = (nextValue as Frequency) ?? "WEEKLY";
 						onChange({
 							...value,
 							freq,
@@ -88,15 +107,15 @@ export function RRuleBuilder({ value, onChange }: RRuleBuilderProps) {
 					}}
 				/>
 				<NumberInput
-					label="Cada"
-					size="sm"
+					label="Intervalo"
+					description="Cada cuántos días, semanas o meses se repite."
 					min={1}
 					max={52}
 					value={value.interval}
-					onChange={(val) =>
+					onChange={(nextValue) =>
 						onChange({
 							...value,
-							interval: typeof val === "number" ? val : 1,
+							interval: typeof nextValue === "number" ? nextValue : 1,
 						})
 					}
 					suffix={
@@ -109,46 +128,40 @@ export function RRuleBuilder({ value, onChange }: RRuleBuilderProps) {
 				/>
 			</div>
 
-			{value.freq === "WEEKLY" && (
-				<Stack gap="xs">
-					<Text size="sm" fw={500} className="text-[var(--text-primary)]">
-						Días de la semana
-					</Text>
-					<Group gap="xs">
+			{value.freq === "WEEKLY" ? (
+				<fieldset>
+					<legend className={classes.actionSectionTitle}>
+						Días de atención
+					</legend>
+					<div className={classes.rruleDays}>
 						{DAYS.map((day) => (
 							<Checkbox
 								key={day.value}
 								label={day.label}
-								size="sm"
 								checked={value.byDay.includes(day.value)}
 								onChange={() => toggleDay(day.value)}
 							/>
 						))}
-					</Group>
-				</Stack>
-			)}
+					</div>
+				</fieldset>
+			) : null}
 
-			{value.freq === "MONTHLY" && (
+			{value.freq === "MONTHLY" ? (
 				<NumberInput
 					label="Día del mes"
-					size="sm"
 					min={1}
 					max={31}
 					value={value.byMonthDay ?? 1}
-					onChange={(val) =>
+					onChange={(nextValue) =>
 						onChange({
 							...value,
-							byMonthDay: typeof val === "number" ? val : 1,
+							byMonthDay: typeof nextValue === "number" ? nextValue : 1,
 						})
 					}
 				/>
-			)}
+			) : null}
 
-			<div className="rounded-lg border border-dashed border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3 py-2">
-				<Text size="xs" className="font-mono text-[var(--text-secondary)]">
-					{preview}
-				</Text>
-			</div>
-		</Stack>
+			<div className={classes.rrulePreview}>{humanPreview}</div>
+		</div>
 	);
 }

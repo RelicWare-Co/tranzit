@@ -2,25 +2,27 @@ import {
 	Accordion,
 	Button,
 	Checkbox,
-	Group,
+	EmptyState,
 	Loader,
+	Modal,
 	Select,
-	Stack,
 	Text,
 	TextInput,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
 import { useQuery } from "@tanstack/react-query";
 import {
 	AlertTriangle,
 	ArrowDownUp,
 	CalendarDays,
+	Repeat2,
 	Save,
 	UserCheck,
 } from "lucide-react";
 import { useMemo } from "react";
-import { adminUi } from "#/features/admin/components/admin-ui";
 import { orpcClient } from "#/shared/lib/orpc-client";
+import classes from "../Reportes.module.css";
 
 interface SeriesActionsPanelProps {
 	selectedSeries: {
@@ -45,22 +47,30 @@ export function SeriesActionsPanel({
 	runAction,
 	asNullableText,
 }: SeriesActionsPanelProps) {
+	const [releaseOpened, releaseModal] = useDisclosure(false);
+
 	const updateForm = useForm({
 		mode: "uncontrolled",
 		initialValues: { staffUserId: "", notes: "", force: false },
 	});
-
 	const updateFromDateForm = useForm({
 		mode: "uncontrolled",
 		initialValues: { effectiveFrom: "", staffUserId: "", notes: "" },
+		validate: {
+			effectiveFrom: (value) => (!value ? "Selecciona una fecha" : null),
+		},
 	});
-
 	const moveForm = useForm({
 		mode: "uncontrolled",
 		initialValues: { slotDate: "", targetSlotId: "", targetStaffUserId: "" },
 		validate: {
-			targetSlotId: (value) => (!value ? "Seleccioná el slot destino" : null),
+			slotDate: (value) => (!value ? "Selecciona una fecha" : null),
+			targetSlotId: (value) => (!value ? "Selecciona un horario" : null),
 		},
+	});
+	const releaseForm = useForm({
+		mode: "uncontrolled",
+		initialValues: { reason: "cancelled" },
 	});
 
 	const moveSlotsQuery = useQuery({
@@ -83,79 +93,68 @@ export function SeriesActionsPanel({
 				.filter((slot) => slot.status === "open")
 				.map((slot) => ({
 					value: slot.id,
-					label: `${slot.startTime} – ${slot.endTime} (${slot.remainingCapacity ?? "∞"})`,
+					label: `${slot.startTime} – ${slot.endTime} · ${
+						slot.remainingCapacity ?? "Sin límite"
+					} cupos`,
 				})),
 		[moveSlotsQuery.data?.slots],
 	);
 
 	if (!selectedSeries) {
 		return (
-			<div className="flex h-full min-h-[200px] items-center justify-center rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
-				<Text c="dimmed" size="sm">
-					Seleccioná una serie para gestionar sus acciones
-				</Text>
+			<div className={classes.emptySelection}>
+				<EmptyState
+					icon={<Repeat2 size={28} />}
+					title="Selecciona una serie"
+					description="Las herramientas de gestión aparecerán aquí."
+					size="sm"
+					withIndicatorBackground
+				/>
 			</div>
 		);
 	}
 
+	const handleRelease = releaseForm.onSubmit(async (values) => {
+		try {
+			await runAction(
+				"series-release",
+				async () =>
+					await orpcClient.admin.reservationSeries.release({
+						id: selectedSeries.id,
+						reason: values.reason,
+					}),
+				"Serie liberada. Sus reservas activas dejaron de consumir capacidad.",
+				"No se pudo liberar la serie.",
+			);
+			releaseModal.close();
+		} catch {
+			// The operation error is already surfaced by runAction.
+		}
+	});
+
 	return (
-		<div className={`${adminUi.surface} p-4`}>
-			<Stack gap="md">
-				{/* Header */}
-				<div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
-					<div className="flex items-center gap-2">
-						<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-red-50 ring-1 ring-red-100">
-							<Save size={13} className="text-red-700" strokeWidth={1.75} />
-						</div>
-						<Text size="sm" fw={600} className="text-[var(--text-primary)]">
-							Acciones: Serie {selectedSeries.id.slice(0, 8)}…
-						</Text>
-					</div>
-					<Text size="xs" className="font-mono text-[var(--text-secondary)]">
-						ID: {selectedSeries.id.slice(0, 8)}…
-					</Text>
+		<>
+			<div className={classes.actionPanel}>
+				<div className={classes.actionSection}>
+					<h4 className={classes.actionSectionTitle}>
+						Cambios sobre la serie completa
+					</h4>
+					<p className={classes.actionSectionDescription}>
+						Escoge el alcance del cambio antes de modificar reservas generadas.
+					</p>
 				</div>
 
-				{/* Accordion */}
 				<Accordion
-					variant="default"
-					radius="md"
+					variant="unstyled"
 					defaultValue="update"
-					styles={{
-						control: {
-							padding: "10px 14px",
-							backgroundColor: "var(--bg-secondary)",
-							borderRadius: "8px",
-							"&:hover": {
-								backgroundColor: "var(--bg-primary)",
-							},
-						},
-						item: {
-							border: "1px solid var(--border-subtle)",
-							borderRadius: "8px",
-							marginBottom: "6px",
-							backgroundColor: "transparent",
-							"&:last-of-type": {
-								marginBottom: 0,
-							},
-						},
-						panel: {
-							padding: "12px 14px",
-							backgroundColor: "var(--bg-primary)",
-							borderTop: "1px solid var(--border-subtle)",
-						},
-						chevron: {
-							color: "var(--text-secondary)",
-						},
+					classNames={{
+						item: classes.accordionItem,
+						control: classes.accordionControl,
+						panel: classes.accordionPanel,
 					}}
 				>
-					{/* Update */}
 					<Accordion.Item value="update">
-						<Accordion.Control>
-							<Text size="sm" fw={500} className="text-[var(--text-primary)]">
-								Actualizar serie
-							</Text>
-						</Accordion.Control>
+						<Accordion.Control>Actualizar toda la serie</Accordion.Control>
 						<Accordion.Panel>
 							<form
 								onSubmit={updateForm.onSubmit(
@@ -175,53 +174,47 @@ export function SeriesActionsPanel({
 										),
 								)}
 							>
-								<Stack gap="sm">
-									<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+								<div className={classes.actionSection}>
+									<div className={classes.formGrid}>
 										<Select
-											label="Nuevo staff"
-											size="sm"
-											placeholder="Opcional"
+											label="Nuevo funcionario"
+											description="Opcional. Conserva el actual si queda vacío."
+											placeholder="Conservar responsable"
+											searchable
 											key={updateForm.key("staffUserId")}
 											{...updateForm.getInputProps("staffUserId")}
 											data={staffOptions}
 										/>
 										<TextInput
-											label="Notas"
-											size="sm"
+											label="Notas internas"
+											placeholder="Conservar o actualizar contexto"
 											key={updateForm.key("notes")}
 											{...updateForm.getInputProps("notes")}
 										/>
 									</div>
 									<Checkbox
-										label="Forzar actualización"
-										size="sm"
+										label="Forzar el cambio aunque existan advertencias de capacidad"
 										key={updateForm.key("force")}
 										{...updateForm.getInputProps("force", {
 											type: "checkbox",
 										})}
 									/>
-									<Group justify="flex-start">
+									<div className={classes.formActions}>
 										<Button
 											type="submit"
-											size="xs"
-											leftSection={<Save size={12} />}
+											leftSection={<Save size={15} />}
 											loading={isRunning === "series-update"}
 										>
-											Actualizar
+											Actualizar serie
 										</Button>
-									</Group>
-								</Stack>
+									</div>
+								</div>
 							</form>
 						</Accordion.Panel>
 					</Accordion.Item>
 
-					{/* Update from date */}
-					<Accordion.Item value="updateFromDate">
-						<Accordion.Control>
-							<Text size="sm" fw={500} className="text-[var(--text-primary)]">
-								Actualizar desde fecha
-							</Text>
-						</Accordion.Control>
+					<Accordion.Item value="future">
+						<Accordion.Control>Aplicar desde una fecha</Accordion.Control>
 						<Accordion.Panel>
 							<form
 								onSubmit={updateFromDateForm.onSubmit(
@@ -238,70 +231,51 @@ export function SeriesActionsPanel({
 														notes: asNullableText(values.notes),
 													},
 												),
-											"Serie actualizada desde fecha.",
-											"No se pudo actualizar desde fecha.",
+											"Cambio aplicado desde la fecha indicada.",
+											"No se pudo actualizar la serie desde esa fecha.",
 										),
 								)}
 							>
-								<Stack gap="sm">
-									<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+								<div className={classes.actionSection}>
+									<div className={classes.formGrid}>
 										<TextInput
 											label="Fecha efectiva"
-											size="sm"
 											type="date"
-											leftSection={
-												<CalendarDays
-													size={14}
-													className="text-[var(--text-secondary)]"
-												/>
-											}
+											leftSection={<CalendarDays size={15} />}
 											key={updateFromDateForm.key("effectiveFrom")}
 											{...updateFromDateForm.getInputProps("effectiveFrom")}
 										/>
 										<Select
-											label="Staff desde fecha"
-											size="sm"
-											placeholder="Opcional"
-											leftSection={
-												<UserCheck
-													size={14}
-													className="text-[var(--text-secondary)]"
-												/>
-											}
+											label="Funcionario desde esa fecha"
+											placeholder="Conservar responsable"
+											searchable
+											leftSection={<UserCheck size={15} />}
 											key={updateFromDateForm.key("staffUserId")}
 											{...updateFromDateForm.getInputProps("staffUserId")}
 											data={staffOptions}
 										/>
-										<TextInput
-											label="Notas desde fecha"
-											size="sm"
-											key={updateFromDateForm.key("notes")}
-											{...updateFromDateForm.getInputProps("notes")}
-										/>
 									</div>
-									<Group justify="flex-start">
+									<TextInput
+										label="Notas para el cambio"
+										key={updateFromDateForm.key("notes")}
+										{...updateFromDateForm.getInputProps("notes")}
+									/>
+									<div className={classes.formActions}>
 										<Button
 											type="submit"
-											variant="light"
-											size="xs"
-											leftSection={<Save size={12} />}
+											leftSection={<Save size={15} />}
 											loading={isRunning === "series-update-from-date"}
 										>
-											Aplicar desde fecha
+											Aplicar cambio futuro
 										</Button>
-									</Group>
-								</Stack>
+									</div>
+								</div>
 							</form>
 						</Accordion.Panel>
 					</Accordion.Item>
 
-					{/* Move */}
 					<Accordion.Item value="move">
-						<Accordion.Control>
-							<Text size="sm" fw={500} className="text-[var(--text-primary)]">
-								Mover serie
-							</Text>
-						</Accordion.Control>
+						<Accordion.Control>Mover a otro horario</Accordion.Control>
 						<Accordion.Panel>
 							<form
 								onSubmit={moveForm.onSubmit(
@@ -316,29 +290,22 @@ export function SeriesActionsPanel({
 														asNullableText(values.targetStaffUserId) ??
 														undefined,
 												}),
-											"Serie movida.",
+											"Serie movida al horario seleccionado.",
 											"No se pudo mover la serie.",
 										),
 								)}
 							>
-								<Stack gap="sm">
-									<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+								<div className={classes.actionSection}>
+									<div className={classes.formGridThree}>
 										<TextInput
-											label="Fecha del slot destino"
-											size="sm"
+											label="Fecha del nuevo horario"
 											type="date"
-											leftSection={
-												<CalendarDays
-													size={14}
-													className="text-[var(--text-secondary)]"
-												/>
-											}
 											key={moveForm.key("slotDate")}
 											{...moveForm.getInputProps("slotDate")}
 										/>
 										<Select
-											label="Slot destino"
-											size="sm"
+											label="Horario destino"
+											placeholder="Selecciona un horario"
 											key={moveForm.key("targetSlotId")}
 											{...moveForm.getInputProps("targetSlotId")}
 											data={moveSlotOptions}
@@ -350,97 +317,92 @@ export function SeriesActionsPanel({
 											}
 										/>
 										<Select
-											label="Staff destino"
-											size="sm"
-											placeholder="Opcional"
-											leftSection={
-												<UserCheck
-													size={14}
-													className="text-[var(--text-secondary)]"
-												/>
-											}
+											label="Funcionario destino"
+											placeholder="Conservar responsable"
+											searchable
 											key={moveForm.key("targetStaffUserId")}
 											{...moveForm.getInputProps("targetStaffUserId")}
 											data={staffOptions}
 										/>
 									</div>
-									<Group justify="flex-start">
+									<div className={classes.formActions}>
 										<Button
 											type="submit"
-											variant="light"
-											size="xs"
-											leftSection={<ArrowDownUp size={12} />}
+											leftSection={<ArrowDownUp size={15} />}
 											loading={isRunning === "series-move"}
 										>
 											Mover serie
 										</Button>
-									</Group>
-								</Stack>
+									</div>
+								</div>
 							</form>
 						</Accordion.Panel>
 					</Accordion.Item>
-
-					{/* Release */}
-					<Accordion.Item value="release">
-						<Accordion.Control>
-							<Text size="sm" fw={500} c="red">
-								Liberar serie
-							</Text>
-						</Accordion.Control>
-						<Accordion.Panel>
-							<Stack gap="sm">
-								<Group gap="sm" wrap="wrap" align="flex-end">
-									<Select
-										label="Razón de liberación"
-										size="sm"
-										w={200}
-										defaultValue="cancelled"
-										data={[
-											{ value: "cancelled", label: "Cancelada" },
-											{ value: "expired", label: "Expirada" },
-											{ value: "attended", label: "Atendida" },
-										]}
-										onChange={(value) => {
-											const reason = value ?? "cancelled";
-											void runAction(
-												"series-release",
-												async () =>
-													await orpcClient.admin.reservationSeries.release({
-														id: selectedSeries.id,
-														reason,
-													}),
-												"Serie liberada.",
-												"No se pudo liberar la serie.",
-											);
-										}}
-									/>
-									<Button
-										color="red"
-										variant="light"
-										size="xs"
-										loading={isRunning === "series-release"}
-										onClick={() => {
-											void runAction(
-												"series-release",
-												async () =>
-													await orpcClient.admin.reservationSeries.release({
-														id: selectedSeries.id,
-														reason: "cancelled",
-													}),
-												"Serie liberada.",
-												"No se pudo liberar la serie.",
-											);
-										}}
-										leftSection={<AlertTriangle size={12} />}
-									>
-										Liberar serie
-									</Button>
-								</Group>
-							</Stack>
-						</Accordion.Panel>
-					</Accordion.Item>
 				</Accordion>
-			</Stack>
-		</div>
+
+				<section className={classes.actionSection}>
+					<h4 className={classes.actionSectionTitle}>Liberar toda la serie</h4>
+					<p className={classes.actionSectionDescription}>
+						Desactiva la recurrencia y libera sus reservas activas.
+					</p>
+					<div>
+						<Button
+							color="red"
+							variant="light"
+							leftSection={<AlertTriangle size={15} />}
+							onClick={releaseModal.open}
+						>
+							Liberar serie
+						</Button>
+					</div>
+				</section>
+			</div>
+
+			<Modal
+				opened={releaseOpened}
+				onClose={releaseModal.close}
+				title="Liberar serie de reserva"
+				centered
+				closeOnClickOutside={isRunning !== "series-release"}
+				closeOnEscape={isRunning !== "series-release"}
+				withCloseButton={isRunning !== "series-release"}
+			>
+				<Text className={classes.modalIntro}>
+					Se desactivará la serie {selectedSeries.id.slice(0, 8)} y sus
+					instancias activas dejarán de consumir capacidad.
+				</Text>
+				<form onSubmit={handleRelease}>
+					<div className={classes.actionSection}>
+						<Select
+							label="Motivo de liberación"
+							key={releaseForm.key("reason")}
+							{...releaseForm.getInputProps("reason")}
+							data={[
+								{ value: "cancelled", label: "Serie cancelada" },
+								{ value: "expired", label: "Serie expirada" },
+								{ value: "attended", label: "Atención completada" },
+							]}
+						/>
+						<div className={classes.formActions}>
+							<Button
+								type="button"
+								variant="default"
+								onClick={releaseModal.close}
+								disabled={isRunning === "series-release"}
+							>
+								Conservar serie
+							</Button>
+							<Button
+								type="submit"
+								color="red"
+								loading={isRunning === "series-release"}
+							>
+								Confirmar liberación
+							</Button>
+						</div>
+					</div>
+				</form>
+			</Modal>
+		</>
 	);
 }

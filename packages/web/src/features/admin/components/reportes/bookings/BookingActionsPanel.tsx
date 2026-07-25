@@ -1,30 +1,30 @@
-import {
-	Button,
-	Divider,
-	Group,
-	Select,
-	Stack,
-	Text,
-	Title,
-} from "@mantine/core";
+import { Button, Modal, Select, Text } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
 import {
 	AlertTriangle,
 	ArrowDownUp,
 	CheckCircle2,
-	Eye,
-	Info,
+	Gauge,
+	SearchCheck,
 	UserCheck,
 } from "lucide-react";
-import { adminUi } from "#/features/admin/components/admin-ui";
 import { orpcClient } from "#/shared/lib/orpc-client";
+import classes from "../Reportes.module.css";
 
 interface SelectedBooking {
 	id: string;
 	slotId: string;
+	status: string;
+	isActive: boolean;
 	slot?: {
 		slotDate?: string;
 		startTime?: string;
+		endTime?: string;
+	} | null;
+	staff?: {
+		name?: string | null;
+		email?: string | null;
 	} | null;
 }
 
@@ -54,6 +54,8 @@ export function BookingActionsPanel({
 	reassignTargetStaffId,
 	onReassignTargetChange,
 }: BookingActionsPanelProps) {
+	const [releaseOpened, releaseModal] = useDisclosure(false);
+
 	const releaseForm = useForm({
 		mode: "uncontrolled",
 		initialValues: { reason: releaseReason },
@@ -64,54 +66,75 @@ export function BookingActionsPanel({
 		initialValues: { targetStaffUserId: reassignTargetStaffId },
 		validate: {
 			targetStaffUserId: (value) =>
-				!value ? "Seleccioná un funcionario" : null,
+				!value ? "Selecciona un funcionario" : null,
 		},
 	});
 
+	const validateStaffSelection = () => {
+		const targetStaffUserId = reassignForm.getValues().targetStaffUserId;
+		if (!targetStaffUserId) {
+			reassignForm.setFieldError(
+				"targetStaffUserId",
+				"Selecciona un funcionario destino.",
+			);
+			return null;
+		}
+		return targetStaffUserId;
+	};
+
+	const handleRelease = releaseForm.onSubmit(async (values) => {
+		const reason = values.reason as "cancelled" | "expired" | "attended";
+		onReleaseReasonChange(reason);
+		try {
+			await runAction(
+				"booking-release",
+				async () =>
+					await orpcClient.admin.bookings.release({
+						id: selectedBooking.id,
+						reason,
+					}),
+				"Cita liberada. Ya no consume capacidad.",
+				"No se pudo liberar la cita.",
+			);
+			releaseModal.close();
+		} catch {
+			// The operation error is already surfaced by runAction.
+		}
+	});
+
 	return (
-		<div className={adminUi.surfaceInset}>
-			<Stack gap="lg">
-				{/* Header */}
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-3">
-						<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 ring-1 ring-red-100">
-							<Info size={16} className="text-red-700" strokeWidth={1.75} />
-						</div>
-						<Stack gap={2}>
-							<Title
-								order={5}
-								className="text-sm font-semibold text-[var(--text-primary)]"
-							>
-								Acciones sobre cita seleccionada
-							</Title>
-							<Text
-								size="xs"
-								className="font-mono text-[var(--text-secondary)]"
-							>
-								ID: {selectedBooking.id.slice(0, 8)}… |{" "}
-								{selectedBooking.slot?.slotDate ?? "-"}{" "}
-								{selectedBooking.slot?.startTime ?? "--"}
-							</Text>
-						</Stack>
+		<>
+			<aside className={classes.actionPanel} aria-label="Detalle de la cita">
+				<header className={classes.actionHeader}>
+					<div>
+						<p className={classes.actionEyebrow}>Cita seleccionada</p>
+						<h3 className={classes.actionTitle}>
+							{selectedBooking.slot?.slotDate ?? "Fecha no disponible"}
+							{" · "}
+							{selectedBooking.slot?.startTime ?? "Sin hora"}
+						</h3>
+						<p className={classes.actionReference}>
+							{selectedBooking.id.slice(0, 8)} ·{" "}
+							{selectedBooking.staff?.name ||
+								selectedBooking.staff?.email ||
+								"Sin funcionario"}
+						</p>
 					</div>
-				</div>
+				</header>
 
-				<Divider className={adminUi.divider} />
-
-				{/* Quick Actions */}
-				<Stack gap="xs">
-					<Text
-						size="xs"
-						fw={600}
-						className="uppercase tracking-wider text-[var(--text-secondary)]"
-					>
-						Acciones rápidas
-					</Text>
-					<Group gap="sm" wrap="wrap">
+				<section className={classes.actionSection}>
+					<h4 className={classes.actionSectionTitle}>Estado y capacidad</h4>
+					<p className={classes.actionSectionDescription}>
+						Confirma el hold o consulta la capacidad efectiva del slot.
+					</p>
+					<div className={classes.actionButtons}>
 						<Button
-							size="sm"
-							leftSection={<CheckCircle2 size={14} />}
+							leftSection={<CheckCircle2 size={15} />}
 							loading={isRunning === "booking-confirm"}
+							disabled={
+								selectedBooking.status === "confirmed" ||
+								!selectedBooking.isActive
+							}
 							onClick={() =>
 								void runAction(
 									"booking-confirm",
@@ -119,17 +142,16 @@ export function BookingActionsPanel({
 										await orpcClient.admin.bookings.confirm({
 											id: selectedBooking.id,
 										}),
-									"Cita confirmada.",
+									"Cita confirmada correctamente.",
 									"No se pudo confirmar la cita.",
 								)
 							}
 						>
-							Confirmar
+							Confirmar cita
 						</Button>
 						<Button
-							variant="light"
-							size="sm"
-							leftSection={<Eye size={14} />}
+							variant="default"
+							leftSection={<Gauge size={15} />}
 							loading={isRunning === "booking-capacity"}
 							onClick={() =>
 								void runAction(
@@ -138,193 +160,173 @@ export function BookingActionsPanel({
 										await orpcClient.admin.bookings.capacity({
 											id: selectedBooking.id,
 										}),
-									"Capacidad consultada.",
+									"Capacidad consultada para la cita seleccionada.",
 									"No se pudo consultar la capacidad.",
 								)
 							}
 						>
-							Ver capacidad
+							Consultar capacidad
 						</Button>
-					</Group>
-				</Stack>
+					</div>
+				</section>
 
-				<Divider className={adminUi.divider} />
-
-				{/* Reassign */}
-				<form
-					onSubmit={reassignForm.onSubmit(() => {
-						onReassignTargetChange(reassignForm.values.targetStaffUserId);
-						void runAction(
-							"booking-reassign",
-							async () =>
-								await orpcClient.admin.bookings.reassign({
-									id: selectedBooking.id,
-									targetStaffUserId: reassignForm.values.targetStaffUserId,
-								}),
-							"Cita reasignada.",
-							"No se pudo reasignar la cita.",
-						);
-					})}
-				>
-					<Stack gap="md">
-						<Text
-							size="xs"
-							fw={600}
-							className="uppercase tracking-wider text-[var(--text-secondary)]"
-						>
-							Reasignar
-						</Text>
-						<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<section className={classes.actionSection}>
+					<h4 className={classes.actionSectionTitle}>Reasignar funcionario</h4>
+					<p className={classes.actionSectionDescription}>
+						Valida primero el cambio para evitar conflictos de disponibilidad.
+					</p>
+					<form
+						onSubmit={reassignForm.onSubmit(async (values) => {
+							onReassignTargetChange(values.targetStaffUserId);
+							await runAction(
+								"booking-reassign",
+								async () =>
+									await orpcClient.admin.bookings.reassign({
+										id: selectedBooking.id,
+										targetStaffUserId: values.targetStaffUserId,
+									}),
+								"Cita reasignada al funcionario seleccionado.",
+								"No se pudo reasignar la cita.",
+							);
+						})}
+					>
+						<div className={classes.actionSection}>
 							<Select
 								label="Funcionario destino"
-								size="sm"
-								placeholder="Seleccioná funcionario"
-								leftSection={
-									<UserCheck
-										size={14}
-										className="text-[var(--text-secondary)]"
-									/>
-								}
+								placeholder="Selecciona un funcionario"
+								leftSection={<UserCheck size={15} />}
+								searchable
 								key={reassignForm.key("targetStaffUserId")}
 								{...reassignForm.getInputProps("targetStaffUserId")}
 								data={staffOptions}
-								onChange={(val) => {
-									const value = val ?? "";
-									reassignForm.setFieldValue("targetStaffUserId", value);
-									onReassignTargetChange(value);
+								onChange={(value) => {
+									const nextValue = value ?? "";
+									reassignForm.setFieldValue("targetStaffUserId", nextValue);
+									onReassignTargetChange(nextValue);
 								}}
 							/>
-							<div className="flex items-end gap-2">
+							<div className={classes.actionButtons}>
 								<Button
-									variant="light"
-									size="sm"
-									leftSection={<Eye size={14} />}
+									type="button"
+									variant="default"
+									leftSection={<SearchCheck size={15} />}
 									loading={isRunning === "booking-reassign-preview"}
 									onClick={() => {
-										if (!reassignForm.values.targetStaffUserId) {
-											reassignForm.setFieldError(
-												"targetStaffUserId",
-												"Seleccioná funcionario destino.",
-											);
-											return;
-										}
+										const targetStaffUserId = validateStaffSelection();
+										if (!targetStaffUserId) return;
 										void runAction(
 											"booking-reassign-preview",
 											async () =>
 												await orpcClient.admin.bookings.reassignPreview({
 													id: selectedBooking.id,
-													targetStaffUserId:
-														reassignForm.values.targetStaffUserId,
+													targetStaffUserId,
 												}),
-											"Previsualización lista.",
-											"No se pudo previsualizar.",
+											"Se revisó la viabilidad de la reasignación.",
+											"No se pudo revisar la reasignación.",
 										);
 									}}
 								>
-									Preview
+									Revisar cambio
 								</Button>
 								<Button
-									type="submit"
-									size="sm"
-									leftSection={<ArrowDownUp size={14} />}
-									loading={isRunning === "booking-reassign"}
-								>
-									Reasignar
-								</Button>
-								<Button
+									type="button"
 									variant="default"
-									size="sm"
-									leftSection={<Info size={14} />}
+									leftSection={<Gauge size={15} />}
 									loading={isRunning === "booking-availability"}
 									onClick={() => {
-										if (!reassignForm.values.targetStaffUserId) {
-											reassignForm.setFieldError(
-												"targetStaffUserId",
-												"Seleccioná funcionario destino.",
-											);
-											return;
-										}
+										const staffUserId = validateStaffSelection();
+										if (!staffUserId) return;
 										void runAction(
 											"booking-availability",
 											async () =>
 												await orpcClient.admin.bookings.availabilityCheck({
 													slotId: selectedBooking.slotId,
-													staffUserId: reassignForm.values.targetStaffUserId,
+													staffUserId,
 												}),
-											"Availability consultada.",
-											"No se pudo consultar availability.",
+											"Disponibilidad validada para el funcionario.",
+											"No se pudo validar la disponibilidad.",
 										);
 									}}
 								>
-									Availability
+									Validar disponibilidad
+								</Button>
+								<Button
+									type="submit"
+									leftSection={<ArrowDownUp size={15} />}
+									loading={isRunning === "booking-reassign"}
+								>
+									Reasignar cita
 								</Button>
 							</div>
 						</div>
-					</Stack>
-				</form>
+					</form>
+				</section>
 
-				<Divider className={adminUi.divider} />
-
-				{/* Release */}
-				<form
-					onSubmit={releaseForm.onSubmit(() => {
-						onReleaseReasonChange(releaseForm.values.reason);
-						void runAction(
-							"booking-release",
-							async () =>
-								await orpcClient.admin.bookings.release({
-									id: selectedBooking.id,
-									reason: releaseForm.values.reason,
-								}),
-							"Cita liberada.",
-							"No se pudo liberar la cita.",
-						);
-					})}
-				>
-					<Stack gap="md">
-						<Text
-							size="xs"
-							fw={600}
-							className="uppercase tracking-wider text-[var(--text-secondary)]"
+				<section className={classes.actionSection}>
+					<h4 className={classes.actionSectionTitle}>Liberar capacidad</h4>
+					<p className={classes.actionSectionDescription}>
+						Desactiva la cita y libera el cupo que está consumiendo.
+					</p>
+					<div>
+						<Button
+							color="red"
+							variant="light"
+							leftSection={<AlertTriangle size={15} />}
+							disabled={!selectedBooking.isActive}
+							onClick={releaseModal.open}
 						>
 							Liberar cita
-						</Text>
-						<Group gap="md" align="flex-end" wrap="wrap">
-							<Select
-								label="Razón de liberación"
-								size="sm"
-								w={220}
-								key={releaseForm.key("reason")}
-								{...releaseForm.getInputProps("reason")}
-								data={[
-									{ value: "cancelled", label: "Cancelada" },
-									{ value: "expired", label: "Expirada" },
-									{ value: "attended", label: "Atendida" },
-								]}
-								onChange={(val) => {
-									const value = val ?? "cancelled";
-									const typedValue = value as
-										| "cancelled"
-										| "expired"
-										| "attended";
-									releaseForm.setFieldValue("reason", typedValue);
-									onReleaseReasonChange(typedValue);
-								}}
-							/>
+						</Button>
+					</div>
+				</section>
+			</aside>
+
+			<Modal
+				opened={releaseOpened}
+				onClose={releaseModal.close}
+				title="Liberar cita"
+				centered
+				closeOnClickOutside={isRunning !== "booking-release"}
+				closeOnEscape={isRunning !== "booking-release"}
+				withCloseButton={isRunning !== "booking-release"}
+			>
+				<Text className={classes.modalIntro}>
+					La cita {selectedBooking.id.slice(0, 8)} dejará de estar activa y
+					liberará su capacidad. Esta acción quedará registrada en auditoría.
+				</Text>
+				<form onSubmit={handleRelease}>
+					<div className={classes.actionSection}>
+						<Select
+							label="Motivo de liberación"
+							description="Selecciona el estado que mejor describe el cierre."
+							key={releaseForm.key("reason")}
+							{...releaseForm.getInputProps("reason")}
+							data={[
+								{ value: "cancelled", label: "Cita cancelada" },
+								{ value: "expired", label: "Cita expirada" },
+								{ value: "attended", label: "Atención completada" },
+							]}
+						/>
+						<div className={classes.formActions}>
+							<Button
+								type="button"
+								variant="default"
+								onClick={releaseModal.close}
+								disabled={isRunning === "booking-release"}
+							>
+								Conservar cita
+							</Button>
 							<Button
 								type="submit"
 								color="red"
-								variant="light"
-								size="sm"
-								leftSection={<AlertTriangle size={14} />}
 								loading={isRunning === "booking-release"}
 							>
-								Liberar cita
+								Confirmar liberación
 							</Button>
-						</Group>
-					</Stack>
+						</div>
+					</div>
 				</form>
-			</Stack>
-		</div>
+			</Modal>
+		</>
 	);
 }

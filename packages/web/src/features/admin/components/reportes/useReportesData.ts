@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getErrorMessage } from "#/features/admin/components/errors";
 import { orpcClient } from "#/shared/lib/orpc-client";
+import type { ReportActionResult } from "./OperationResult";
 import {
 	type BookingFilters,
 	defaultBookingFilters,
@@ -41,7 +42,9 @@ export function useReportesData() {
 	const queryClient = useQueryClient();
 
 	const [isRunning, setIsRunning] = useState<string | null>(null);
-	const [actionResult, setActionResult] = useState<unknown | null>(null);
+	const [actionResult, setActionResult] = useState<ReportActionResult | null>(
+		null,
+	);
 
 	const [bookingFiltersDraft, setBookingFiltersDraft] =
 		useState<BookingFilters>(defaultBookingFilters);
@@ -207,7 +210,7 @@ export function useReportesData() {
 		setIsRunning(actionId);
 		try {
 			const response = await action();
-			setActionResult(response);
+			setActionResult({ actionId, response, message: successMessage });
 			notifySuccess(successMessage);
 			await refreshAll();
 			return response;
