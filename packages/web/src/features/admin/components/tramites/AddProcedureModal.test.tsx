@@ -95,6 +95,54 @@ describe("AddProcedureModal", () => {
 		expect(slugInput).toHaveValue("slug-manual");
 	});
 
+	it("keeps operational rules explicit in the submitted payload", async () => {
+		const onCreate = vi.fn().mockResolvedValue(undefined);
+		const user = userEvent.setup();
+
+		renderWithProviders(
+			<AddProcedureModal {...defaultProps} onCreate={onCreate} />,
+		);
+
+		await user.type(
+			screen.getByLabelText(/Nombre del trámite/),
+			"Duplicado de licencia",
+		);
+		await user.click(
+			screen.getByRole("switch", { name: /Recibe documentos físicos/ }),
+		);
+		await user.click(screen.getByRole("button", { name: "Crear trámite" }));
+
+		await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
+		expect(onCreate).toHaveBeenCalledWith(
+			expect.objectContaining({ allowsPhysicalDocuments: false }),
+		);
+	});
+
+	it("validates added requirements instead of discarding incomplete rows", async () => {
+		const onCreate = vi.fn().mockResolvedValue(undefined);
+		const user = userEvent.setup();
+
+		renderWithProviders(
+			<AddProcedureModal {...defaultProps} onCreate={onCreate} />,
+		);
+
+		await user.type(
+			screen.getByLabelText(/Nombre del trámite/),
+			"Trámite con requisito",
+		);
+		await user.click(screen.getByRole("tab", { name: /Requisitos/ }));
+		await user.click(screen.getByRole("button", { name: "Agregar requisito" }));
+		await user.click(screen.getByRole("button", { name: "Crear trámite" }));
+
+		expect(
+			await screen.findByText("Escribe el nombre del requisito"),
+		).toBeInTheDocument();
+		expect(onCreate).not.toHaveBeenCalled();
+		await waitFor(() =>
+			expect(screen.getByLabelText(/Nombre del requisito/)).toHaveFocus(),
+		);
+	});
+
 	it("shows API error and keeps the modal open", async () => {
 		const onCreate = vi.fn().mockRejectedValue(new Error("Slug duplicado"));
 		const onClose = vi.fn();
