@@ -296,12 +296,14 @@ function AgendarPage() {
 	}, [detailsForm.setFieldValue, detailsForm.values.email, user?.email]);
 
 	useEffect(() => {
-		detailsForm.setFieldValue(
-			"plate",
-			selectedProcedure?.requiresVehicle ? (validatedPlate ?? "") : "",
-		);
+		const nextPlate = selectedProcedure?.requiresVehicle
+			? (validatedPlate ?? "")
+			: "";
+		if (detailsForm.values.plate === nextPlate) return;
+		detailsForm.setFieldValue("plate", nextPlate);
 	}, [
 		detailsForm.setFieldValue,
+		detailsForm.values.plate,
 		selectedProcedure?.requiresVehicle,
 		validatedPlate,
 	]);
