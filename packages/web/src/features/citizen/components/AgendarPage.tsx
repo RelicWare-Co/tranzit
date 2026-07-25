@@ -1,7 +1,7 @@
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Clock, FileText, Loader2 } from "lucide-react";
+import { ChevronRight, Clock, FileText, Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
 	Alert,
@@ -12,6 +12,8 @@ import {
 	Input,
 } from "#/shared/components/ui";
 import { useAuth } from "#/features/auth/components/AuthContext";
+import { validateVehiclePlate } from "#/features/citizen/lib/vehicle-plate";
+import type { VehiclePlateValidation } from "#/features/citizen/lib/vehicle-plate";
 import { orpcClient } from "#/shared/lib/orpc-client";
 import classes from "./agendar.module.css";
 
@@ -37,6 +39,11 @@ type ProcedureRequirement = {
 };
 
 const BOOKING_STEPS = [
+	{
+		key: "plate",
+		label: "Vehículo",
+		description: "Valida la placa antes de continuar.",
+	},
 	{
 		key: "procedure",
 		label: "Trámite",
@@ -130,16 +137,21 @@ function getProcedureRequirements(procedure: CitizenProcedure | null) {
 			const key =
 				typeof req.key === "string" && req.key.trim().length > 0
 					? req.key.trim()
-					: `requirement-${index + 1}`;
-			const label =
-				typeof req.label === "string" && req.label.trim().length > 0
-					? req.label.trim()
-					: `Requisito ${index + 1}`;
-			const instructions =
-				typeof req.instructions === "string" &&
-				req.instructions.trim().length > 0
-					? req.instructions.trim()
-					: null;
+					: typeof req.id === "string" && req.id.trim().length > 0
+						? req.id.trim()
+						: `requirement-${index + 1}`;
+			// El admin guarda el nombre como `name`; el seed usa `label`.
+			const labelCandidate =
+				(typeof req.label === "string" && req.label.trim()) ||
+				(typeof req.name === "string" && req.name.trim()) ||
+				"";
+			const label = labelCandidate.length > 0 ? labelCandidate : `Requisito ${index + 1}`;
+			// El admin guarda el detalle como `description`; algunas fuentes usan `instructions`.
+			const descriptionCandidate =
+				(typeof req.instructions === "string" && req.instructions.trim()) ||
+				(typeof req.description === "string" && req.description.trim()) ||
+				null;
+			const instructions = descriptionCandidate?.length ? descriptionCandidate : null;
 			const downloadUrlCandidates = [
 				req.downloadUrl,
 				req.download_url,
@@ -153,16 +165,104 @@ function getProcedureRequirements(procedure: CitizenProcedure | null) {
 						typeof candidate === "string" && candidate.trim().length > 0,
 				) ?? null;
 
+			const isRequiredValue =
+				req.isRequired !== undefined
+					? Boolean(req.isRequired)
+					: req.required !== undefined
+						? Boolean(req.required)
+						: true;
 			return {
 				key,
 				label,
-				isRequired: req.required !== false,
+				isRequired: isRequiredValue,
 				instructions,
 				downloadUrl:
 					typeof downloadUrl === "string" ? downloadUrl.trim() : null,
 			};
 		})
 		.filter(Boolean) as ProcedureRequirement[];
+}
+
+type ProcedureFormFieldType =
+	| "text"
+	| "number"
+	| "email"
+	| "tel"
+	| "select"
+	| "textarea";
+
+interface ProcedureFormField {
+	key: string;
+	label: string;
+	type: ProcedureFormFieldType;
+	required: boolean;
+	placeholder: string | null;
+	options: string[];
+}
+
+const FIELD_TYPE_LABEL: Record<ProcedureFormFieldType, string> = {
+	text: "Texto",
+	number: "Número",
+	email: "Correo",
+	tel: "Telefono",
+	select: "Selección",
+	textarea: "Texto largo",
+};
+
+function getProcedureFormFields(procedure: CitizenProcedure | null) {
+	if (!procedure) return [];
+	const rawSchema = procedure.formSchema;
+	if (!rawSchema || typeof rawSchema !== "object") return [];
+
+	const schema = rawSchema as Record<string, unknown>;
+	const rawFields = schema.fields ?? schema.sections;
+	if (!Array.isArray(rawFields)) return [];
+
+	let fieldList: unknown[] = rawFields;
+	// El seed agrupa campos en sections; el admin usa fields directo.
+	if (rawFields.length && typeof rawFields[0] === "object" && "fields" in (rawFields[0] as Record<string, unknown>)) {
+		fieldList = (rawFields as { fields?: unknown }[]).flatMap(
+			(section) => (Array.isArray(section.fields) ? section.fields : []),
+		);
+	}
+
+	const knownTypes = new Set(["text", "number", "email", "tel", "select", "textarea"]);
+
+	return fieldList
+		.map((rawField, index): ProcedureFormField | null => {
+			if (!rawField || typeof rawField !== "object") return null;
+			const field = rawField as Record<string, unknown>;
+			const key =
+				typeof field.key === "string" && field.key.trim().length > 0
+					? field.key.trim()
+					: typeof field.id === "string" && field.id.trim().length > 0
+						? field.id.trim()
+						: `form-field-${index + 1}`;
+			const labelCandidate =
+				(typeof field.label === "string" && field.label.trim()) ||
+				(typeof field.name === "string" && field.name.trim()) ||
+				"";
+			const label = labelCandidate.length > 0 ? labelCandidate : `Campo ${index + 1}`;
+			const typeRaw = typeof field.type === "string" ? field.type.trim() : "text";
+			const type = (knownTypes.has(typeRaw) ? typeRaw : "text") as ProcedureFormFieldType;
+			const required =
+				field.required !== undefined
+					? Boolean(field.required)
+					: field.isRequired !== undefined
+						? Boolean(field.isRequired)
+						: false;
+			const placeholder =
+				typeof field.placeholder === "string" && field.placeholder.trim().length > 0
+					? field.placeholder.trim()
+					: null;
+			const options = Array.isArray(field.options)
+				? field.options
+						.map((option) => (typeof option === "string" ? option.trim() : ""))
+						.filter(Boolean)
+				: [];
+			return { key, label, type, required, placeholder, options };
+		})
+		.filter((value): value is ProcedureFormField => Boolean(value));
 }
 
 function AgendarPage() {
@@ -176,6 +276,11 @@ function AgendarPage() {
 	const [requirementsAcknowledged, setRequirementsAcknowledged] =
 		useState(false);
 	const [activeStep, setActiveStep] = useState(0);
+
+	const [plateInput, setPlateInput] = useState("");
+	const [plateValidation, setPlateValidation] =
+		useState<VehiclePlateValidation | null>(null);
+	const [isValidatingPlate, setIsValidatingPlate] = useState(false);
 
 	const [holdBooking, setHoldBooking] = useState<CitizenBookingSummary | null>(
 		null,
@@ -237,6 +342,16 @@ function AgendarPage() {
 		[selectedProcedure],
 	);
 
+	const procedureFormFields = useMemo(
+		() => getProcedureFormFields(selectedProcedure),
+		[selectedProcedure],
+	);
+
+	const validatedPlate = useMemo(() => {
+		if (plateValidation?.status !== "registered-tulua") return null;
+		return plateValidation.plate || null;
+	}, [plateValidation]);
+
 	const slotsRangeQuery = useQuery({
 		queryKey: ["citizen", "slots-range", 14],
 		enabled: Boolean(selectedProcedure) && requirementsAcknowledged,
@@ -281,11 +396,17 @@ function AgendarPage() {
 	}, [selectedDaySlots, selectedSlotId]);
 
 	const maxReachableStep = useMemo(() => {
-		if (!selectedProcedure) return 0;
-		if (!requirementsAcknowledged) return 1;
-		if (!resolvedSelectedSlotId) return 2;
-		return 3;
-	}, [requirementsAcknowledged, resolvedSelectedSlotId, selectedProcedure]);
+		if (!validatedPlate) return 0;
+		if (!selectedProcedure) return 1;
+		if (!requirementsAcknowledged) return 2;
+		if (!resolvedSelectedSlotId) return 3;
+		return 4;
+	}, [
+		requirementsAcknowledged,
+		resolvedSelectedSlotId,
+		selectedProcedure,
+		validatedPlate,
+	]);
 
 	const wizardProgress = useMemo(
 		() => Math.round(((activeStep + 1) / BOOKING_STEPS.length) * 100),
@@ -304,6 +425,10 @@ function AgendarPage() {
 			setAuthEmail(user.email);
 		}
 	}, [detailsForm.setFieldValue, detailsForm.values.email, user?.email]);
+
+	useEffect(() => {
+		detailsForm.setFieldValue("plate", validatedPlate ?? "");
+	}, [detailsForm.setFieldValue, validatedPlate]);
 
 	const serverHeldBooking = useMemo(() => {
 		const bookings = myBookingsQuery.data ?? [];
@@ -324,6 +449,17 @@ function AgendarPage() {
 				"procedureTypeId",
 				serverHeldBooking.request.procedure.id,
 			);
+		}
+		const heldPlate = serverHeldBooking.request?.plate?.trim();
+		if (heldPlate) {
+			setPlateInput(heldPlate);
+			setPlateValidation({
+				plate: heldPlate,
+				status: "registered-tulua",
+				city: "Tuluá",
+				vehicle: { plate: heldPlate },
+				message: "Vehículo ya validado para esta reserva.",
+			});
 		}
 		setRequirementsAcknowledged(true);
 		setFeedback("Recuperamos tu reserva temporal activa.");
@@ -432,7 +568,7 @@ function AgendarPage() {
 		onSuccess: async () => {
 			setHoldBooking(null);
 			setSelectedSlotId(null);
-			setActiveStep(selectedProcedure ? 2 : 0);
+			setActiveStep(selectedProcedure ? 3 : 1);
 			setError(null);
 			setFeedback("Reserva liberada. Elige otro horario.");
 			await Promise.all([
@@ -470,12 +606,28 @@ function AgendarPage() {
 		setActiveStep(nextStep);
 	};
 
+	const handleValidatePlate = async () => {
+		setError(null);
+		setIsValidatingPlate(true);
+		const result = await validateVehiclePlate(plateInput);
+		setPlateValidation(result);
+		setIsValidatingPlate(false);
+	};
+
+	const handlePlateContinue = () => {
+		if (plateValidation?.status !== "registered-tulua") {
+			setError("Valida la placa del vehículo antes de continuar.");
+			return;
+		}
+		goToStep(1);
+	};
+
 	const handleProcedureContinue = () => {
 		if (!selectedProcedure) {
 			setError("Selecciona un trámite para continuar.");
 			return;
 		}
-		goToStep(1);
+		goToStep(2);
 	};
 
 	const handleRequirementsContinue = () => {
@@ -483,7 +635,7 @@ function AgendarPage() {
 			setError("Confirma que revisaste los requisitos antes de continuar.");
 			return;
 		}
-		goToStep(2);
+		goToStep(3);
 	};
 
 	const handleSlotsContinue = () => {
@@ -491,8 +643,108 @@ function AgendarPage() {
 			setError("Selecciona una fecha y horario para continuar.");
 			return;
 		}
-		goToStep(3);
+		goToStep(4);
 	};
+
+// Step 0: Vehicle plate validation
+	const renderPlateStep = () => (
+		<div className={classes.stepContent}>
+			<h2 className={classes.stepHeading}>Valida tu vehículo</h2>
+			<p className={classes.stepSubtitle}>
+				Ingresa la placa del vehículo que vas a tramitar. Solo podemos atender
+				vehículos matriculados en el municipio de Tuluá.
+			</p>
+
+			<div className={classes.plateInputRow}>
+				<Input
+					label="Placa del vehículo"
+					placeholder="ABC123"
+					value={plateInput}
+					onChange={(e) => {
+						setPlateInput(e.currentTarget.value.toUpperCase());
+						if (plateValidation) setPlateValidation(null);
+					}}
+					disabled={isValidatingPlate}
+					className={classes.plateInput}
+				/>
+				<Button
+					size="lg"
+					onClick={handleValidatePlate}
+					isLoading={isValidatingPlate}
+					disabled={plateInput.trim().length < 4 || isValidatingPlate}
+					leftIcon={<Search size={18} />}
+				>
+					Validar placa
+				</Button>
+			</div>
+
+			{plateValidation && (
+				<Alert
+					variant={
+						plateValidation.status === "registered-tulua"
+							? "success"
+							: plateValidation.status === "registered-other-city"
+								? "warning"
+								: "error"
+					}
+					title={
+						plateValidation.status === "registered-tulua"
+							? `Vehículo registrado en Tuluá`
+							: plateValidation.status === "registered-other-city"
+								? `Matriculado en otra ciudad`
+								: "Placa no encontrada"
+					}
+					className={classes.plateResult}
+				>
+					<p className={classes.plateResultMessage}>
+						{plateValidation.message}
+					</p>
+					{plateValidation.vehicle && (
+						<ul className={classes.plateVehicleDetails}>
+							{plateValidation.vehicle.brand && (
+								<li>
+									<span>Marca</span>
+									{plateValidation.vehicle.brand}
+								</li>
+							)}
+							{plateValidation.vehicle.model && (
+								<li>
+									<span>Modelo</span>
+									{plateValidation.vehicle.model}
+								</li>
+							)}
+							{plateValidation.vehicle.year && (
+								<li>
+									<span>Año</span>
+									{plateValidation.vehicle.year}
+								</li>
+							)}
+							{plateValidation.city && (
+								<li>
+									<span>Ciudad</span>
+									{plateValidation.city}
+								</li>
+							)}
+						</ul>
+					)}
+				</Alert>
+			)}
+
+			<div className={classes.stepActions}>
+				<span className={classes.stepHint}>
+					Solo puedes avanzar si el vehículo está matriculado en Tuluá.
+				</span>
+				<Button
+					size="lg"
+					onClick={handlePlateContinue}
+					disabled={plateValidation?.status !== "registered-tulua"}
+					rightIcon={<ChevronRight size={18} />}
+				>
+					Continuar
+				</Button>
+			</div>
+		</div>
+	);
 
 	// Step 1: Procedure Selection
 	const renderProcedureStep = () => (
@@ -522,9 +774,6 @@ function AgendarPage() {
 									setRequirementsAcknowledged(false);
 									setSelectedDate(null);
 									setSelectedSlotId(null);
-								}
-								if (!proc.requiresVehicle) {
-									detailsForm.setFieldValue("plate", "");
 								}
 							}}
 						>
@@ -580,41 +829,107 @@ function AgendarPage() {
 				<h2 className={classes.stepHeading}>Requisitos del trámite</h2>
 
 				<Card variant="inset" padding="lg" className={classes.requirementsCard}>
-					{procedureRequirements.length > 0 ? (
-						<div className={classes.requirementsList}>
-							{procedureRequirements.map((req) => (
-								<div key={req.key} className={classes.requirementItem}>
-									<div className={classes.requirementHeader}>
-										<div className={classes.requirementIcon}>
-											<FileText size={20} />
-										</div>
-										<div className={classes.requirementContent}>
-											<h4 className={classes.requirementTitle}>{req.label}</h4>
-											{req.instructions && (
-												<p className={classes.requirementInstructions}>
-													{req.instructions}
-												</p>
+					{typeof selectedProcedure.instructions === "string" &&
+						selectedProcedure.instructions.trim().length > 0 && (
+							<div className={classes.procedureInstructionsBlock}>
+								<h3 className={classes.requirementsSectionTitle}>
+									Instrucciones
+								</h3>
+								<p className={classes.procedureInstructionsText}>
+									{selectedProcedure.instructions.trim()}
+								</p>
+							</div>
+						)}
+
+					<div className={classes.requirementsSectionBlock}>
+						<h3 className={classes.requirementsSectionTitle}>Requisitos</h3>
+						{procedureRequirements.length > 0 ? (
+							<div className={classes.requirementsList}>
+								{procedureRequirements.map((req) => (
+									<div key={req.key} className={classes.requirementItem}>
+										<div className={classes.requirementHeader}>
+											<div className={classes.requirementIcon}>
+												<FileText size={20} />
+											</div>
+											<div className={classes.requirementContent}>
+												<div className={classes.requirementTitleRow}>
+													<h4 className={classes.requirementTitle}>
+														{req.label}
+													</h4>
+													{req.isRequired && (
+														<Badge variant="brand" size="sm">
+														Obligatorio
+														</Badge>
+													)}
+												</div>
+												{req.instructions && (
+													<p className={classes.requirementInstructions}>
+														{req.instructions}
+													</p>
+												)}
+											</div>
+											{req.downloadUrl && (
+												<a
+													href={req.downloadUrl}
+													target="_blank"
+													rel="noopener noreferrer"
+													className={classes.downloadLink}
+													download
+												>
+													Descargar
+												</a>
 											)}
 										</div>
-										{req.downloadUrl && (
-											<a
-												href={req.downloadUrl}
-												target="_blank"
-												rel="noopener noreferrer"
-												className={classes.downloadLink}
-												download
-											>
-												Descargar
-											</a>
+									</div>
+								))}
+							</div>
+						) : (
+							<p className={classes.noRequirements}>
+								No hay plantillas requeridas para este trámite.
+							</p>
+						)}
+					</div>
+
+					{procedureFormFields.length > 0 && (
+						<div className={classes.requirementsSectionBlock}>
+							<h3 className={classes.requirementsSectionTitle}>
+								Formulario a diligenciar
+							</h3>
+							<p className={classes.requirementsSectionHint}>
+								Estos son los datos que deberás preparar para tu trámite.
+							</p>
+							<div className={classes.formPreviewList}>
+								{procedureFormFields.map((field) => (
+									<div key={field.key} className={classes.formPreviewItem}>
+										<div className={classes.formPreviewInfo}>
+											<span className={classes.formPreviewLabel}>
+												{field.label}
+											</span>
+											<span className={classes.formPreviewType}>
+												{FIELD_TYPE_LABEL[field.type]}
+												{field.placeholder
+													? ` · ej. ${field.placeholder}`
+													: ""}
+											</span>
+											{field.options.length > 0 && (
+												<span className={classes.formPreviewOptions}>
+													Opciones: {field.options.join(", ")}
+												</span>
+											)}
+										</div>
+										{field.required ? (
+											<Badge variant="brand" size="sm">
+												Obligatorio
+											</Badge>
+										) : (
+											<Badge variant="neutral" size="sm">
+												Opcional
+											</Badge>
 										)}
 									</div>
-								</div>
-							))}
+								))}
+							</div>
 						</div>
-					) : (
-						<p className={classes.noRequirements}>
-							No hay plantillas requeridas para este trámite.
-						</p>
 					)}
 
 					<div className={classes.acknowledgeSection}>
@@ -639,7 +954,7 @@ function AgendarPage() {
 					<Button
 						variant="ghost"
 						size="lg"
-						onClick={() => goToStep(0)}
+						onClick={() => goToStep(1)}
 						leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
 					>
 						Volver
@@ -747,7 +1062,7 @@ function AgendarPage() {
 					<Button
 						variant="ghost"
 						size="lg"
-						onClick={() => goToStep(1)}
+						onClick={() => goToStep(2)}
 						leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
 					>
 						Volver
@@ -816,17 +1131,11 @@ function AgendarPage() {
 							{...detailsForm.getInputProps("phone")}
 						/>
 
-						{selectedProcedure.requiresVehicle && (
+						{validatedPlate && (
 							<Input
 								label="Placa del vehículo"
-								placeholder="ABC123"
-								{...detailsForm.getInputProps("plate")}
-								onChange={(e) =>
-									detailsForm.setFieldValue(
-										"plate",
-										e.currentTarget.value.toUpperCase(),
-									)
-								}
+								value={validatedPlate}
+								readOnly
 							/>
 						)}
 					</div>
@@ -835,14 +1144,14 @@ function AgendarPage() {
 						<Button
 							variant="ghost"
 							size="lg"
-							onClick={() => goToStep(2)}
-							leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
-						>
-							Volver
-						</Button>
-						<Button
-							size="lg"
-							type="submit"
+onClick={() => goToStep(3)}
+						leftIcon={<ChevronRight size={18} className={classes.flipIcon} />}
+					>
+						Volver
+					</Button>
+					<Button
+						size="lg"
+						type="submit"
 							isLoading={holdMutation.isPending || sendOtpMutation.isPending}
 							rightIcon={<ChevronRight size={18} />}
 						>
@@ -857,15 +1166,17 @@ function AgendarPage() {
 	const renderStep = () => {
 		switch (activeStep) {
 			case 0:
-				return renderProcedureStep();
+				return renderPlateStep();
 			case 1:
-				return renderRequirementsStep();
+				return renderProcedureStep();
 			case 2:
-				return renderScheduleStep();
+				return renderRequirementsStep();
 			case 3:
+				return renderScheduleStep();
+			case 4:
 				return renderDetailsStep();
 			default:
-				return renderProcedureStep();
+				return renderPlateStep();
 		}
 	};
 

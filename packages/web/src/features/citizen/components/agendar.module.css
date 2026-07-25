@@ -197,8 +197,75 @@
 	font-size: var(--text-2xl);
 	font-weight: 600;
 	color: var(--text-primary);
-	margin-bottom: var(--space-6);
+	margin-bottom: var(--space-2);
 	letter-spacing: var(--tracking-tight);
+}
+
+.stepSubtitle {
+	font-size: var(--text-base);
+	color: var(--text-secondary);
+	line-height: var(--leading-relaxed);
+	margin-bottom: var(--space-6);
+	max-width: 640px;
+}
+
+/* Plate Validation */
+.plateInputRow {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--space-3);
+	margin-bottom: var(--space-6);
+}
+
+.plateInput {
+	flex: 1;
+	min-width: 0;
+	max-width: 260px;
+}
+
+@media (max-width: 480px) {
+	.plateInputRow {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.plateInput {
+		max-width: none;
+	}
+}
+
+.plateResult {
+	margin-bottom: var(--space-6);
+}
+
+.plateResultMessage {
+	margin-bottom: var(--space-3);
+	line-height: var(--leading-relaxed);
+}
+
+.plateVehicleDetails {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: var(--space-2) var(--space-6);
+	margin: 0;
+	padding: var(--space-3) 0 0;
+	list-style: none;
+	font-size: var(--text-sm);
+}
+
+.plateVehicleDetails li {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--space-3);
+	color: var(--text-primary);
+}
+
+.plateVehicleDetails li span {
+	color: var(--text-secondary);
+	font-weight: 600;
+	text-transform: uppercase;
+	font-size: var(--text-xs);
+	letter-spacing: var(--tracking-wide);
 }
 
 .stepActions {
@@ -365,6 +432,95 @@
 	font-weight: 600;
 	color: var(--text-primary);
 	margin-bottom: var(--space-1);
+}
+
+.requirementTitleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	margin-bottom: var(--space-1);
+	flex-wrap: wrap;
+}
+
+.procedureInstructionsBlock {
+	margin-bottom: var(--space-6);
+	padding-bottom: var(--space-6);
+	border-bottom: 1px solid var(--border-subtle);
+}
+
+.procedureInstructionsText {
+	font-size: var(--text-sm);
+	color: var(--text-primary);
+	line-height: var(--leading-relaxed);
+	white-space: pre-line;
+}
+
+.requirementsSectionBlock {
+	margin-bottom: var(--space-6);
+}
+
+.requirementsSectionBlock:last-of-type {
+	margin-bottom: 0;
+}
+
+.requirementsSectionTitle {
+	font-family: var(--font-display);
+	font-size: var(--text-sm);
+	font-weight: 700;
+	color: var(--accent-default);
+	text-transform: uppercase;
+	letter-spacing: var(--tracking-wider);
+	margin-bottom: var(--space-4);
+}
+
+.requirementsSectionHint {
+	font-size: var(--text-sm);
+	color: var(--text-secondary);
+	margin-bottom: var(--space-4);
+}
+
+.formPreviewList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+
+.formPreviewItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-4);
+	background-color: var(--bg-elevated);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-lg);
+	padding: var(--space-4) var(--space-5);
+}
+
+.formPreviewInfo {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	flex: 1;
+}
+
+.formPreviewLabel {
+	font-family: var(--font-display);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
+.formPreviewType {
+	font-size: var(--text-xs);
+	color: var(--text-tertiary);
+	font-weight: 500;
+}
+
+.formPreviewOptions {
+	font-size: var(--text-xs);
+	color: var(--text-secondary);
+	font-style: italic;
 }
 
 .requirementInstructions {

@@ -436,11 +436,17 @@ type CitizenProcedure = {
 	name: string;
 	description: string | null;
 	isActive: boolean;
+	configVersion: number;
 	requiresVehicle: boolean;
 	allowsPhysicalDocuments: boolean;
 	allowsDigitalDocuments: boolean;
 	instructions: string | null;
+	eligibilitySchema: Record<string, unknown>;
+	formSchema: Record<string, unknown>;
 	documentSchema: Record<string, unknown>;
+	policySchema: Record<string, unknown>;
+	createdAt: string | Date;
+	updatedAt: string | Date;
 };
 
 type CitizenSlot = {
