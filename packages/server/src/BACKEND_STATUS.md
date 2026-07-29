@@ -1,6 +1,6 @@
 # Backend Status (Current Implementation)
 
-Last updated: 2026-07-25
+Last updated: 2026-07-29
 
 This document describes what the backend **really has implemented today**.
 Use it as an operational map before adding or changing backend behavior.
@@ -303,6 +303,42 @@ Key behavior already implemented:
 - Pagination limits enforced (1-200 for limit, non-negative offset)
 - Requires `audit: ["read"]` permission (admin and auditor roles have this)
 
+### 2.9 Staff desk module (`server/src/features/staff-desk/`)
+
+- `staffDesk.queue` — Returns the selected day's citizen appointments assigned
+  to the authenticated staff member, including the immutable procedure and
+  requirement snapshots needed at the desk.
+- `staffDesk.checkIn` — Registers reception evidence in
+  `eligibilityResult.staffCheckIn` for an already confirmed appointment.
+- `staffDesk.review` — Verifies the citizen's identity and all required physical
+  documents from `requirementsSnapshot`, then stores the review in
+  `eligibilityResult.staffReview`.
+- `staffDesk.complete` — Requires an approved `staffReview`, marks the booking
+  attended, releases capacity, clears `activeBookingId` and audits both entities
+  in one transaction without mutating the frozen `submittedSnapshot`.
+- `staffDesk.cancel` — Closes an incomplete request with a mandatory reason,
+  cancels its booking and releases capacity in one transaction.
+
+Access and safety behavior:
+
+- Requires a user with the `staff` role, active `staff_profile`, and booking
+  permissions. Administrators and auditors cannot use this staff-scoped
+  surface merely by supplying an ID.
+- The queue and every mutation derive the staff ID from the authenticated
+  session; a client cannot read or operate another official's appointment.
+- Temporary holds are not exposed as appointments in the staff queue. The
+  citizen must confirm the booking before desk reception is available.
+- Dates other than the current date in `America/Bogota` are read-only: the queue
+  remains available for operational consultation, but every mutation rejects
+  an appointment outside its service date.
+- Citizen confirmation and desk completion are distinct: a confirmed
+  `service_request` remains confirmed during reception and review; only
+  `booking.status=attended`, `booking.attendedAt` and the atomic audit evidence
+  mark the service as completed.
+- Each critical desk mutation creates `audit_event` records inside the same
+  transaction as the booking/request changes, including actor, request/booking
+  references and the operational reason or review evidence.
+
 ## 3) Capacity engine (core business logic)
 
 Implemented across:
@@ -337,9 +373,7 @@ Main guarantees implemented:
 ## 4) What is still missing / partial
 
 Even with the current backend, this is still missing or partial:
-- advanced citizen API flow for:
-  - full service request lifecycle beyond hold/confirm base
-  - stronger operational checks around physical requirement acknowledgement
+- advanced citizen API flow beyond the hold/confirm base
 - full E2E test coverage for citizen frontend-backend integration
 
 ## 5) Quality baseline currently passing

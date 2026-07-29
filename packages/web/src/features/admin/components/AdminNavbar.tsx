@@ -1,7 +1,8 @@
 import { Badge, Box, Group, Text, Title } from "@mantine/core";
 import { Link, useLocation } from "@tanstack/react-router";
-import { CalendarDays, House } from "lucide-react";
+import { CalendarDays, ClipboardCheck, House } from "lucide-react";
 import { ADMIN_ACCENT } from "#/features/admin/components/admin-ui";
+import { useAuth } from "#/features/auth/components/AuthContext";
 import { AdminUserMenu } from "./AdminUserMenu";
 
 const portalShell =
@@ -42,8 +43,10 @@ function PortalNavLink({
  */
 export function AdminNavbar() {
 	const pathname = useLocation().pathname;
+	const { hasRole } = useAuth();
 	const isHome = pathname === "/";
 	const isAgendar = pathname.startsWith("/agendar");
+	const isStaffDesk = pathname.startsWith("/atencion");
 
 	return (
 		<Box
@@ -111,6 +114,14 @@ export function AdminNavbar() {
 				{/* Enlaces portal ciudadano + user menu */}
 				<Group gap={4} wrap="nowrap" justify="flex-end" className="shrink-0">
 					<Group gap={2} wrap="nowrap">
+						{hasRole("staff") ? (
+							<PortalNavLink
+								to="/atencion"
+								label="Atención"
+								isActive={isStaffDesk}
+								icon={ClipboardCheck}
+							/>
+						) : null}
 						<PortalNavLink
 							to="/"
 							label="Inicio"

@@ -151,15 +151,17 @@ function Header() {
 	const router = useRouterState();
 	const [scroll] = useWindowScroll();
 	const isScrolled = scroll.y > 20;
-	const isAdminSection = router.location.pathname.startsWith("/admin");
+	const isStandaloneSection =
+		router.location.pathname.startsWith("/admin") ||
+		router.location.pathname.startsWith("/atencion");
 
 	const links = [
 		{ label: "Inicio", link: "/" },
 		{ label: "Agendar", link: "/agendar" },
 	];
 
-	// Hidden on admin routes
-	if (isAdminSection) return null;
+	// Admin and staff desk routes render their own application shell.
+	if (isStandaloneSection) return null;
 
 	return (
 		<Box

@@ -9,11 +9,13 @@ import { createProceduresRouter } from "../../features/schedule/procedures.route
 import { createScheduleRouter } from "../../features/schedule/schedule.router";
 import { createServiceRequestsRouter } from "../../features/service-requests/router";
 import { createStaffRouter } from "../../features/staff/router";
+import { createStaffDeskRouter } from "../../features/staff-desk/router";
 
 export function createTranzitRpcRouter() {
 	return {
 		session: createSessionRouter(),
 		citizen: createCitizenRouter(),
+		staffDesk: createStaffDeskRouter(),
 		admin: {
 			onboarding: createOnboardingRouter(),
 			schedule: createScheduleRouter(),

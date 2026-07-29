@@ -19,6 +19,21 @@ Además, `configVersion` permite distinguir cambios relevantes de configuración
 `service_request`
 La solicitud es el contenedor del flujo del ciudadano. Guarda el estado, el borrador, el resultado de elegibilidad y el snapshot final que debe quedar congelado cuando se confirma.
 
+La atención en ventanilla se conserva dentro de `eligibilityResult`:
+`staffCheckIn` registra la recepción y `staffReview` registra la confirmación de
+identidad, los requisitos físicos revisados, observaciones, fecha y funcionario.
+La revisión debe contrastarse siempre contra `requirementsSnapshot`, no contra
+la configuración actual del trámite; de esa manera un cambio de configuración
+posterior no altera la evidencia de una solicitud ya agendada.
+
+`service_request.status = confirmed` significa que el ciudadano confirmó su
+cita; no significa que la atención ya terminó. La finalización operativa se
+representa con `booking.status = attended`, `booking.attendedAt` y los eventos
+de auditoría correspondientes. El flujo de ventanilla no reutiliza los estados
+`verified` o `pending_confirmation` para evitar confundir la confirmación
+ciudadana con el avance de la atención, ni modifica `submittedSnapshot` después
+de la confirmación.
+
 Ahora también ancla:
 - `procedureConfigVersion`: versión de la configuración usada para esa solicitud.
 - `procedureSnapshot`: copia mínima de la definición del trámite usada para validar y rehidratar el flujo.
@@ -75,6 +90,9 @@ Son tablas genéricas. No hace falta una bitácora por módulo ni una tabla por 
 
 - Al crear o actualizar una `service_request`, copiar `procedure_type.configVersion` en `procedureConfigVersion`.
 - Antes de mover una solicitud a confirmación, persistir `procedureSnapshot` con la configuración efectiva usada.
+- La mesa de atención solo puede completar una solicitud cuya revisión física
+  aprobada esté en `eligibilityResult.staffReview`; debe marcar atendida y cerrar
+  la cita vigente, además de auditar la operación, en la misma transacción.
 - Si cambia la cita vigente de una solicitud, actualizar `service_request.activeBookingId`.
 - Solo una fila `booking` ciudadana por solicitud puede permanecer con `isActive = true`.
 - Cuando una cita/reserva deja de ser vigente por cancelación, expiración, atención o reprogramación, marcar `isActive = false`.

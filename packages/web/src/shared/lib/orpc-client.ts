@@ -19,6 +19,70 @@ type SessionResponse = {
 	};
 };
 
+type StaffDeskRequirement = {
+	id: string;
+	name: string;
+	description: string | null;
+	isRequired: boolean;
+};
+
+type StaffDeskRequirementReview = {
+	id: string;
+	present: boolean;
+	note?: string;
+};
+
+type StaffDeskCase = {
+	id: string;
+	status: string;
+	isActive: boolean;
+	confirmedAt: string | Date | null;
+	attendedAt: string | Date | null;
+	cancelledAt: string | Date | null;
+	statusReason: string | null;
+	notes: string | null;
+	slot: {
+		id: string;
+		slotDate: string;
+		startTime: string;
+		endTime: string;
+	};
+	request: {
+		id: string;
+		status: string;
+		email: string;
+		phone: string | null;
+		documentType: string | null;
+		documentNumber: string | null;
+		applicantName: string;
+		plate: string | null;
+		procedure: {
+			id: string;
+			name: string;
+			description: string | null;
+			instructions: string | null;
+			requiresVehicle: boolean;
+		};
+		requirements: StaffDeskRequirement[];
+		eligibilityResult: Record<string, unknown>;
+		verifiedAt: string | Date | null;
+		confirmedAt: string | Date | null;
+		cancelledAt: string | Date | null;
+	};
+};
+
+type StaffDeskQueueResponse = {
+	date: string;
+	cases: StaffDeskCase[];
+};
+
+type StaffDeskActionResponse = {
+	action: "checked_in" | "reviewed" | "completed" | "cancelled";
+	alreadyProcessed: boolean;
+	bookingId: string;
+	requestId: string;
+};
+
 type OnboardingStatusResponse = {
 	adminExists: boolean;
 };
@@ -773,6 +837,24 @@ export interface TranzitRpcClient {
 				{ includeInactive?: boolean }
 			>;
 		};
+	};
+	staffDesk: {
+		queue: RpcProcedure<StaffDeskQueueResponse, { date: string }>;
+		checkIn: RpcProcedure<StaffDeskActionResponse, { bookingId: string }>;
+		review: RpcProcedure<
+			StaffDeskActionResponse,
+			{
+				bookingId: string;
+				identityConfirmed: boolean;
+				requirements: StaffDeskRequirementReview[];
+				observations?: string;
+			}
+		>;
+		complete: RpcProcedure<StaffDeskActionResponse, { bookingId: string }>;
+		cancel: RpcProcedure<
+			StaffDeskActionResponse,
+			{ bookingId: string; reason: string }
+		>;
 	};
 	admin: {
 		onboarding: {

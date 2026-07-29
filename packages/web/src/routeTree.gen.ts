@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MiPerfilRouteImport } from './routes/mi-perfil'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AtencionRouteImport } from './routes/atencion'
 import { Route as AgendarRouteImport } from './routes/agendar'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -31,6 +32,11 @@ const MiPerfilRoute = MiPerfilRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtencionRoute = AtencionRouteImport.update({
+  id: '/atencion',
+  path: '/atencion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgendarRoute = AgendarRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/agendar': typeof AgendarRoute
+  '/atencion': typeof AtencionRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agendar': typeof AgendarRoute
+  '/atencion': typeof AtencionRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/agendar': typeof AgendarRoute
+  '/atencion': typeof AtencionRoute
   '/login': typeof LoginRoute
   '/mi-perfil': typeof MiPerfilRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/agendar'
+    | '/atencion'
     | '/login'
     | '/mi-perfil'
     | '/admin/auditoria'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agendar'
+    | '/atencion'
     | '/login'
     | '/mi-perfil'
     | '/admin/auditoria'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/agendar'
+    | '/atencion'
     | '/login'
     | '/mi-perfil'
     | '/admin/auditoria'
@@ -185,6 +197,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AgendarRoute: typeof AgendarRoute
+  AtencionRoute: typeof AtencionRoute
   LoginRoute: typeof LoginRoute
   MiPerfilRoute: typeof MiPerfilRoute
 }
@@ -203,6 +216,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atencion': {
+      id: '/atencion'
+      path: '/atencion'
+      fullPath: '/atencion'
+      preLoaderRoute: typeof AtencionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agendar': {
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   AgendarRoute: AgendarRoute,
+  AtencionRoute: AtencionRoute,
   LoginRoute: LoginRoute,
   MiPerfilRoute: MiPerfilRoute,
 }

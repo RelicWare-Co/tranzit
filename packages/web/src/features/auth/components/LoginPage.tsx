@@ -46,6 +46,7 @@ function LoginPage() {
 	const [isCompletingOnboarding, setIsCompletingOnboarding] = useState(false);
 	const hasBackofficeAccess =
 		hasRole("admin") || hasRole("staff") || hasRole("auditor");
+	const hasStaffDeskAccess = hasRole("staff");
 	const shouldFetchOnboarding =
 		!authLoading && isAuthenticated && !hasBackofficeAccess;
 	const onboardingStatusQueryOptions =
@@ -133,7 +134,10 @@ function LoginPage() {
 		if (authLoading || !isAuthenticated || isCompletingOnboarding) return;
 
 		if (hasBackofficeAccess) {
-			navigate({ to: "/admin", replace: true });
+			navigate({
+				to: hasStaffDeskAccess ? "/atencion" : "/admin",
+				replace: true,
+			});
 			return;
 		}
 
@@ -143,6 +147,7 @@ function LoginPage() {
 	}, [
 		authLoading,
 		hasBackofficeAccess,
+		hasStaffDeskAccess,
 		isAuthenticated,
 		isCompletingOnboarding,
 		navigate,

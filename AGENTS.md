@@ -53,8 +53,10 @@ anteriores de Mantine.
 - La validación de placas es un mock backend explícito para pruebas pre-MVP,
   mientras no exista integración con RUNT. El hold vuelve a validarla en el
   servidor; consulta `BACKEND_STATUS.md` para formatos y fixtures.
-- El ciclo avanzado de `service_request` y las pruebas end-to-end ciudadanas
-  siguen incompletos.
+- La mesa de atención para funcionarios opera sobre sus propias citas asignadas:
+  recibe al ciudadano, valida identidad y requisitos físicos congelados en la
+  solicitud, y cierra o cancela la atención con auditoría atómica. El ciclo
+  avanzado ciudadano y sus pruebas end-to-end siguen incompletos.
 
 ## Dominio: reglas no negociables
 

@@ -193,7 +193,6 @@ describe("LoginPage OTP", () => {
 describe("LoginPage destinations", () => {
 	it.each([
 		"admin",
-		"staff",
 		"auditor",
 	])("redirects an active %s session to the backoffice", async (role) => {
 		mocks.isAuthenticated = true;
@@ -207,6 +206,19 @@ describe("LoginPage destinations", () => {
 			});
 		});
 		expect(mocks.fetchOnboardingStatus).not.toHaveBeenCalled();
+	});
+
+	it("redirects an active staff session directly to its desk", async () => {
+		mocks.isAuthenticated = true;
+		mocks.roles = ["staff"];
+		renderLoginPage();
+
+		await waitFor(() => {
+			expect(mocks.navigate).toHaveBeenCalledWith({
+				to: "/atencion",
+				replace: true,
+			});
+		});
 	});
 
 	it("redirects an active common-user session to the citizen profile", async () => {
