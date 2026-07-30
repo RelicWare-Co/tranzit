@@ -38,6 +38,17 @@ function validateBooleanField(
 	}
 }
 
+function slotStartsAfter(
+	slot: { slotDate: string; startTime: string } | null,
+	reference: Date,
+): boolean {
+	if (!slot?.slotDate || !slot.startTime) {
+		return false;
+	}
+	const start = new Date(`${slot.slotDate}T${slot.startTime}:00`);
+	return !Number.isNaN(start.getTime()) && start.getTime() > reference.getTime();
+}
+
 export function createStaffRouter() {
 	return {
 		list: rpc.handler(async ({ context, input }) => {
@@ -325,17 +336,26 @@ export function createStaffRouter() {
 				throwRpcError("NOT_FOUND", 404, "Staff profile not found");
 			}
 
+			// Only future-scheduled active bookings should block deletion. Past
+			// bookings that were never closed (attended/cancelled) stay
+			// isActive=true but no longer consume forward capacity, so they
+			// must not keep a staff profile from being removed.
+			const referenceNow = new Date();
 			const activeBookings = await db.query.booking.findMany({
 				where: and(
 					eq(schema.booking.staffUserId, payload.userId),
 					eq(schema.booking.isActive, true),
 				),
+				with: { slot: true },
 			});
-			if (activeBookings.length > 0) {
+			const blockingBookings = activeBookings.filter((booking) =>
+				slotStartsAfter(booking.slot, referenceNow),
+			);
+			if (blockingBookings.length > 0) {
 				throwRpcError(
 					"STAFF_HAS_ACTIVE_BOOKINGS",
 					409,
-					"Cannot delete staff profile with active bookings. Please reassign or cancel them first.",
+					"Cannot delete staff profile with future active bookings. Reassign or cancel them first.",
 				);
 			}
 

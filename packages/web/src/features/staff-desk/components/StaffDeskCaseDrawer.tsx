@@ -304,12 +304,13 @@ export function StaffDeskCaseDrawer({
 										<Checkbox
 											key={requirement.id}
 											checked={reviews[requirement.id] === true}
-											onChange={(event) =>
-												setReviews((current) => ({
-													...current,
-													[requirement.id]: event.currentTarget.checked,
-												}))
-											}
+onChange={(event) => {
+											const checked = event.currentTarget.checked;
+											setReviews((current) => ({
+												...current,
+												[requirement.id]: checked,
+											}));
+										}}
 											label={
 												<Box>
 													<Text component="span" fw={600} size="sm">

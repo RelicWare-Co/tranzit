@@ -115,7 +115,7 @@ Key behavior already implemented:
 Key behavior already implemented:
 - validation of `weeklyAvailability` structure and windows
 - date overrides with partial-day windows and capacity override
-- deletion guard when staff has active bookings
+- deletion guard only when staff has future active bookings
 - effective availability/capacity resolution by profile + date overrides
 
 ### 2.3 Bookings module (`server/src/orpc/modules/bookings.router.ts`)
