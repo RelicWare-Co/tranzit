@@ -32,6 +32,7 @@
 		"drizzle-kit": "^0.31.10",
 		"maildev": "^2.2.1",
 		"tsx": "^4.22.5",
+		"typescript": "^7.0.2",
 		"vitest": "^4.1.9"
 	}
 }

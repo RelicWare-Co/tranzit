@@ -3,29 +3,48 @@ import { db, schema } from "../../lib/db";
 import type { CapacityCheck, CapacityConflict, DbLike } from "./capacity.types";
 import { slotFitsWindow } from "./capacity.utils";
 
-export async function resolveStaffAvailabilityAndCapacity(
-	dbLike: DbLike,
-	staffUserId: string,
-	slotDate: string,
-	slotStartTime: string,
-	slotEndTime: string,
-): Promise<{
+type WeeklyAvailabilityMap = Record<
+	string,
+	{
+		enabled?: boolean;
+		morningStart?: string;
+		morningEnd?: string;
+		afternoonStart?: string;
+		afternoonEnd?: string;
+	}
+>;
+
+interface StaffProfileLike {
+	isActive: boolean;
+	isAssignable: boolean;
+	defaultDailyCapacity: number;
+	weeklyAvailability: unknown;
+}
+
+interface DateOverrideLike {
+	isAvailable: boolean;
+	capacityOverride: number | null;
+	availableStartTime: string | null;
+	availableEndTime: string | null;
+}
+
+export interface StaffServeDecision {
 	available: boolean;
 	staffCapacity: number;
 	reason?: string;
-}> {
-	const staffProfile = await dbLike.query.staffProfile.findFirst({
-		where: eq(schema.staffProfile.userId, staffUserId),
-	});
+}
 
-	if (!staffProfile) {
-		return {
-			available: false,
-			staffCapacity: 0,
-			reason: "Staff profile not found",
-		};
-	}
-
+/**
+ * Pure decision: can a given staff profile serve a slot on a given date/time,
+ * given their (optional) date override. Does not consult the database.
+ */
+export function decideStaffServe(
+	staffProfile: StaffProfileLike,
+	dateOverride: DateOverrideLike | null,
+	slotDate: string,
+	slotStartTime: string,
+	slotEndTime: string,
+): StaffServeDecision {
 	if (!staffProfile.isActive || !staffProfile.isAssignable) {
 		return {
 			available: false,
@@ -33,13 +52,6 @@ export async function resolveStaffAvailabilityAndCapacity(
 			reason: "Staff is not active or not assignable",
 		};
 	}
-
-	const dateOverride = await dbLike.query.staffDateOverride.findFirst({
-		where: and(
-			eq(schema.staffDateOverride.staffUserId, staffUserId),
-			eq(schema.staffDateOverride.overrideDate, slotDate),
-		),
-	});
 
 	let staffCapacity = staffProfile.defaultDailyCapacity;
 
@@ -56,7 +68,10 @@ export async function resolveStaffAvailabilityAndCapacity(
 			staffCapacity = dateOverride.capacityOverride;
 		}
 
-		if (dateOverride.availableStartTime && dateOverride.availableEndTime) {
+		if (
+			dateOverride.availableStartTime &&
+			dateOverride.availableEndTime
+		) {
 			if (
 				!slotFitsWindow(
 					slotStartTime,
@@ -73,23 +88,12 @@ export async function resolveStaffAvailabilityAndCapacity(
 			}
 		}
 
-		return {
-			available: true,
-			staffCapacity,
-		};
+		return { available: true, staffCapacity };
 	}
 
 	const weekday = new Date(`${slotDate}T00:00:00`).getDay();
-	const weeklyAvailability = (staffProfile.weeklyAvailability ?? {}) as Record<
-		string,
-		{
-			enabled?: boolean;
-			morningStart?: string;
-			morningEnd?: string;
-			afternoonStart?: string;
-			afternoonEnd?: string;
-		}
-	>;
+	const weeklyAvailability = (staffProfile.weeklyAvailability ??
+		{}) as WeeklyAvailabilityMap;
 
 	const dayConfig = weeklyAvailability[String(weekday)];
 
@@ -148,10 +152,42 @@ export async function resolveStaffAvailabilityAndCapacity(
 		}
 	}
 
-	return {
-		available: true,
-		staffCapacity,
-	};
+	return { available: true, staffCapacity };
+}
+
+export async function resolveStaffAvailabilityAndCapacity(
+	dbLike: DbLike,
+	staffUserId: string,
+	slotDate: string,
+	slotStartTime: string,
+	slotEndTime: string,
+): Promise<StaffServeDecision> {
+	const staffProfile = await dbLike.query.staffProfile.findFirst({
+		where: eq(schema.staffProfile.userId, staffUserId),
+	});
+
+	if (!staffProfile) {
+		return {
+			available: false,
+			staffCapacity: 0,
+			reason: "Staff profile not found",
+		};
+	}
+
+	const dateOverride = await dbLike.query.staffDateOverride.findFirst({
+		where: and(
+			eq(schema.staffDateOverride.staffUserId, staffUserId),
+			eq(schema.staffDateOverride.overrideDate, slotDate),
+		),
+	});
+
+	return decideStaffServe(
+		staffProfile,
+		dateOverride ?? null,
+		slotDate,
+		slotStartTime,
+		slotEndTime,
+	);
 }
 
 export async function countActiveSlotBookings(
@@ -211,6 +247,29 @@ export async function countActiveStaffBookingsOnDate(
 		const bookingSlotDate = bookingSlotDateMap.get(booking.slotId);
 		return bookingSlotDate === date;
 	}).length;
+}
+
+export async function countActiveStaffBookingsForSlot(
+	dbLike: DbLike,
+	staffUserId: string,
+	slotId: string,
+	excludeBookingId?: string,
+): Promise<number> {
+	const conditions = [
+		eq(schema.booking.staffUserId, staffUserId),
+		eq(schema.booking.slotId, slotId),
+		eq(schema.booking.isActive, true),
+	];
+
+	if (excludeBookingId) {
+		conditions.push(ne(schema.booking.id, excludeBookingId));
+	}
+
+	const activeBookings = await dbLike.query.booking.findMany({
+		where: and(...conditions),
+	});
+
+	return activeBookings.length;
 }
 
 export async function checkCapacity(
@@ -280,18 +339,30 @@ export async function checkCapacity(
 		};
 	}
 
-	const staffCapacity = staffResolution.staffCapacity;
 	const staffUsed = await countActiveStaffBookingsOnDate(
 		db,
 		staffUserId,
 		slot.slotDate,
 	);
-	const staffRemaining = staffCapacity - staffUsed;
+	const staffRemaining = staffResolution.staffCapacity - staffUsed;
 
-	if (staffUsed >= staffCapacity) {
+	if (staffUsed >= staffResolution.staffCapacity) {
 		conflicts.push({
 			type: "STAFF_OVER_CAPACITY",
-			details: `Staff has reached daily capacity limit (${staffCapacity})`,
+			details: `Staff has reached daily capacity limit (${staffResolution.staffCapacity})`,
+		});
+	}
+
+	const staffBookingsOnSlot = await countActiveStaffBookingsForSlot(
+		db,
+		staffUserId,
+		slotId,
+	);
+	if (staffBookingsOnSlot > 0) {
+		conflicts.push({
+			type: "STAFF_TIME_OVERLAP",
+			details:
+				"Staff already has an active booking on this slot (no double booking per auxiliar)",
 		});
 	}
 
@@ -300,7 +371,7 @@ export async function checkCapacity(
 		globalCapacity,
 		globalUsed,
 		globalRemaining,
-		staffCapacity,
+		staffCapacity: staffResolution.staffCapacity,
 		staffUsed,
 		staffRemaining,
 		conflicts,

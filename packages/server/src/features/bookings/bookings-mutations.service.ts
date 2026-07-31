@@ -6,6 +6,12 @@ import { buildBookingSummary, createAuditEvent } from "../audit/audit.service";
 import { sendHoldExpirationEmail } from "../notifications/notification.service";
 import type { TemplateContext } from "../notifications/notification-templates";
 import {
+	countActiveSlotBookings,
+	countActiveStaffBookingsForSlot,
+	countActiveStaffBookingsOnDate,
+	resolveStaffAvailabilityAndCapacity,
+} from "./capacity-check.service";
+import {
 	confirmBooking,
 	consumeCapacity,
 	releaseCapacity,
@@ -372,4 +378,202 @@ export async function releaseExistingBooking(
 		booking,
 		alreadyReleased: result.alreadyReleased,
 	};
+}
+
+export interface RescheduleBookingInput {
+	id: string;
+	newSlotId: string;
+}
+
+export async function rescheduleExistingBooking(
+	input: RescheduleBookingInput,
+	options: {
+		actorUserId: string;
+		ipAddress?: string | null;
+		userAgent?: string | null;
+	},
+) {
+	if (!input.id || !input.newSlotId) {
+		throwRpcError(
+			"MISSING_REQUIRED_FIELDS",
+			422,
+			"id and newSlotId are required",
+		);
+	}
+
+	const booking = await db.query.booking.findFirst({
+		where: eq(schema.booking.id, input.id),
+	});
+
+	if (!booking) {
+		throwRpcError("NOT_FOUND", 404, "Booking not found");
+	}
+
+	if (!booking.isActive) {
+		throwRpcError(
+			"INVALID_STATE",
+			422,
+			"Cannot reschedule an inactive booking",
+		);
+	}
+
+	if (booking.slotId === input.newSlotId) {
+		return booking;
+	}
+
+	const newSlot = await db.query.appointmentSlot.findFirst({
+		where: eq(schema.appointmentSlot.id, input.newSlotId),
+	});
+
+	if (!newSlot) {
+		throwRpcError("NOT_FOUND", 404, "Target slot not found");
+	}
+
+	if (!booking.staffUserId) {
+		throwRpcError(
+			"INVALID_STATE",
+			422,
+			"Booking has no staff assigned; reassign before rescheduling",
+		);
+	}
+
+	const staffDecision = await resolveStaffAvailabilityAndCapacity(
+		db,
+		booking.staffUserId,
+		newSlot.slotDate,
+		newSlot.startTime,
+		newSlot.endTime,
+	);
+
+	if (!staffDecision.available) {
+		throwRpcError(
+			"CAPACITY_CONFLICT",
+			409,
+			staffDecision.reason ?? "Staff is unavailable for the target slot",
+			{
+				conflicts: [
+					{
+						type: "STAFF_UNAVAILABLE",
+						details: staffDecision.reason ?? "Staff unavailable",
+					},
+				],
+			},
+		);
+	}
+
+	const newSlotUsed = await countActiveSlotBookings(
+		db,
+		newSlot.id,
+		booking.id,
+	);
+	if (
+		newSlot.capacityLimit !== null &&
+		newSlotUsed >= newSlot.capacityLimit
+	) {
+		throwRpcError(
+			"CAPACITY_CONFLICT",
+			409,
+			"El horario destino no tiene cupos disponibles",
+			{
+				conflicts: [
+					{
+						type: "GLOBAL_OVER_CAPACITY",
+						details: `Target slot reached capacity (${newSlot.capacityLimit})`,
+					},
+				],
+			},
+		);
+	}
+
+	const staffOnNewSlot = await countActiveStaffBookingsForSlot(
+		db,
+		booking.staffUserId,
+		newSlot.id,
+		booking.id,
+	);
+	if (staffOnNewSlot > 0) {
+		throwRpcError(
+			"CAPACITY_CONFLICT",
+			409,
+			"El funcionario ya tiene una cita activa en ese horario",
+			{
+				conflicts: [
+					{
+						type: "STAFF_TIME_OVERLAP",
+						details: "Staff already booked on target slot",
+					},
+				],
+			},
+		);
+	}
+
+	const staffOnNewDate = await countActiveStaffBookingsOnDate(
+		db,
+		booking.staffUserId,
+		newSlot.slotDate,
+		booking.id,
+	);
+	if (staffOnNewDate >= staffDecision.staffCapacity) {
+		throwRpcError(
+			"CAPACITY_CONFLICT",
+			409,
+			`El funcionario alcanzó su cupo diario (${staffDecision.staffCapacity})`,
+			{
+				conflicts: [
+					{
+						type: "STAFF_OVER_CAPACITY",
+						details: `Staff daily capacity reached (${staffDecision.staffCapacity})`,
+					},
+				],
+			},
+		);
+	}
+
+	const oldSlotId = booking.slotId;
+	const oldSlot = await db.query.appointmentSlot.findFirst({
+		where: eq(schema.appointmentSlot.id, oldSlotId),
+	});
+	const now = new Date();
+
+	await db
+		.update(schema.booking)
+		.set({ slotId: newSlot.id, updatedAt: now })
+		.where(eq(schema.booking.id, booking.id));
+
+	const staffUser = booking.staffUserId
+		? await db.query.user.findFirst({
+				where: eq(schema.user.id, booking.staffUserId),
+			})
+		: null;
+
+	await createAuditEvent({
+		actorType: "admin",
+		actorUserId: options.actorUserId,
+		entityType: "booking",
+		entityId: booking.id,
+		action: "update",
+		summary: buildBookingSummary("rescheduled", booking.id, {
+			kind: booking.kind,
+			status: booking.status,
+			slotDate: newSlot.slotDate,
+			startTime: newSlot.startTime,
+			staffName: staffUser?.name,
+		}),
+		payload: {
+			oldSlotId,
+			newSlotId: newSlot.id,
+			oldSlotDate: oldSlot?.slotDate ?? null,
+			oldStartTime: oldSlot?.startTime ?? null,
+			newSlotDate: newSlot.slotDate,
+			newStartTime: newSlot.startTime,
+			staffUserId: booking.staffUserId,
+			kind: booking.kind,
+		},
+		ipAddress: options.ipAddress ?? null,
+		userAgent: options.userAgent ?? null,
+	});
+
+	return await db.query.booking.findFirst({
+		where: eq(schema.booking.id, booking.id),
+	});
 }

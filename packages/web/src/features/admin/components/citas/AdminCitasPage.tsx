@@ -21,6 +21,7 @@ import { getErrorMessage } from "#/features/admin/components/errors";
 import { orpcClient } from "#/shared/lib/orpc-client";
 import "./admin-schedule.css";
 import { BookingStatsGrid } from "./BookingStatsGrid";
+import { BookingDetailDrawer } from "./BookingDetailDrawer";
 import { NewBookingModal } from "./NewBookingModal";
 import type { BookingWithRelations } from "./types";
 import { getDateRange, getEventColor, toDateTimeString } from "./utils";
@@ -33,6 +34,9 @@ export function AdminCitasPage() {
 	const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 	const [bookingsError, setBookingsError] = useState<string | null>(null);
 	const [modalOpen, setModalOpen] = useState(false);
+	const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
+		null,
+	);
 
 	const loadBookings = useCallback(async () => {
 		setIsLoadingEvents(true);
@@ -56,19 +60,31 @@ export function AdminCitasPage() {
 
 					const procedureName =
 						booking.request?.procedure?.name ||
+						booking.request?.procedureType?.name ||
 						booking.request?.procedure?.slug;
+					const applicantName =
+						(booking.request?.draftData as
+							| { applicantName?: string | null }
+							| null)?.applicantName ||
+						booking.request?.citizen?.name;
 					const staffName =
 						booking.staff?.name || booking.staff?.email || "Sin asignar";
+
+					const title =
+						booking.kind === "administrative"
+							? applicantName
+								? `[Admin] ${applicantName} — ${staffName}`
+								: `[Admin] ${staffName}`
+							: procedureName
+								? applicantName
+									? `${applicantName} — ${procedureName}`
+									: `${procedureName} — ${staffName}`
+								: staffName;
 
 					return [
 						{
 							id: booking.id,
-							title:
-								booking.kind === "administrative"
-									? `[Admin] ${staffName}`
-									: procedureName
-										? `${procedureName} — ${staffName}`
-										: staffName,
+							title,
 							start: toDateTimeString(
 								booking.slot.slotDate,
 								booking.slot.startTime,
@@ -78,7 +94,7 @@ export function AdminCitasPage() {
 								booking.slot.endTime,
 							),
 							color: getEventColor(booking),
-							data: booking,
+							payload: booking,
 						},
 					];
 				});
@@ -118,6 +134,25 @@ export function AdminCitasPage() {
 					: event,
 			),
 		);
+	};
+
+	const handleEventClick = (eventData: ScheduleEventData) => {
+		const id =
+			typeof eventData.id === "string" || typeof eventData.id === "number"
+				? String(eventData.id)
+				: null;
+		if (!id) return;
+		setSelectedBookingId(id);
+	};
+
+	const selectedBooking = useMemo(
+		() => bookings.find((b) => b.id === selectedBookingId) ?? null,
+		[bookings, selectedBookingId],
+	);
+
+	const jumpToBookingDate = (slotDate: string) => {
+		const parsed = new Date(`${slotDate}T00:00:00`);
+		if (!Number.isNaN(parsed.getTime())) setDate(parsed);
 	};
 
 	const todayStr = formatDateLocal(new Date());
@@ -342,6 +377,7 @@ export function AdminCitasPage() {
 						events={events}
 						withEventsDragAndDrop
 						onEventDrop={handleEventDrop}
+						onEventClick={handleEventClick}
 						dayViewProps={{
 							startTime: "07:00:00",
 							endTime: "18:00:00",
@@ -391,7 +427,21 @@ export function AdminCitasPage() {
 			<NewBookingModal
 				opened={modalOpen}
 				onClose={() => setModalOpen(false)}
-				onSuccess={() => {
+				onSuccess={(payload) => {
+					if (payload?.slot?.slotDate) jumpToBookingDate(payload.slot.slotDate);
+					void loadBookings();
+				}}
+			/>
+
+			<BookingDetailDrawer
+				booking={selectedBooking}
+				opened={selectedBooking !== null}
+				onClose={() => setSelectedBookingId(null)}
+				onMutated={(newSlotDate) => {
+					if (newSlotDate) jumpToBookingDate(newSlotDate);
+					else if (selectedBooking?.slot?.slotDate) {
+						jumpToBookingDate(selectedBooking.slot.slotDate);
+					}
 					void loadBookings();
 				}}
 			/>

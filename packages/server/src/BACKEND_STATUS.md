@@ -127,6 +127,7 @@ Key behavior already implemented:
 - `admin.bookings.confirm`
 - `admin.bookings.release`
 - `admin.bookings.reassign`
+- `admin.bookings.reschedule`
 - `admin.bookings.reassignPreview`
 - `admin.bookings.reassignmentsPreview`
 - `admin.bookings.reassignmentsApply`
@@ -220,6 +221,10 @@ Key behavior already implemented:
 - automatic staff assignment for citizen holds using capacity checks
 - citizen hold assignment only considers assignable staff profiles with a valid backing `user` row (prevents FK failures on booking insert)
 - real-time slot availability exposure based on generated schedule slots and active bookings
+- `citizen.slots.range` / `admin.schedule.slots.list` only return slots whose start/end match the current effective windows for the date; persisted slots generated under a previous schedule/override that no longer belong to the active windows (e.g. afternoon slots after a morning-only override) are filtered out
+- slot `remainingCapacity` reflects the number of active assignable staff that can serve the slot (respecting weekly availability windows and date overrides), capped by the slot's `capacityLimit` when set; a slot with no declared limit is full once every available auxiliar already holds an active booking on that slot (enforces "no double booking per auxiliar")
+- `checkCapacity` / `consumeCapacity` reject assigning the same auxiliar to the same slot when they already have an active booking there (`STAFF_TIME_OVERLAP` conflict type)
+- `admin.bookings.reschedule` reassigns an active booking to a different slot (same staff) after validating global capacity, staff availability/time-overlap and daily staff capacity with the moved booking excluded from the counts; emits a booking `update` audit event with old/new slot metadata
 - `service_request` creation with config/version snapshot at booking-hold time
 - strict `citizen.slots.range` date validation for `dateFrom` (format `YYYY-MM-DD` plus real calendar date)
 - `citizen.bookings.hold` rejects whitespace-only required identity fields (`applicantName`, `applicantDocument`)

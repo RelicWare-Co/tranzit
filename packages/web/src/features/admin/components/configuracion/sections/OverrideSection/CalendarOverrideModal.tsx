@@ -135,12 +135,12 @@ export function CalendarOverrideModal({
 		const payload: CalendarOverridePayload = {
 			overrideDate: values.overrideDate,
 			isClosed: values.isClosed,
-			morningEnabled: values.morningEnabled,
-			afternoonEnabled: values.afternoonEnabled,
-			morningStart: values.morningStart || null,
-			morningEnd: values.morningEnd || null,
-			afternoonStart: values.afternoonStart || null,
-			afternoonEnd: values.afternoonEnd || null,
+			morningEnabled: values.isClosed ? false : values.morningEnabled,
+			afternoonEnabled: values.isClosed ? false : values.afternoonEnabled,
+			morningStart: values.isClosed ? null : values.morningStart || null,
+			morningEnd: values.isClosed ? null : values.morningEnd || null,
+			afternoonStart: values.isClosed ? null : values.afternoonStart || null,
+			afternoonEnd: values.isClosed ? null : values.afternoonEnd || null,
 			slotDurationMinutes: values.slotDurationMinutes ?? null,
 			bufferMinutes: values.bufferMinutes ?? null,
 			slotCapacityLimit: values.slotCapacityLimit ?? null,
@@ -236,32 +236,44 @@ export function CalendarOverrideModal({
 						</p>
 					</div>
 					<div className={classes.switchGroup}>
-						<Switch
-							label="Día cerrado"
-							description="No se ofrecerán slots durante esta fecha"
-							color="red"
-							className={`${classes.switchControl} ${classes.fullSpan}`}
-							disabled={isSubmitting}
-							{...form.getInputProps("isClosed", { type: "checkbox" })}
-						/>
-						<Switch
-							label="Jornada de la mañana"
-							description="Permite atención antes del mediodía"
-							className={classes.switchControl}
-							disabled={scheduleDisabled || isSubmitting}
-							{...form.getInputProps("morningEnabled", {
-								type: "checkbox",
-							})}
-						/>
-						<Switch
-							label="Jornada de la tarde"
-							description="Permite atención después del mediodía"
-							className={classes.switchControl}
-							disabled={scheduleDisabled || isSubmitting}
-							{...form.getInputProps("afternoonEnabled", {
-								type: "checkbox",
-							})}
-						/>
+<Switch
+						label="Día cerrado"
+						description="No se ofrecerán slots durante esta fecha"
+						color="red"
+						className={`${classes.switchControl} ${classes.fullSpan}`}
+						disabled={isSubmitting}
+						checked={form.values.isClosed}
+						onChange={(event) => {
+							const nextClosed = event.currentTarget.checked;
+							form.setFieldValue("isClosed", nextClosed);
+							if (nextClosed) {
+								form.setFieldValue("morningEnabled", false);
+								form.setFieldValue("afternoonEnabled", false);
+								form.setFieldValue("morningStart", "");
+								form.setFieldValue("morningEnd", "");
+								form.setFieldValue("afternoonStart", "");
+								form.setFieldValue("afternoonEnd", "");
+							}
+						}}
+					/>
+					<Switch
+						label="Jornada de la mañana"
+						description="Permite atención antes del mediodía"
+						className={classes.switchControl}
+						disabled={scheduleDisabled || isSubmitting}
+						{...form.getInputProps("morningEnabled", {
+							type: "checkbox",
+						})}
+					/>
+					<Switch
+						label="Jornada de la tarde"
+						description="Permite atención después del mediodía"
+						className={classes.switchControl}
+						disabled={scheduleDisabled || isSubmitting}
+						{...form.getInputProps("afternoonEnabled", {
+							type: "checkbox",
+						})}
+					/>
 					</div>
 				</section>
 

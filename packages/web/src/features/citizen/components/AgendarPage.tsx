@@ -1,6 +1,9 @@
+import { DateTimePicker } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import dayjs from "dayjs";
+import "dayjs/locale/es";
 import { ChevronRight, Clock, FileText, Loader2, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "#/features/auth/components/AuthContext";
@@ -81,6 +84,13 @@ function formatDateLabel(value: string) {
 		month: "long",
 		day: "numeric",
 	});
+}
+
+function toLocalDateString(value: Date): string {
+	const year = value.getFullYear();
+	const month = String(value.getMonth() + 1).padStart(2, "0");
+	const day = String(value.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 }
 
 function useHoldCountdown(expiresAt: string | Date | null | undefined) {
@@ -238,10 +248,23 @@ function AgendarPage() {
 		return daily.filter((day) => day.count > 0);
 	}, [slotsRangeQuery.data]);
 
+	const availableDateStrings = useMemo(
+		() => new Set(availableDates.map((day) => day.date)),
+		[availableDates],
+	);
+
+	const scheduleBounds = useMemo(() => {
+		if (availableDates.length === 0) return null;
+		return {
+			minDate: availableDates[0].date,
+			maxDate: availableDates[availableDates.length - 1].date,
+		};
+	}, [availableDates]);
+
 	const resolvedSelectedDate = useMemo(() => {
 		if (selectedDate && slotsByDate.has(selectedDate)) return selectedDate;
-		return availableDates[0]?.date ?? null;
-	}, [availableDates, selectedDate, slotsByDate]);
+		return null;
+	}, [selectedDate, slotsByDate]);
 
 	const selectedDaySlots = useMemo(() => {
 		if (!resolvedSelectedDate) return [];
@@ -253,6 +276,47 @@ function AgendarPage() {
 		const slotExists = selectedDaySlots.some((s) => s.id === selectedSlotId);
 		return slotExists ? selectedSlotId : null;
 	}, [selectedDaySlots, selectedSlotId]);
+
+	const selectedDateTime = useMemo(() => {
+		if (!resolvedSelectedDate || !resolvedSelectedSlotId) return null;
+		const slot = selectedDaySlots.find((s) => s.id === resolvedSelectedSlotId);
+		if (!slot) return null;
+		const parsed = new Date(`${resolvedSelectedDate}T${slot.startTime}:00`);
+		return Number.isNaN(parsed.getTime()) ? null : parsed;
+	}, [resolvedSelectedDate, resolvedSelectedSlotId, selectedDaySlots]);
+
+	const slotGroupsByPeriod = useMemo(() => {
+		const morning = selectedDaySlots.filter(
+			(slot) => Number(slot.startTime.split(":")[0]) < 12,
+		);
+		const afternoon = selectedDaySlots.filter(
+			(slot) => Number(slot.startTime.split(":")[0]) >= 12,
+		);
+		return { morning, afternoon };
+	}, [selectedDaySlots]);
+
+	const handleScheduleChange = (value: Date | string | null) => {
+		if (!value) {
+			setSelectedDate(null);
+			setSelectedSlotId(null);
+			return;
+		}
+		const dateObj = value instanceof Date ? value : new Date(value);
+		if (Number.isNaN(dateObj.getTime())) {
+			setSelectedDate(null);
+			setSelectedSlotId(null);
+			return;
+		}
+		const dateStr = toLocalDateString(dateObj);
+		if (!availableDateStrings.has(dateStr)) {
+			setSelectedDate(null);
+			setSelectedSlotId(null);
+			return;
+		}
+		setSelectedDate(dateStr);
+		const firstSlot = slotsByDate.get(dateStr)?.slots?.[0] ?? null;
+		setSelectedSlotId(firstSlot?.id ?? null);
+	};
 
 	const maxReachableStep = useMemo(() => {
 		if (!selectedProcedure) return 0;
@@ -901,73 +965,81 @@ function AgendarPage() {
 						<span>Cargando disponibilidad...</span>
 					</div>
 				) : availableDates.length > 0 ? (
-					<div className={classes.scheduleContainer}>
-						{/* Date Pills - Vertical */}
-						<div className={classes.dateList}>
-							{availableDates.map((day) => (
-								<button
-									type="button"
-									key={day.date}
-									className={`${classes.datePill} ${
-										resolvedSelectedDate === day.date
-											? classes.datePillActive
-											: ""
-									}`}
-									onClick={() => {
-										setSelectedDate(day.date);
-										setSelectedSlotId(null);
-									}}
-								>
-									<span className={classes.dateMonth}>
-										{new Date(`${day.date}T00:00:00`).toLocaleDateString(
-											"es-CO",
-											{
-												month: "short",
-											},
-										)}
-									</span>
-									<span className={classes.dateDay}>
-										{new Date(`${day.date}T00:00:00`).getDate()}
-									</span>
-									<span className={classes.dateWeekday}>
-										{new Date(`${day.date}T00:00:00`).toLocaleDateString(
-											"es-CO",
-											{
-												weekday: "short",
-											},
-										)}
-									</span>
-								</button>
-							))}
-						</div>
+					<div className={classes.scheduleLayout}>
+						<DateTimePicker
+							label="Fecha y hora de tu cita"
+							placeholder="Selecciona una fecha disponible"
+							locale="es"
+							valueFormat={(date) =>
+								dayjs(date).locale("es").format("dddd, D [de] MMMM [de] YYYY · HH:mm")
+							}
+							clearable
+							value={selectedDateTime}
+							onChange={(value) => handleScheduleChange(value)}
+							excludeDate={(dateStr) => !availableDateStrings.has(dateStr)}
+							minDate={scheduleBounds?.minDate}
+							maxDate={scheduleBounds?.maxDate}
+							firstDayOfWeek={1}
+							timePickerProps={{ disabled: true, withDropdown: false }}
+							classNames={{ root: classes.schedulePicker }}
+						/>
 
-						{/* Slots Grid */}
-						<div className={classes.slotsSection}>
-							{selectedDaySlots.length > 0 ? (
-								<div className={classes.slotsGrid}>
-									{selectedDaySlots.map((slot) => (
-										<button
-											type="button"
-											key={slot.id}
-											className={`${classes.slotButton} ${
-												resolvedSelectedSlotId === slot.id
-													? classes.slotButtonSelected
-													: ""
-											}`}
-											onClick={() => setSelectedSlotId(slot.id)}
-										>
-											<Clock size={14} />
-											<span className={classes.slotTime}>{slot.startTime}</span>
-										</button>
-									))}
-								</div>
-							) : (
-								<Alert variant="warning" title="Sin horarios">
-									No hay horarios disponibles en esta fecha. Selecciona otra
-									fecha.
-								</Alert>
-							)}
-						</div>
+						{resolvedSelectedDate ? (
+							<div className={classes.slotGroups}>
+								{slotGroupsByPeriod.morning.length > 0 && (
+									<div className={classes.slotGroup}>
+										<span className={classes.slotGroupHeading}>
+											Jornada de la mañana
+										</span>
+										<div className={classes.slotGrid}>
+											{slotGroupsByPeriod.morning.map((slot) => (
+												<button
+													type="button"
+													key={slot.id}
+													className={`${classes.slotButton} ${
+														resolvedSelectedSlotId === slot.id
+															? classes.slotButtonSelected
+															: ""
+													}`}
+													onClick={() => setSelectedSlotId(slot.id)}
+												>
+													<Clock size={14} />
+													<span className={classes.slotTime}>{slot.startTime}</span>
+												</button>
+											))}
+										</div>
+									</div>
+								)}
+								{slotGroupsByPeriod.afternoon.length > 0 && (
+									<div className={classes.slotGroup}>
+										<span className={classes.slotGroupHeading}>
+											Jornada de la tarde
+										</span>
+										<div className={classes.slotGrid}>
+											{slotGroupsByPeriod.afternoon.map((slot) => (
+												<button
+													type="button"
+													key={slot.id}
+													className={`${classes.slotButton} ${
+														resolvedSelectedSlotId === slot.id
+															? classes.slotButtonSelected
+															: ""
+													}`}
+													onClick={() => setSelectedSlotId(slot.id)}
+												>
+													<Clock size={14} />
+													<span className={classes.slotTime}>{slot.startTime}</span>
+												</button>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
+						) : (
+							<p className={classes.scheduleHint}>
+								Elige una fecha en el calendario para ver los horarios disponibles.
+							</p>
+						)}
 					</div>
 				) : (
 					<Alert variant="warning" title="Sin cupos disponibles">

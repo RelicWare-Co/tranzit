@@ -9,6 +9,7 @@ import { isUniqueConstraintError } from "./capacity.utils";
 import {
 	checkCapacity,
 	countActiveSlotBookings,
+	countActiveStaffBookingsForSlot,
 	countActiveStaffBookingsOnDate,
 	resolveStaffAvailabilityAndCapacity,
 } from "./capacity-check.service";
@@ -69,18 +70,31 @@ export async function consumeCapacity(
 				};
 			}
 
-			const staffUsed = await countActiveStaffBookingsOnDate(
-				tx,
-				staffUserId,
-				slot.slotDate,
-			);
+const staffUsed = await countActiveStaffBookingsOnDate(
+			tx,
+			staffUserId,
+			slot.slotDate,
+		);
 
-			if (staffUsed >= staffResolution.staffCapacity) {
-				throw {
-					type: "STAFF_OVER_CAPACITY",
-					message: `Staff has reached daily capacity limit (${staffResolution.staffCapacity})`,
-				};
-			}
+		if (staffUsed >= staffResolution.staffCapacity) {
+			throw {
+				type: "STAFF_OVER_CAPACITY",
+				message: `Staff has reached daily capacity limit (${staffResolution.staffCapacity})`,
+			};
+		}
+
+		const staffBookingsOnSlot = await countActiveStaffBookingsForSlot(
+			tx,
+			staffUserId,
+			slotId,
+		);
+		if (staffBookingsOnSlot > 0) {
+			throw {
+				type: "STAFF_TIME_OVERLAP",
+				message:
+					"Staff already has an active booking on this slot (no double booking per auxiliar)",
+			};
+		}
 
 			const bookingId = crypto.randomUUID();
 

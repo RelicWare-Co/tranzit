@@ -98,7 +98,7 @@ type RpcProcedure<TOutput, TInput = undefined> = (
 
 type BookingKind = "citizen" | "administrative";
 
-type AdminBooking = {
+export type AdminBooking = {
 	id: string;
 	slotId: string;
 	staffUserId: string | null;
@@ -117,11 +117,34 @@ type AdminBooking = {
 		slotDate: string;
 		startTime: string;
 		endTime: string;
+		capacityLimit: number | null;
 	} | null;
 	staff: {
 		id: string;
 		name: string | null;
 		email: string;
+	} | null;
+	request?: {
+		id: string;
+		procedureTypeId: string;
+		citizenUserId: string | null;
+		email: string | null;
+		phone: string | null;
+		documentType: string | null;
+		documentNumber: string | null;
+		status: string;
+		plate: string | null;
+		draftData: Record<string, unknown> | null;
+		procedureType: {
+			id: string;
+			name: string;
+			slug: string;
+		} | null;
+		citizen: {
+			id: string;
+			name: string | null;
+			email: string;
+		} | null;
 	} | null;
 };
 
@@ -191,6 +214,11 @@ type AdminBookingReleaseInput = {
 type AdminBookingReassignInput = {
 	id: string;
 	targetStaffUserId: string;
+};
+
+type AdminBookingRescheduleInput = {
+	id: string;
+	newSlotId: string;
 };
 
 type AdminBookingReassignPreviewInput = {
@@ -940,6 +968,7 @@ export interface TranzitRpcClient {
 				AdminBookingReleaseInput
 			>;
 			reassign: RpcProcedure<AdminBooking, AdminBookingReassignInput>;
+			reschedule: RpcProcedure<AdminBooking, AdminBookingRescheduleInput>;
 			reassignPreview: RpcProcedure<
 				{ dryRun: true; [key: string]: unknown },
 				AdminBookingReassignPreviewInput

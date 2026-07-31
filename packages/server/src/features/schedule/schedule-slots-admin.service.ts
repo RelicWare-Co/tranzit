@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../../lib/db";
+import { decideStaffServe } from "../bookings/capacity-check.service";
 import { throwRpcError } from "../../shared/orpc";
 import { isValidDateFormat as isValidScheduleDateFormat } from "./schedule.schemas";
 import {
@@ -214,10 +215,17 @@ export async function listScheduleSlotsByDate(date?: string) {
 		);
 	}
 
-	const allSlotsForDate = await db.query.appointmentSlot.findMany({
-		where: eq(schema.appointmentSlot.slotDate, date),
-		orderBy: (slot, { asc }) => [asc(slot.startTime)],
-	});
+	const effectiveKeySet = new Set(
+		allSlots.map((slot) => `${slot.startTime}-${slot.endTime}`),
+	);
+	const allSlotsForDate = (
+		await db.query.appointmentSlot.findMany({
+			where: eq(schema.appointmentSlot.slotDate, date),
+			orderBy: (slot, { asc }) => [asc(slot.startTime)],
+		})
+	).filter(
+		(slot) => effectiveKeySet.has(`${slot.startTime}-${slot.endTime}`),
+	);
 
 	const slotIds = allSlotsForDate.map((slot) => slot.id);
 	const slotIdsSet = new Set(slotIds);
@@ -233,23 +241,60 @@ export async function listScheduleSlotsByDate(date?: string) {
 		}
 	}
 
-	const slotsWithCapacity = allSlotsForDate.map((slot) => ({
-		id: slot.id,
-		slotDate: slot.slotDate,
-		startTime: slot.startTime,
-		endTime: slot.endTime,
-		status: slot.status,
-		capacityLimit: slot.capacityLimit,
-		reservedCount: bookingCountBySlot.get(slot.id) ?? 0,
-		remainingCapacity:
-			slot.capacityLimit !== null
-				? Math.max(
-						0,
-						slot.capacityLimit - (bookingCountBySlot.get(slot.id) ?? 0),
-					)
-				: null,
-		generatedFrom: slot.generatedFrom,
-	}));
+	const assignableStaff = await db.query.staffProfile.findMany({
+		where: and(
+			eq(schema.staffProfile.isActive, true),
+			eq(schema.staffProfile.isAssignable, true),
+		),
+	});
+	const dateOverrides = await db.query.staffDateOverride.findMany({
+		where: eq(schema.staffDateOverride.overrideDate, date),
+	});
+	const dateOverridesByStaff = new Map(
+		dateOverrides.map((override) => [override.staffUserId, override]),
+	);
+
+	const servableStaffCountForSlot = (slot: {
+		startTime: string;
+		endTime: string;
+	}): number => {
+		let count = 0;
+		for (const staffProfile of assignableStaff) {
+			const override = dateOverridesByStaff.get(staffProfile.userId) ?? null;
+			const decision = decideStaffServe(
+				staffProfile,
+				override,
+				date,
+				slot.startTime,
+				slot.endTime,
+			);
+			if (decision.available) count++;
+		}
+		return count;
+	};
+
+	const slotsWithCapacity = allSlotsForDate.map((slot) => {
+		const servableStaffCount = servableStaffCountForSlot(slot);
+		const reservedCount = bookingCountBySlot.get(slot.id) ?? 0;
+		const declaredCap = slot.capacityLimit;
+		const effectiveCapacity =
+			declaredCap !== null
+				? Math.min(declaredCap, servableStaffCount)
+				: servableStaffCount;
+		const remainingCapacity = Math.max(0, effectiveCapacity - reservedCount);
+
+		return {
+			id: slot.id,
+			slotDate: slot.slotDate,
+			startTime: slot.startTime,
+			endTime: slot.endTime,
+			status: slot.status,
+			capacityLimit: slot.capacityLimit,
+			reservedCount,
+			remainingCapacity,
+			generatedFrom: slot.generatedFrom,
+		};
+	});
 
 	return {
 		date,

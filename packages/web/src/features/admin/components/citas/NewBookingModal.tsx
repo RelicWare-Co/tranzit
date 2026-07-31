@@ -10,7 +10,7 @@ import {
 } from "#/features/admin/components";
 import { formatDateLocal } from "#/features/admin/components/dates";
 import { getErrorMessage } from "#/features/admin/components/errors";
-import { orpcClient } from "#/shared/lib/orpc-client";
+import { orpcClient, type AdminBooking } from "#/shared/lib/orpc-client";
 import { BookingTypeStep } from "./steps/BookingTypeStep";
 import { DateTimeStep } from "./steps/DateTimeStep";
 import { ProcedureStep } from "./steps/ProcedureStep";
@@ -20,7 +20,7 @@ import type { BookingKind } from "./types";
 interface NewBookingModalProps {
 	opened: boolean;
 	onClose: () => void;
-	onSuccess: () => void;
+	onSuccess: (created: AdminBooking | null) => void;
 }
 
 export function NewBookingModal({
@@ -187,14 +187,14 @@ export function NewBookingModal({
 		setSuccess(false);
 
 		try {
-			await orpcClient.admin.bookings.create({
+			const created = await orpcClient.admin.bookings.create({
 				slotId: values.slotId,
 				staffUserId: values.staffUserId,
 				kind: values.bookingKind,
 			});
 
 			setSuccess(true);
-			onSuccess();
+			onSuccess(created ?? null);
 
 			setTimeout(() => {
 				onClose();

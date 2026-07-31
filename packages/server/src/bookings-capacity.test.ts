@@ -326,10 +326,12 @@ async function createAdminSession(auth: any, memDb: any, otpStore: any) {
 const TEST_SLOT_DATE = "2030-12-31";
 
 async function cleanupTestData(
-	staffUserId: string,
+	staffUserId: string | string[],
 	_slotId: string,
 	bookingIds: string[],
 ) {
+	const staffUserIds = Array.isArray(staffUserId) ? staffUserId : [staffUserId];
+
 	// Clean up bookings first (depends on slot_id and staff_user_id)
 	for (const id of bookingIds) {
 		try {
@@ -361,20 +363,22 @@ async function cleanupTestData(
 		// Ignore
 	}
 
-	// Clean up staff profile
-	try {
-		await db
-			.delete(schema.staffProfile)
-			.where(eq(schema.staffProfile.userId, staffUserId));
-	} catch {
-		// Ignore
-	}
+	for (const userId of staffUserIds) {
+		// Clean up staff profile
+		try {
+			await db
+				.delete(schema.staffProfile)
+				.where(eq(schema.staffProfile.userId, userId));
+		} catch {
+			// Ignore
+		}
 
-	// Clean up user
-	try {
-		await db.delete(schema.user).where(eq(schema.user.id, staffUserId));
-	} catch {
-		// Ignore
+		// Clean up user
+		try {
+			await db.delete(schema.user).where(eq(schema.user.id, userId));
+		} catch {
+			// Ignore
+		}
 	}
 }
 
@@ -487,14 +491,19 @@ describe("VAL-CAP-001: Combined global + staff capacity checks", () => {
 		expect(result.success).toBe(true);
 		if (result.bookingId) bookingIds.push(result.bookingId);
 
-		// Now check capacity
+		// Now check capacity for the SAME staff on the same slot:
+		// per "no double booking per auxiliar", the staff is already
+		// booked on this slot and cannot be assigned again.
 		const capacityResult = await checkCapacity(slotId, staffUserId);
 
-		expect(capacityResult.available).toBe(true);
+		expect(capacityResult.available).toBe(false);
 		expect(capacityResult.globalUsed).toBe(1);
 		expect(capacityResult.globalRemaining).toBe(1);
 		expect(capacityResult.staffUsed).toBe(1);
 		expect(capacityResult.staffRemaining).toBe(4);
+		expect(capacityResult.conflicts).toContainEqual(
+			expect.objectContaining({ type: "STAFF_TIME_OVERLAP" }),
+		);
 	});
 });
 
@@ -505,31 +514,34 @@ describe("VAL-CAP-001: Combined global + staff capacity checks", () => {
 describe("VAL-CAP-002: Over-capacity returns 409 CONFLICT", () => {
 	const testPrefix = randomUUID().slice(0, 8);
 	const staffUserId = `staff-${testPrefix}`;
+	const staffUserId2 = `staff2-${testPrefix}`;
 	const slotId = `slot-${testPrefix}`;
 	const bookingIds: string[] = [];
 
 	beforeEach(async () => {
 		const now = new Date();
 
-		// Create staff user
-		await db.insert(schema.user).values({
-			id: staffUserId,
-			name: "Test Staff",
-			email: `staff-${testPrefix}@test.com`,
-			role: "staff",
-			createdAt: now,
-			updatedAt: now,
-		});
+		// Create two staff users/profiles so the same slot can be filled by
+		// different auxiliares (new invariant: no double booking per auxiliar).
+		for (const userId of [staffUserId, staffUserId2]) {
+			await db.insert(schema.user).values({
+				id: userId,
+				name: `Test Staff ${userId}`,
+				email: `${userId}@test.com`,
+				role: "staff",
+				createdAt: now,
+				updatedAt: now,
+			});
 
-		// Create staff profile with capacity 5
-		await db.insert(schema.staffProfile).values({
-			userId: staffUserId,
-			isActive: true,
-			isAssignable: true,
-			defaultDailyCapacity: 5,
-			createdAt: now,
-			updatedAt: now,
-		});
+			await db.insert(schema.staffProfile).values({
+				userId,
+				isActive: true,
+				isAssignable: true,
+				defaultDailyCapacity: 5,
+				createdAt: now,
+				updatedAt: now,
+			});
+		}
 
 		// Create slot with global capacity 2
 		await db.insert(schema.appointmentSlot).values({
@@ -546,11 +558,11 @@ describe("VAL-CAP-002: Over-capacity returns 409 CONFLICT", () => {
 	});
 
 	afterEach(async () => {
-		await cleanupTestData(staffUserId, slotId, bookingIds);
+		await cleanupTestData([staffUserId, staffUserId2], slotId, bookingIds);
 	});
 
 	test("consumeCapacity returns conflict when global slot capacity is reached", async () => {
-		// Fill up the slot to capacity (2 bookings)
+		// Fill up the slot to capacity (2 bookings, each by a different staff)
 		const result1 = await consumeCapacity(
 			slotId,
 			staffUserId,
@@ -566,7 +578,7 @@ describe("VAL-CAP-002: Over-capacity returns 409 CONFLICT", () => {
 
 		const result2 = await consumeCapacity(
 			slotId,
-			staffUserId,
+			staffUserId2,
 			"citizen",
 			null,
 			null,
@@ -577,7 +589,7 @@ describe("VAL-CAP-002: Over-capacity returns 409 CONFLICT", () => {
 		expect(result2.success).toBe(true);
 		if (result2.bookingId) bookingIds.push(result2.bookingId);
 
-		// Third booking should fail
+		// Third booking should fail (global slot capacity reached)
 		const result3 = await consumeCapacity(
 			slotId,
 			staffUserId,
@@ -592,6 +604,39 @@ describe("VAL-CAP-002: Over-capacity returns 409 CONFLICT", () => {
 		expect(result3.success).toBe(false);
 		expect(result3.conflicts).toContainEqual(
 			expect.objectContaining({ type: "GLOBAL_OVER_CAPACITY" }),
+		);
+	});
+
+	test("consumeCapacity rejects double booking the same auxiliar on the same slot", async () => {
+		const result1 = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+		expect(result1.success).toBe(true);
+		if (result1.bookingId) bookingIds.push(result1.bookingId);
+
+		// Second booking by the SAME staff on the SAME slot must fail
+		// (no double booking per auxiliar).
+		const result2 = await consumeCapacity(
+			slotId,
+			staffUserId,
+			"citizen",
+			null,
+			null,
+			null,
+			null,
+			null,
+		);
+
+		expect(result2.success).toBe(false);
+		expect(result2.conflicts).toContainEqual(
+			expect.objectContaining({ type: "STAFF_TIME_OVERLAP" }),
 		);
 	});
 

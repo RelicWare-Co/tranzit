@@ -2,6 +2,7 @@ import {
 	confirmExistingBooking,
 	createBooking,
 	releaseExistingBooking,
+	rescheduleExistingBooking,
 } from "../../features/bookings/bookings-mutations.service";
 import {
 	checkBookingAvailability,
@@ -77,6 +78,20 @@ export function createBookingsRouter() {
 			return reassignExistingBooking(
 				input as Parameters<typeof reassignExistingBooking>[0],
 				clientInfo,
+			);
+		}),
+		reschedule: rpc.handler(async ({ context, input }) => {
+			const session = await requireAdminAccess(context.headers, {
+				booking: ["read"],
+			});
+			const clientInfo = extractClientInfo(context.headers);
+			return rescheduleExistingBooking(
+				input as Parameters<typeof rescheduleExistingBooking>[0],
+				{
+					actorUserId: session.user.id,
+					ipAddress: clientInfo.ipAddress,
+					userAgent: clientInfo.userAgent,
+				},
 			);
 		}),
 		reassignPreview: rpc.handler(async ({ context, input }) => {

@@ -1,0 +1,130 @@
+.overlay {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(15, 23, 42, 0.45);
+	z-index: 300;
+	display: flex;
+	justify-content: flex-end;
+	animation: fadeIn var(--duration-fast, 120ms) ease;
+}
+
+.panel {
+	width: min(480px, 100vw);
+	height: 100vh;
+	overflow-y: auto;
+	background-color: var(--bg-elevated, #ffffff);
+	box-shadow: -12px 0 40px -12px rgba(15, 23, 42, 0.35);
+	display: flex;
+	flex-direction: column;
+}
+
+.header {
+	padding: var(--space-6, 24px) var(--space-6, 24px) var(--space-4, 16px);
+	border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.headerTop {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--space-2, 8px);
+}
+
+.closeBtn {
+	background: transparent;
+	border: none;
+	font-size: 24px;
+	line-height: 1;
+	color: var(--text-secondary, #64748b);
+	cursor: pointer;
+	padding: 0 var(--space-1, 4px);
+}
+
+.closeBtn:hover {
+	color: var(--text-primary, #0f172a);
+}
+
+.title {
+	font-family: var(--font-display, inherit);
+	font-size: var(--text-xl, 20px);
+	font-weight: 700;
+	color: var(--text-primary, #0f172a);
+	margin: 0 0 var(--space-2, 8px);
+}
+
+.slotLine {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2, 8px);
+	color: var(--text-secondary, #475569);
+	font-size: var(--text-sm, 14px);
+}
+
+.body {
+	padding: var(--space-6, 24px);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5, 20px);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3, 12px);
+}
+
+.sectionTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2, 8px);
+	font-family: var(--font-display, inherit);
+	font-size: var(--text-xs, 12px);
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-tertiary, #94a3b8);
+	margin: 0;
+}
+
+.detailRow {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--space-3, 12px);
+	padding: var(--space-1, 4px) 0;
+}
+
+.detailLabel {
+	color: var(--text-tertiary, #94a3b8);
+	font-size: var(--text-sm, 14px);
+	min-width: 96px;
+}
+
+.detailValue {
+	color: var(--text-primary, #0f172a);
+	font-size: var(--text-sm, 14px);
+	font-weight: 500;
+	text-align: right;
+	word-break: break-word;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.spinner {
+	animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}

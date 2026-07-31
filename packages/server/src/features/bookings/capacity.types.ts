@@ -21,6 +21,7 @@ export interface CapacityConflict {
 		| "STAFF_OVER_CAPACITY"
 		| "STAFF_UNAVAILABLE"
 		| "STAFF_NOT_ASSIGNABLE"
+		| "STAFF_TIME_OVERLAP"
 		| "REQUEST_ACTIVE_BOOKING_CONFLICT"
 		| "HOLD_TOKEN_CONFLICT";
 	details: string;
