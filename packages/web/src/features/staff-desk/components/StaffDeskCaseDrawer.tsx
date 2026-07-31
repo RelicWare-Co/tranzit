@@ -1,4 +1,5 @@
 import {
+	ActionIcon,
 	Alert,
 	Badge,
 	Box,
@@ -12,6 +13,7 @@ import {
 	Text,
 	Textarea,
 	Title,
+	Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -19,6 +21,8 @@ import {
 	BadgeCheck,
 	CalendarClock,
 	CheckCircle2,
+	ChevronLeft,
+	ChevronRight,
 	CircleAlert,
 	ClipboardCheck,
 	FileCheck2,
@@ -58,6 +62,11 @@ interface StaffDeskCaseDrawerProps {
 	}) => Promise<void>;
 	onComplete: (bookingId: string) => Promise<void>;
 	onCancel: (input: { bookingId: string; reason: string }) => Promise<void>;
+	caseNumber?: number;
+	caseTotal?: number;
+	hasPrev?: boolean;
+	hasNext?: boolean;
+	onNavigate?: (direction: -1 | 1) => void;
 }
 
 function StatusBadge({ deskCase }: { deskCase: StaffDeskCase }) {
@@ -80,6 +89,11 @@ export function StaffDeskCaseDrawer({
 	onReview,
 	onComplete,
 	onCancel,
+	caseNumber,
+	caseTotal,
+	hasPrev = false,
+	hasNext = false,
+	onNavigate,
 }: StaffDeskCaseDrawerProps) {
 	const [identityConfirmed, setIdentityConfirmed] = useState(false);
 	const [reviews, setReviews] = useState<Record<string, boolean>>({});
@@ -150,6 +164,43 @@ export function StaffDeskCaseDrawer({
 				overlayProps={{ backgroundOpacity: 0.24, blur: 1 }}
 			>
 				<Stack gap="lg" className={classes.drawerStack}>
+					{(caseTotal ?? 0) > 0 || onNavigate ? (
+						<Group
+							justify="flex-end"
+							align="center"
+							gap="xs"
+							wrap="nowrap"
+							className={classes.drawerNav}
+						>
+							{caseTotal ? (
+								<Text size="xs" c="dimmed" className={classes.drawerNavCount}>
+									{`Caso ${caseNumber ?? 1} de ${caseTotal}`}
+								</Text>
+							) : null}
+							<Tooltip label="Caso anterior" disabled={!hasPrev}>
+								<ActionIcon
+									variant="subtle"
+									size="sm"
+									disabled={!hasPrev}
+									onClick={() => onNavigate?.(-1)}
+									aria-label="Caso anterior"
+								>
+									<ChevronLeft size={16} />
+								</ActionIcon>
+							</Tooltip>
+							<Tooltip label="Caso siguiente" disabled={!hasNext}>
+								<ActionIcon
+									variant="subtle"
+									size="sm"
+									disabled={!hasNext}
+									onClick={() => onNavigate?.(1)}
+									aria-label="Caso siguiente"
+								>
+									<ChevronRight size={16} />
+								</ActionIcon>
+							</Tooltip>
+						</Group>
+					) : null}
 					<section aria-labelledby="case-title">
 						<Group
 							justify="space-between"
@@ -304,13 +355,13 @@ export function StaffDeskCaseDrawer({
 										<Checkbox
 											key={requirement.id}
 											checked={reviews[requirement.id] === true}
-onChange={(event) => {
-											const checked = event.currentTarget.checked;
-											setReviews((current) => ({
-												...current,
-												[requirement.id]: checked,
-											}));
-										}}
+											onChange={(event) => {
+												const checked = event.currentTarget.checked;
+												setReviews((current) => ({
+													...current,
+													[requirement.id]: checked,
+												}));
+											}}
 											label={
 												<Box>
 													<Text component="span" fw={600} size="sm">

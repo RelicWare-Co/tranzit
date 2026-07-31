@@ -107,6 +107,28 @@
 	border-radius: var(--radius-lg);
 	background: var(--bg-elevated);
 	box-shadow: var(--shadow-xs);
+	cursor: pointer;
+	text-align: left;
+	transition:
+		border-color var(--duration-fast) ease,
+		box-shadow var(--duration-fast) ease,
+		transform var(--duration-fast) ease;
+}
+
+.statCard:hover {
+	border-color: var(--border-strong);
+	box-shadow: var(--shadow-sm);
+	transform: translateY(-1px);
+}
+
+.statCard:focus-visible {
+	outline: 2px solid var(--accent-default);
+	outline-offset: 2px;
+}
+
+.statCard[data-active] {
+	border-color: var(--brand-500);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 13%, transparent);
 }
 
 .statCard strong,
@@ -169,6 +191,34 @@
 	border-bottom: 1px solid var(--border-subtle);
 }
 
+.queueToolbarLeft {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+}
+
+.nowChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+	padding: 2px var(--space-2);
+	border: 1px solid var(--border-subtle);
+	border-radius: var(--radius-full);
+	background: var(--bg-secondary);
+	color: var(--text-secondary);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.nowDot {
+	width: 7px;
+	height: 7px;
+	border-radius: var(--radius-full);
+	background: var(--brand-600);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-600) 22%, transparent);
+}
+
 .queueTitle {
 	font-size: var(--text-xl);
 	letter-spacing: -0.025em;
@@ -190,11 +240,40 @@
 }
 
 .queueList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+	min-height: 220px;
+	padding: var(--space-5);
+}
+
+.queueSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+
+.queueSectionHeading {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.queueSectionTitle {
+	font-size: var(--text-base);
+	letter-spacing: -0.01em;
+	font-weight: 700;
+}
+
+.queueSectionHint {
+	margin-top: 2px;
+	font-size: var(--text-xs);
+}
+
+.queueSectionGrid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--space-3);
-	min-height: 220px;
-	padding: var(--space-5);
 }
 
 .queueCard {
@@ -230,6 +309,75 @@
 .queueCard[data-selected] {
 	border-color: var(--brand-500);
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 13%, transparent);
+}
+
+.queueCard[data-overdue] {
+	border-color: var(--mantine-color-red-4);
+	box-shadow: inset 0 0 0 1px var(--mantine-color-red-2);
+}
+
+.queueCard[data-overdue][data-next-up],
+.queueCard[data-attention][data-next-up] {
+	border-color: var(--brand-500);
+	box-shadow:
+		inset 0 0 0 1px
+		var(--brand-200, color-mix(in srgb, var(--brand-500) 30%, transparent)),
+		0 0 0 3px color-mix(in srgb, var(--brand-500) 14%, transparent);
+}
+
+.queueCard[data-attention] {
+	border-color: var(--mantine-color-violet-4);
+	box-shadow: inset 0 0 0 1px var(--mantine-color-violet-2);
+}
+
+.queueCard[data-next-up] {
+	border-color: var(--brand-500);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 14%, transparent);
+	min-height: 140px;
+}
+
+.queueCard[data-next-up] strong {
+	font-size: var(--text-lg);
+}
+
+.drawerNav {
+	margin-inline-start: auto;
+}
+
+.drawerNavCount {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.queueLock {
+	position: absolute;
+	top: var(--space-3);
+	right: var(--space-3);
+	color: var(--text-tertiary);
+}
+
+.queueIdentity {
+	display: block;
+	margin-top: 2px;
+	color: var(--text-secondary);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}
+
+.queueTags {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	margin-top: 2px;
+	max-width: 100%;
+}
+
+.queuePlate {
+	flex: 0 0 auto;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	font-variant-numeric: tabular-nums;
 }
 
 .queueCardTopline {
@@ -268,6 +416,8 @@
 .queueProcedure {
 	margin-top: 2px;
 	font-size: var(--text-sm);
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .queueReference {
@@ -287,14 +437,12 @@
 
 .queueSkeleton {
 	display: grid;
-	grid-column: 1 / -1;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--space-3);
 }
 
 .emptyState {
 	display: grid;
-	grid-column: 1 / -1;
 	min-height: 210px;
 	place-content: center;
 	justify-items: center;
@@ -530,7 +678,7 @@
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
-	.queueList {
+	.queueSectionGrid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
@@ -549,7 +697,7 @@
 	}
 
 	.statGrid,
-	.queueList,
+	.queueSectionGrid,
 	.queueSkeleton,
 	.detailsGrid {
 		grid-template-columns: 1fr;

@@ -21,6 +21,7 @@ import {
 	CircleAlert,
 	Clock3,
 	FileCheck2,
+	Lock,
 	LogOut,
 	RefreshCw,
 	Search,
@@ -39,10 +40,18 @@ import { orpcClient } from "#/shared/lib/orpc-client";
 import classes from "./StaffDesk.module.css";
 import { StaffDeskCaseDrawer } from "./StaffDeskCaseDrawer";
 import {
+	type CaseSection,
 	getBogotaIsoDate,
+	getBogotaNowLabel,
 	getCasePhase,
 	getErrorMessage,
+	groupCasesBySection,
+	isFutureDate,
+	isInAttentionNow,
+	isOverdue,
 	PHASE_DETAILS,
+	SECTION_DETAILS,
+	sortCasesByStart,
 } from "./staff-desk-utils";
 
 type StaffDeskCase = Awaited<
@@ -65,22 +74,45 @@ function matchesFilter(deskCase: StaffDeskCase, filter: QueueFilter) {
 function QueueCard({
 	deskCase,
 	isSelected,
+	isNextUp,
 	onClick,
 }: {
 	deskCase: StaffDeskCase;
 	isSelected: boolean;
+	isNextUp: boolean;
 	onClick: () => void;
 }) {
 	const phase = getCasePhase(deskCase);
 	const details = PHASE_DETAILS[phase];
+	const overdue = isOverdue(deskCase);
+	const inAttention = isInAttentionNow(deskCase);
+	const futureDate = isFutureDate(deskCase);
+	const documentLabel =
+		deskCase.request.documentType && deskCase.request.documentNumber
+			? `${deskCase.request.documentType} ${deskCase.request.documentNumber}`
+			: null;
+	const plateLabel =
+		deskCase.request.procedure.requiresVehicle && deskCase.request.plate
+			? deskCase.request.plate
+			: null;
 
 	return (
 		<button
 			type="button"
 			className={classes.queueCard}
 			data-selected={isSelected || undefined}
+			data-overdue={overdue || undefined}
+			data-attention={inAttention || undefined}
+			data-next-up={isNextUp || undefined}
 			onClick={onClick}
 		>
+			{futureDate ? (
+				<Lock
+					className={classes.queueLock}
+					size={14}
+					aria-label="Fecha futura, solo lectura"
+				/>
+			) : null}
 			<div className={classes.queueCardTopline}>
 				<span className={classes.queueTime}>{deskCase.slot.startTime}</span>
 				<Badge color={details.color} variant="light" radius="sm" size="sm">
@@ -88,9 +120,25 @@ function QueueCard({
 				</Badge>
 			</div>
 			<strong>{deskCase.request.applicantName}</strong>
-			<span className={classes.queueProcedure}>
-				{deskCase.request.procedure.name}
-			</span>
+			{documentLabel ? (
+				<span className={classes.queueIdentity}>{documentLabel}</span>
+			) : null}
+			<div className={classes.queueTags}>
+				<span className={classes.queueProcedure}>
+					{deskCase.request.procedure.name}
+				</span>
+				{plateLabel ? (
+					<Badge
+						className={classes.queuePlate}
+						color="gray"
+						variant="light"
+						radius="sm"
+						size="sm"
+					>
+						{plateLabel}
+					</Badge>
+				) : null}
+			</div>
 			<span className={classes.queueReference}>
 				Solicitud {deskCase.request.id.slice(0, 8)}
 			</span>
@@ -100,6 +148,57 @@ function QueueCard({
 				aria-hidden="true"
 			/>
 		</button>
+	);
+}
+
+function QueueSection({
+	section,
+	cases,
+	nextUpId,
+	selectedCaseId,
+	onSelect,
+}: {
+	section: CaseSection;
+	cases: StaffDeskCase[];
+	nextUpId: string | null;
+	selectedCaseId: string | null;
+	onSelect: (id: string) => void;
+}) {
+	if (cases.length === 0) return null;
+	const details = SECTION_DETAILS[section];
+	return (
+		<section
+			className={classes.queueSection}
+			aria-label={`Sección: ${details.label}`}
+		>
+			<div className={classes.queueSectionHeading}>
+				<Group gap="sm" wrap="nowrap">
+					<Title order={3} className={classes.queueSectionTitle}>
+						{details.label}
+					</Title>
+					<Badge
+						color="gray"
+						variant="light"
+						radius="sm"
+						size="sm"
+					>{`${cases.length}`}</Badge>
+				</Group>
+				<Text c="dimmed" size="xs" className={classes.queueSectionHint}>
+					{details.hint}
+				</Text>
+			</div>
+			<div className={classes.queueSectionGrid}>
+				{cases.map((deskCase) => (
+					<QueueCard
+						key={deskCase.id}
+						deskCase={deskCase}
+						isSelected={deskCase.id === selectedCaseId}
+						isNextUp={deskCase.id === nextUpId}
+						onClick={() => onSelect(deskCase.id)}
+					/>
+				))}
+			</div>
+		</section>
 	);
 }
 
@@ -134,6 +233,15 @@ export function StaffDeskPage() {
 		query.trim().toLocaleLowerCase("es-CO"),
 	);
 	const hasDeskAccess = hasRole("staff");
+	const [nowLabel, setNowLabel] = useState(getBogotaNowLabel);
+
+	useEffect(() => {
+		const id = window.setInterval(
+			() => setNowLabel(getBogotaNowLabel()),
+			60_000,
+		);
+		return () => window.clearInterval(id);
+	}, []);
 
 	useEffect(() => {
 		if (isLoading) return;
@@ -156,8 +264,8 @@ export function StaffDeskPage() {
 	});
 
 	const allCases = deskQueueQuery.data?.cases ?? [];
-	const filteredCases = useMemo(() => {
-		return allCases.filter((deskCase) => {
+	const filteredGrouped = useMemo(() => {
+		const matched = allCases.filter((deskCase) => {
 			if (!matchesFilter(deskCase, filter)) return false;
 			if (!deferredQuery) return true;
 			return [
@@ -165,12 +273,58 @@ export function StaffDeskPage() {
 				deskCase.request.documentNumber ?? "",
 				deskCase.request.procedure.name,
 				deskCase.request.id,
+				deskCase.request.plate ?? "",
 			]
 				.join(" ")
 				.toLocaleLowerCase("es-CO")
 				.includes(deferredQuery);
 		});
+		return groupCasesBySection(sortCasesByStart(matched));
 	}, [allCases, deferredQuery, filter]);
+	const visibleSections = (
+		["now", "upcoming", "completed", "incidents"] as CaseSection[]
+	).filter((section) => filteredGrouped[section].length > 0);
+
+	const selectedCase =
+		allCases.find((deskCase) => deskCase.id === selectedCaseId) ?? null;
+
+	useEffect(() => {
+		if (selectedCaseId && !selectedCase) setSelectedCaseId(null);
+	}, [selectedCase, selectedCaseId]);
+
+	const nextUpId = useMemo(() => {
+		const actionables: StaffDeskCase[] = [
+			...filteredGrouped.now,
+			...filteredGrouped.upcoming,
+		];
+		return actionables.length > 0 ? actionables[0].id : null;
+	}, [filteredGrouped]);
+
+	const orderedVisibleCases = useMemo(
+		() =>
+			visibleSections.flatMap(
+				(section) => filteredGrouped[section],
+			) as StaffDeskCase[],
+		[filteredGrouped, visibleSections],
+	);
+	const selectedIndex = selectedCase
+		? orderedVisibleCases.findIndex(
+				(deskCase) => deskCase.id === selectedCase.id,
+			)
+		: -1;
+	const hasPrev = selectedIndex > 0;
+	const hasNext =
+		selectedIndex >= 0 && selectedIndex < orderedVisibleCases.length - 1;
+	const navigateCase = useCallback(
+		(direction: -1 | 1) => {
+			const next = orderedVisibleCases[selectedIndex + direction];
+			if (next) {
+				setActionError(null);
+				setSelectedCaseId(next.id);
+			}
+		},
+		[orderedVisibleCases, selectedIndex],
+	);
 
 	const counts = useMemo(() => {
 		const next = { ready: 0, inProgress: 0, completed: 0, incidents: 0 };
@@ -184,13 +338,6 @@ export function StaffDeskPage() {
 		}
 		return next;
 	}, [allCases]);
-
-	const selectedCase =
-		allCases.find((deskCase) => deskCase.id === selectedCaseId) ?? null;
-
-	useEffect(() => {
-		if (selectedCaseId && !selectedCase) setSelectedCaseId(null);
-	}, [selectedCase, selectedCaseId]);
 
 	const invalidateQueue = useCallback(async () => {
 		await queryClient.invalidateQueries({
@@ -388,7 +535,13 @@ export function StaffDeskPage() {
 				) : null}
 
 				<section className={classes.statGrid} aria-label="Resumen de jornada">
-					<div className={classes.statCard}>
+					<button
+						type="button"
+						className={classes.statCard}
+						data-active={filter === "ready" || undefined}
+						onClick={() => setFilter("ready")}
+						aria-pressed={filter === "ready"}
+					>
 						<span className={classes.statIcon} data-tone="blue">
 							<UserRound size={18} />
 						</span>
@@ -396,8 +549,14 @@ export function StaffDeskPage() {
 							<strong>{counts.ready}</strong>
 							<span>Por recibir</span>
 						</div>
-					</div>
-					<div className={classes.statCard}>
+					</button>
+					<button
+						type="button"
+						className={classes.statCard}
+						data-active={filter === "in_progress" || undefined}
+						onClick={() => setFilter("in_progress")}
+						aria-pressed={filter === "in_progress"}
+					>
 						<span className={classes.statIcon} data-tone="violet">
 							<FileCheck2 size={18} />
 						</span>
@@ -405,8 +564,14 @@ export function StaffDeskPage() {
 							<strong>{counts.inProgress}</strong>
 							<span>En atención</span>
 						</div>
-					</div>
-					<div className={classes.statCard}>
+					</button>
+					<button
+						type="button"
+						className={classes.statCard}
+						data-active={filter === "completed" || undefined}
+						onClick={() => setFilter("completed")}
+						aria-pressed={filter === "completed"}
+					>
 						<span className={classes.statIcon} data-tone="green">
 							<ShieldCheck size={18} />
 						</span>
@@ -414,8 +579,14 @@ export function StaffDeskPage() {
 							<strong>{counts.completed}</strong>
 							<span>Finalizados</span>
 						</div>
-					</div>
-					<div className={classes.statCard}>
+					</button>
+					<button
+						type="button"
+						className={classes.statCard}
+						data-active={filter === "incidents" || undefined}
+						onClick={() => setFilter("incidents")}
+						aria-pressed={filter === "incidents"}
+					>
 						<span className={classes.statIcon} data-tone="orange">
 							<Clock3 size={18} />
 						</span>
@@ -423,7 +594,7 @@ export function StaffDeskPage() {
 							<strong>{counts.incidents}</strong>
 							<span>Incidencias</span>
 						</div>
-					</div>
+					</button>
 				</section>
 
 				<Card
@@ -433,16 +604,22 @@ export function StaffDeskPage() {
 					className={classes.queueWorkspace}
 				>
 					<div className={classes.queueToolbar}>
-						<div>
+						<div className={classes.queueToolbarLeft}>
 							<Title order={2} className={classes.queueTitle}>
 								Agenda asignada
 							</Title>
-							<Text c="dimmed" size="sm">
-								Solo ves las citas asignadas a tu perfil operativo.
-							</Text>
+							<Group gap="sm" wrap="nowrap" align="center">
+								<Text c="dimmed" size="sm">
+									Solo ves las citas asignadas a tu perfil operativo.
+								</Text>
+								<span className={classes.nowChip} aria-hidden="true">
+									<span className={classes.nowDot} />
+									Ahora {nowLabel}
+								</span>
+							</Group>
 						</div>
 						<TextInput
-							placeholder="Buscar por nombre, documento o trámite"
+							placeholder="Buscar por nombre, documento, placa o trámite"
 							value={query}
 							onChange={(event) => setQuery(event.currentTarget.value)}
 							leftSection={<Search size={16} />}
@@ -455,20 +632,11 @@ export function StaffDeskPage() {
 							value={filter}
 							onChange={(value) => setFilter(value as QueueFilter)}
 							data={[
-								{ value: "all", label: `Todas (${allCases.length})` },
-								{ value: "ready", label: `Por recibir (${counts.ready})` },
-								{
-									value: "in_progress",
-									label: `En atención (${counts.inProgress})`,
-								},
-								{
-									value: "completed",
-									label: `Finalizadas (${counts.completed})`,
-								},
-								{
-									value: "incidents",
-									label: `Incidencias (${counts.incidents})`,
-								},
+								{ value: "all", label: "Todas" },
+								{ value: "ready", label: "Por recibir" },
+								{ value: "in_progress", label: "En atención" },
+								{ value: "completed", label: "Finalizadas" },
+								{ value: "incidents", label: "Incidencias" },
 							]}
 							className={classes.filters}
 						/>
@@ -476,7 +644,7 @@ export function StaffDeskPage() {
 
 					<div className={classes.queueList}>
 						{deskQueueQuery.isPending ? <QueueLoadingState /> : null}
-						{!deskQueueQuery.isPending && filteredCases.length === 0 ? (
+						{!deskQueueQuery.isPending && visibleSections.length === 0 ? (
 							<div className={classes.emptyState}>
 								<CalendarDays size={28} aria-hidden="true" />
 								<Title order={3}>
@@ -492,14 +660,16 @@ export function StaffDeskPage() {
 							</div>
 						) : null}
 						{!deskQueueQuery.isPending
-							? filteredCases.map((deskCase) => (
-									<QueueCard
-										key={deskCase.id}
-										deskCase={deskCase}
-										isSelected={deskCase.id === selectedCaseId}
-										onClick={() => {
+							? visibleSections.map((section) => (
+									<QueueSection
+										key={section}
+										section={section}
+										cases={filteredGrouped[section]}
+										nextUpId={nextUpId}
+										selectedCaseId={selectedCaseId}
+										onSelect={(id) => {
 											setActionError(null);
-											setSelectedCaseId(deskCase.id);
+											setSelectedCaseId(id);
 										}}
 									/>
 								))
@@ -518,6 +688,11 @@ export function StaffDeskPage() {
 				onReview={handleReview}
 				onComplete={handleComplete}
 				onCancel={handleCancel}
+				caseNumber={selectedIndex >= 0 ? selectedIndex + 1 : undefined}
+				caseTotal={orderedVisibleCases.length || undefined}
+				hasPrev={hasPrev}
+				hasNext={hasNext}
+				onNavigate={navigateCase}
 			/>
 		</Box>
 	);

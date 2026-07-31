@@ -136,7 +136,7 @@ describe("StaffDeskPage", () => {
 			await screen.findByRole("heading", { name: "Atención del ciudadano" }),
 		).toBeInTheDocument();
 		expect(screen.getByText("1. Recibir al ciudadano")).toBeVisible();
-		expect(screen.getByText("CC 123456789")).toBeVisible();
+		expect(screen.getAllByText("CC 123456789").length).toBeGreaterThan(0);
 	});
 
 	it("registers reception from the case instead of using the global scheduling actions", async () => {
